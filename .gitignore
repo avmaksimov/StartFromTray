@@ -70,5 +70,5 @@ modules/
 
 # Langs/Default.ini - generates automatically
 Langs/Default.ini
-*.ini
+/*.ini
 *.xml
