@@ -325,19 +325,26 @@ end;
 procedure TfrmCommandConfig.TimerTimer(Sender: TObject);
 const
   vArLangStr: array [boolean] of string = ('IsNotRunning', 'IsRunning');
+var
+  vErrPlace: word;
 begin
-  if not Assigned(FAssignedTreeNode) or not Assigned(FAssignedTreeNode.Data)
-  then
-    Exit;
-
+  vErrPlace := 0;
   try
+    if not Assigned(FAssignedTreeNode) or not Assigned(FAssignedTreeNode.Data)
+    then
+      Exit;
+
+    vErrPlace := 100;
     with TCommandData(FAssignedTreeNode.Data) do
     begin
+      vErrPlace := 110;
       lblIsRunning.Caption := GetLangString('frmConfig\frmCommandConfig',
         vArLangStr[isRunning]);
       // IfThen(isRunning, GetLangString('LangStrings', 'ElementIsRunning'], LangStrings['ElementIsNotRunning']);
+      vErrPlace := 120;
       lblisRun_FolderChanged.Caption := 'Folder changed: ' +
         BoolToStr(isRun_FolderChanged, True);
+      vErrPlace := 130;
       if isRunAt then
         lblNextRun.Caption := 'Next: ' + DateTimeToStr(NextRunAtDateTime)
       else
@@ -346,7 +353,8 @@ begin
   except
     on E: Exception do
     begin
-      ShowMessage('TfrmCommandConfig.TimerTimer: ' + E.Message);
+      ShowMessage('Try..catch! TfrmCommandConfig.TimerTimer: ' + E.Message +
+        #1310 + 'Errplace: ' + vErrPlace.ToString);
       ShowMessage(FAssignedTreeNode.Text);
     end;
   end;

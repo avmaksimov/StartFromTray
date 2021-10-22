@@ -50,6 +50,7 @@ type
     frmCommandConfig: TfrmCommandConfig;
     cbLangs: TComboBox;
     lbLangs: TLabel;
+    lblVer: TLabel;
     procedure actAddExecute(Sender: TObject);
     procedure actAddSubExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
@@ -167,17 +168,17 @@ begin
     oldCommonData.Free;
   end;
 
-  with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
+  { with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
     try
-      RootKey := HKEY_CURRENT_USER;
-      if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
-        if cbRunOnWindowsStart.Checked then
-          WriteString('StartFromTray', ParamStr(0))
-        else
-          DeleteValue('StartFromTray');
+    RootKey := HKEY_CURRENT_USER;
+    if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
+    if cbRunOnWindowsStart.Checked then
+    WriteString('StartFromTray', ParamStr(0))
+    else
+    DeleteValue('StartFromTray');
     finally
-      Free;
-    end;
+    Free;
+    end; }
   IsModified := False;
 end;
 
@@ -415,13 +416,57 @@ begin
 end;
 
 procedure TfrmConfig.cbLangsChange(Sender: TObject);
+  function _GetBuildInfo: string;
+  var
+    VerInfoSize, VerValueSize, Dummy: DWORD;
+    VerInfo: Pointer;
+    VerValue: PVSFixedFileInfo;
+  begin
+    VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
+    if VerInfoSize > 0 then
+    begin
+        GetMem(VerInfo, VerInfoSize);
+        try
+          if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo) then
+          begin
+            VerQueryValue(VerInfo, '\', Pointer(VerValue), VerValueSize);
+            with VerValue^ do
+            begin
+              Result := (dwFileVersionMS shr 16).ToString + '.' +
+                (dwFileVersionMS and $FFFF).ToString + '.' +
+                (dwFileVersionLS shr 16).ToString + '.' +
+                (dwFileVersionLS and $FFFF).ToString;
+              {V1 := dwFileVersionMS shr 16;
+              V2 := dwFileVersionMS and $FFFF;
+              V3 := dwFileVersionLS shr 16;
+              V4 := dwFileVersionLS and $FFFF;}
+            end;
+          end;
+        finally
+          FreeMem(VerInfo, VerInfoSize);
+        end;
+    end;
+  end;
 begin
   SetLang(StrPas(PChar(cbLangs.Items.Objects[cbLangs.ItemIndex])));
+
+  lblVer.Caption := GetLangString(Name, 'Version') + ' ' + _GetBuildInfo;
 end;
 
 procedure TfrmConfig.cbRunOnWindowsStartChange(Sender: TObject);
 begin
-  IsModified := True;
+  // IsModified := True;
+  with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
+    try
+      RootKey := HKEY_CURRENT_USER;
+      if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
+        if cbRunOnWindowsStart.Checked then
+          WriteString('StartFromTray', ParamStr(0))
+        else
+          DeleteValue('StartFromTray');
+    finally
+      Free;
+    end;
 end;
 
 procedure TfrmConfig.CorrectTreeViewItemHeight;
@@ -931,7 +976,7 @@ begin
     ExtractAssociatedIcon(Application.Handle, PChar('SHELL32.dll'), w));
 
   if not FileExists(ExtractFilePath(ParamStr(0)) + cItemsFileName) then
-  // 'StartFromTray_tvItems.xml') then
+    // 'StartFromTray_tvItems.xml') then
     Exit;
 
   XMLDoc := TXMLDocument.Create(nil);

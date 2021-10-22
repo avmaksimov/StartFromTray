@@ -42,6 +42,7 @@ var
   // 'Up', 'Down', 'Add', 'Add child', 'Delete', 'Copy');
 
 const
+  ExcludesForFormConfig: TArray<string> = ['btnClose', 'lblVer'];
   ExcludesForFrameCommandConfig: TArray<string> = ['gbRunAtTime',
     'lblisRun_FolderChanged', 'lblNextRun', 'cbRunAt', 'cbIsRepeatRun',
     'cbisRun_isWhenFolderChange', 'cbIsVisible', 'lblIsRunning'];
@@ -106,8 +107,9 @@ procedure GenDefaultFileLang { (const ASaveAndExit: Boolean) };
       if not(vComponent is TFrame) then
       begin // now only hardcode
         if not(((AFormOrFrame.Name = 'frmCommandConfig') and
-          MatchStr(vComponent.Name, ExcludesForFrameCommandConfig)) or
-          ((AFormOrFrame.Name = 'frmConfig') and (vComponent.Name = 'btnClose')))
+            MatchStr(vComponent.Name, ExcludesForFrameCommandConfig)) or
+          ((AFormOrFrame.Name = 'frmConfig') and MatchStr(vComponent.Name, ExcludesForFormConfig)))
+          //((AFormOrFrame.Name = 'frmConfig') and ((vComponent.Name = 'btnClose') or (vComponent.Name = 'lblVer'))))
         then
           WriteToLangFile(ASectionName, vComponent.Name, vComponent);
       end
@@ -126,6 +128,7 @@ var
 begin
   vFileName := { ExtractFilePath(ParamStr(0)) + cLangFolderName } FLangPath +
     'Default.ini';
+  System.SysUtils.DeleteFile(vFileName);
   FLangFile := TMemIniFile.Create(vFileName);
   with FLangFile do
   begin
@@ -293,6 +296,7 @@ begin
     'Are you sure to cancel changes?');
   MyWriteString('LangStrings', '@FileDialogExecutableFile', 'Executable file');
   MyWriteString('LangStrings', '@FileDialogAnyFile', 'Any file');
+  MyWriteString('frmConfig', '@Version', 'Version:');
   MyWriteString('frmConfig\frmCommandConfig', '@IsRunning', 'Running');
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
   MyWriteString('frmExtensions', '@ChooseFileForRun',

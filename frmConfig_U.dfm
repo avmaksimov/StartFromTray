@@ -143,6 +143,14 @@ object frmConfig: TfrmConfig
       Height = 13
       Caption = 'Interface language:'
     end
+    object lblVer: TLabel
+      Left = 361
+      Top = 37
+      Width = 42
+      Height = 13
+      Alignment = taRightJustify
+      Caption = 'Version: '
+    end
     object btnApply: TButton
       Left = 328
       Top = 61

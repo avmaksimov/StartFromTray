@@ -336,7 +336,7 @@ begin
 
       // время больше текущего (перенести на след.день)
       if CompareTime(vNow, FRepeatRunAtTime) = GreaterThanValue then
-      // текущее время больше
+        // текущее время больше
         vNowDate := vNowDate + 1;
 
       FNextRunAtDateTime := vNowDate + Frac(FRepeatRunAtTime);
