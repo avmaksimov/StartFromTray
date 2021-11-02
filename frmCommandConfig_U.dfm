@@ -33,125 +33,6 @@ object frmCommandConfig: TfrmCommandConfig
     Caption = 'The command willn'#39't start until the previous copy running'
     WordWrap = True
   end
-  object gbRunAtTime: TGroupBox
-    Tag = 1
-    Left = 8
-    Top = 191
-    Width = 388
-    Height = 122
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Run at time'
-    TabOrder = 0
-    Visible = False
-    object lblisRun_FolderChanged: TLabel
-      Left = 195
-      Top = 75
-      Width = 115
-      Height = 13
-      Hint = 
-        'After runnung at time flag Folder Changed marks as false (not by' +
-        ' click)'
-      Caption = 'lblisRun_FolderChanged'
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object lblNextRun: TLabel
-      Left = 266
-      Top = 24
-      Width = 44
-      Height = 11
-      Caption = 'lblNextRun'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -9
-      Font.Name = 'Tahoma'
-      Font.Style = []
-      ParentFont = False
-    end
-    object cbRunAt: TCheckBox
-      Left = 6
-      Top = 21
-      Width = 87
-      Height = 19
-      Caption = 'Run at:'
-      TabOrder = 0
-      OnClick = cbRunAtChange
-    end
-    object edtRunAtDate: TDateTimePicker
-      Left = 99
-      Top = 17
-      Width = 79
-      Height = 23
-      Date = 41111.000000000000000000
-      Time = 41111.000000000000000000
-      MaxDate = 2958465.999988426000000000
-      MinDate = -53780.000000000000000000
-      TabOrder = 1
-    end
-    object edtRunAtTime: TDateTimePicker
-      Left = 195
-      Top = 17
-      Width = 65
-      Height = 23
-      Date = 41111.000000000000000000
-      Time = 41111.000000000000000000
-      Kind = dtkTime
-      MaxDate = 2958465.999988426000000000
-      MinDate = -53780.000000000000000000
-      TabOrder = 2
-    end
-    object cbIsRepeatRun: TCheckBox
-      Left = 6
-      Top = 46
-      Width = 164
-      Height = 19
-      Caption = 'Repeat every day at:'
-      TabOrder = 3
-      OnClick = cbIsRepeatRunChange
-    end
-    object edtRepeatRunAtTime: TDateTimePicker
-      Left = 195
-      Top = 46
-      Width = 65
-      Height = 23
-      Date = 41111.000000000000000000
-      Time = 41111.000000000000000000
-      Kind = dtkTime
-      MaxDate = 2958465.999988426000000000
-      MinDate = -53780.000000000000000000
-      TabOrder = 4
-    end
-    object cbisRun_isWhenFolderChange: TCheckBox
-      Left = 6
-      Top = 71
-      Width = 172
-      Height = 17
-      Hint = 'All changes without security changes'
-      Caption = ' ... and when folder changed:'
-      ParentShowHint = False
-      ShowHint = True
-      TabOrder = 5
-      OnClick = cbisRun_isWhenFolderChangeClick
-    end
-    object edtisRun_WhenFolderChange: TButtonedEdit
-      Left = 21
-      Top = 94
-      Width = 360
-      Height = 21
-      Ctl3D = True
-      DoubleBuffered = True
-      Enabled = False
-      Images = ImageList
-      ParentCtl3D = False
-      ParentDoubleBuffered = False
-      RightButton.DisabledImageIndex = 1
-      RightButton.Enabled = False
-      RightButton.ImageIndex = 0
-      RightButton.Visible = True
-      TabOrder = 6
-      OnRightButtonClick = edtisRun_WhenFolderChangeRightButtonClick
-    end
-  end
   object edtCaption: TLabeledEdit
     Tag = 1
     Left = 8
@@ -166,7 +47,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Caption = 'Name:'
     ParentShowHint = False
     ShowHint = False
-    TabOrder = 2
+    TabOrder = 1
     OnChange = edtCaptionChange
   end
   object cbIsVisible: TCheckBox
@@ -177,7 +58,7 @@ object frmCommandConfig: TfrmCommandConfig
     Height = 19
     Anchors = [akLeft, akTop, akRight]
     Caption = 'Show in Tray menu'
-    TabOrder = 1
+    TabOrder = 0
     Visible = False
   end
   object btnEdit: TButton
@@ -186,7 +67,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Height = 19
     Caption = 'Edit'
-    TabOrder = 3
+    TabOrder = 2
     OnClick = btnEditClick
   end
   object btnRun: TButton
@@ -195,7 +76,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Height = 19
     Caption = 'Run'
-    TabOrder = 4
+    TabOrder = 3
     OnClick = btnRunClick
   end
   object edtCommand: TButtonedEdit
@@ -212,7 +93,7 @@ object frmCommandConfig: TfrmCommandConfig
     ParentFont = False
     RightButton.ImageIndex = 0
     RightButton.Visible = True
-    TabOrder = 5
+    TabOrder = 4
     OnChange = edtCommandChange
     OnRightButtonClick = edtCommandRightButtonClick
   end
@@ -224,7 +105,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Width = 59
     EditLabel.Height = 13
     EditLabel.Caption = 'Parameters:'
-    TabOrder = 6
+    TabOrder = 5
   end
   object edtCommandOpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'

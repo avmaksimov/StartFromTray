@@ -14,13 +14,7 @@ type
 
   TfrmCommandConfig = class(TFrame)
     cbIsVisible: TCheckBox;
-    cbRunAt: TCheckBox;
-    cbIsRepeatRun: TCheckBox;
     edtCaption: TLabeledEdit;
-    edtRepeatRunAtTime: TDateTimePicker;
-    edtRunAtTime: TDateTimePicker;
-    gbRunAtTime: TGroupBox;
-    edtRunAtDate: TDateTimePicker;
     lblCommand: TLabel;
     btnEdit: TButton;
     btnRun: TButton;
@@ -30,13 +24,7 @@ type
     Timer: TTimer;
     lblRunInfo: TLabel;
     ImageList: TImageList;
-    cbisRun_isWhenFolderChange: TCheckBox;
-    edtisRun_WhenFolderChange: TButtonedEdit;
-    lblisRun_FolderChanged: TLabel;
-    lblNextRun: TLabel;
     edtCommandParameters: TLabeledEdit;
-    procedure cbIsRepeatRunChange(Sender: TObject);
-    procedure cbRunAtChange(Sender: TObject);
     procedure edtCaptionChange(Sender: TObject);
     { procedure edtCommandBeforeDialog(Sender: TObject; var AName: string;
       var AAction: Boolean); }
@@ -45,8 +33,6 @@ type
     procedure edtCommandChange(Sender: TObject);
     procedure edtCommandRightButtonClick(Sender: TObject);
     procedure TimerTimer(Sender: TObject);
-    procedure cbisRun_isWhenFolderChangeClick(Sender: TObject);
-    procedure edtisRun_WhenFolderChangeRightButtonClick(Sender: TObject);
   private
     { private declarations }
     FAssignedTreeNode: TTreeNode;
@@ -87,47 +73,6 @@ uses LangsU, System.StrUtils, CommonU, System.Masks, System.Math;
 {$R *.dfm}
 { TfrmCommandConfig }
 
-procedure TfrmCommandConfig.cbRunAtChange(Sender: TObject);
-var
-  vNow: TDateTime;
-  vSysTime: TSystemTime;
-begin
-  edtRunAtDate.Enabled := cbRunAt.Checked;
-  edtRunAtTime.Enabled := cbRunAt.Checked;
-  cbIsRepeatRun.Enabled := cbRunAt.Checked;
-
-  lblNextRun.Visible := cbRunAt.Checked;
-
-  // if now checked and before didn't checked
-  if cbRunAt.Checked then
-  begin
-    lblNextRun.Caption := '';
-    if not TCommandData(FAssignedTreeNode.Data).isRunAt then
-    begin
-      vNow := Now;
-
-      edtRunAtDate.Date := Trunc(vNow);
-
-      DateTimeToSystemTime(vNow, vSysTime);
-      edtRunAtTime.Time := EncodeTime(vSysTime.wHour, vSysTime.wMinute, 0, 0);
-    end;
-  end; {
-    else
-    begin
-    edtRunAtDate.Date := NullDate;
-    edtRunAtTime.Time := NullDate;
-    end; }
-
-  cbIsRepeatRunChange(cbIsRepeatRun);
-end;
-
-procedure TfrmCommandConfig.cbisRun_isWhenFolderChangeClick(Sender: TObject);
-begin
-  edtisRun_WhenFolderChange.Enabled := cbisRun_isWhenFolderChange.Checked;
-  edtisRun_WhenFolderChange.RightButton.Enabled :=
-    cbisRun_isWhenFolderChange.Checked;
-end;
-
 procedure TfrmCommandConfig.btnEditClick(Sender: TObject);
 begin
   SaveAssigned;
@@ -138,22 +83,6 @@ procedure TfrmCommandConfig.btnRunClick(Sender: TObject);
 begin
   SaveAssigned;
   TCommandData(FAssignedTreeNode.Data).Run(crtNormalRun);
-end;
-
-procedure TfrmCommandConfig.cbIsRepeatRunChange(Sender: TObject);
-begin
-  edtRepeatRunAtTime.Enabled := cbRunAt.Checked and cbIsRepeatRun.Checked;
-
-  if cbIsRepeatRun.Checked and not TCommandData(FAssignedTreeNode.Data).isRepeatRun
-  then
-  begin
-    // скопируем из RunAtDateTime только, если ранее было выключено
-    // if TCommandData(FAssignedTreeNode.Data).isRepeatRun then
-    // if IsNullDate(edtRepeatRunAtTime.Time) then
-    edtRepeatRunAtTime.Time := edtRunAtTime.Time;
-  end
-  { else
-    edtRepeatRunAtTime.Time := NullDate; }
 end;
 
 procedure TfrmCommandConfig.edtCaptionChange(Sender: TObject);
@@ -198,13 +127,13 @@ begin
 end;
 
 procedure TfrmCommandConfig.edtCommandRightButtonClick(Sender: TObject);
-var
-  i, j: Integer;
-  vExtensions, sCommand: string;
-  bMatchedMaskFound: boolean;
-  vExtensionArray: TStringDynArray;
+//var
+  //i, j: Integer;
+  //vExtensions, sCommand: string;
+  //bMatchedMaskFound: boolean;
+  //vExtensionArray: TStringDynArray;
 begin
-  sCommand := Trim(edtCommand.Text);
+  var sCommand := Trim(edtCommand.Text);
   with edtCommandOpenDialog do
   begin
     FileTypes.Clear;
@@ -215,32 +144,35 @@ begin
       FileMask := '*.exe';
     end;
 
-    bMatchedMaskFound := MatchesMask(sCommand, '*.exe');
+    var bMatchedMaskFound := MatchesMask(sCommand, '*.exe');
 
     if bMatchedMaskFound then
       FileTypeIndex := 1
     else
     begin
       // find FileType
-      for i := 0 to Filters.Count - 1 do
+      for var i := 0 to Filters.Count - 1 do
       begin
-        vExtensions := TFilterData(Filters.Objects[i]).Extensions;
-        with FileTypes.Add do
-        begin
-          vExtensionArray := vExtensions.Split([';']);
-          FileMask := '*.' + vExtensionArray[0].Trim;
-          for j := 1 to High(vExtensionArray) do
-            FileMask := FileMask + '; *.' + vExtensionArray[j].Trim;
-          DisplayName := Filters[i] + ' (' + FileMask + ')';
-          // FileMask := vMasks;
-        end;
-        // found better FileTypeIndex than .exe
-        if not bMatchedMaskFound and (MyMatchesExtensions(sCommand, vExtensions))
-        then
-        begin
-          FileTypeIndex := i + 2; // numbering from 1 plus '*' before
-          bMatchedMaskFound := True;
-        end;
+        var vExtensions := (TFilterData(Filters.Objects[i]).Extensions).Trim;
+        if vExtensions <> '' then
+          begin
+            with FileTypes.Add do
+            begin
+              var vExtensionArray := vExtensions.Split([';']);
+              FileMask := '*.' + vExtensionArray[0].Trim;
+              for var j := 1 to High(vExtensionArray) do
+                FileMask := FileMask + '; *.' + vExtensionArray[j].Trim;
+              DisplayName := Filters[i] + ' (' + FileMask + ')';
+              // FileMask := vMasks;
+            end;
+            // found better FileTypeIndex than .exe
+            if not bMatchedMaskFound and (MyMatchesExtensions(sCommand, vExtensions))
+            then
+            begin
+              FileTypeIndex := i + 2; // numbering from 1 plus '*' before
+              bMatchedMaskFound := True;
+            end;
+          end;
       end;
     end;
 
@@ -261,17 +193,6 @@ begin
   end;
 end;
 
-procedure TfrmCommandConfig.edtisRun_WhenFolderChangeRightButtonClick
-  (Sender: TObject);
-var
-  s: string;
-begin
-  s := edtisRun_WhenFolderChange.Text;
-  if SelectDirectory('Select folder to watch', '', s,
-    [sdNewFolder, sdShowShares], Self) then
-    edtisRun_WhenFolderChange.Text := s;
-end;
-
 function TfrmCommandConfig.GetIsModified: boolean;
 var
   CommandData: TCommandData;
@@ -290,16 +211,7 @@ begin
 
     with CommandData do
       Result := Result or (edtCommand.Text <> Command) or
-        (edtCommandParameters.Text <> CommandParameters) or
-        (cbIsVisible.Checked <> isVisible) or (cbRunAt.Checked <> isRunAt) or
-        (cbRunAt.Checked and ((Trunc(edtRunAtDate.Date) <> Trunc(RunAtDateTime))
-        or (CompareTime(edtRunAtTime.Time, RunAtDateTime) <> EqualsValue))) or
-        (cbIsRepeatRun.Checked <> isRepeatRun) or
-        (cbIsRepeatRun.Checked and (CompareTime(edtRepeatRunAtTime.Time,
-        RepeatRunAtTime) <> EqualsValue)) or
-        (cbisRun_isWhenFolderChange.Checked <> isRun_isWhenOnlyFolderChange) or
-        (cbisRun_isWhenFolderChange.Checked and
-        (edtisRun_WhenFolderChange.Text <> isRun_WhenOnlyFolderChange));
+        (edtCommandParameters.Text <> CommandParameters)
   end;
 end;
 
@@ -318,8 +230,6 @@ begin
 
   M_SetChildsEnable(Self, Value);
 
-  if Value then
-    edtRepeatRunAtTime.Enabled := cbRunAt.Checked and cbIsRepeatRun.Checked;
 end;
 
 procedure TfrmCommandConfig.TimerTimer(Sender: TObject);
@@ -335,20 +245,15 @@ begin
       Exit;
 
     vErrPlace := 100;
-    with TCommandData(FAssignedTreeNode.Data) do
+    var vData := FAssignedTreeNode.Data;
+    vErrPlace := 105;
+    //with TCommandData(FAssignedTreeNode.Data) do
+    with TCommandData(vData) do
     begin
       vErrPlace := 110;
       lblIsRunning.Caption := GetLangString('frmConfig\frmCommandConfig',
         vArLangStr[isRunning]);
       // IfThen(isRunning, GetLangString('LangStrings', 'ElementIsRunning'], LangStrings['ElementIsNotRunning']);
-      vErrPlace := 120;
-      lblisRun_FolderChanged.Caption := 'Folder changed: ' +
-        BoolToStr(isRun_FolderChanged, True);
-      vErrPlace := 130;
-      if isRunAt then
-        lblNextRun.Caption := 'Next: ' + DateTimeToStr(NextRunAtDateTime)
-      else
-        lblNextRun.Caption := '';
     end;
   except
     on E: Exception do
@@ -415,28 +320,7 @@ begin
         FOldCommandText := Command;
         edtCommandParameters.Text := CommandParameters;
         cbIsVisible.Checked := isVisible;
-
-        if FisCommand then
-        begin
-          cbRunAt.Checked := isRunAt;
-
-          if isRunAt then // иначе заполнится при cbRunAtChange
-          begin
-            edtRunAtDate.Date := Trunc(RunAtDateTime);
-            edtRunAtTime.Time := Frac(RunAtDateTime);
-          end;
-
-          cbIsRepeatRun.Checked := isRepeatRun;
-
-          if cbIsRepeatRun.Checked then
-            edtRepeatRunAtTime.Time := RepeatRunAtTime;
-
-          cbisRun_isWhenFolderChange.Checked := isRun_isWhenOnlyFolderChange;
-          edtisRun_WhenFolderChange.Text := isRun_WhenOnlyFolderChange;
-        end;
       end;
-
-      cbRunAtChange(cbRunAt);
 
       for i := 0 to ControlCount - 1 do
         with Controls[i] do
