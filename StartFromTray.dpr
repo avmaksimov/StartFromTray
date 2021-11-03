@@ -5,15 +5,15 @@ uses
   Forms,
   CommandsClass_U in 'CommandsClass_U.pas',
   CommonU in 'CommonU.pas',
-  frmConfig_U in 'frmConfig_U.pas' {frmConfig} ,
+  frmConfig_U in 'frmConfig_U.pas' {frmConfig},
   FilterClass_U in 'FilterClass_U.pas',
-  frmFilters_U in 'frmFilters_U.pas' {frmExtensions} ,
-  frmCommandConfig_U in 'frmCommandConfig_U.pas' {frmCommandConfig: TFrame} ,
+  frmFilters_U in 'frmFilters_U.pas' {frmExtensions},
+  frmCommandConfig_U in 'frmCommandConfig_U.pas' {frmCommandConfig: TFrame},
   Vcl.Themes,
   Vcl.Styles,
   System.SysUtils,
   LangsU in 'LangsU.pas',
-  RCPopupMenu in 'RCPopupMenu.pas';
+  MPPopupMenu in 'MPPopupMenu.pas';
 
 {$R *.res}
 

@@ -6,7 +6,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   ComCtrls, ExtCtrls, Menus, StdCtrls, ActnList, registry,
   CommandsClass_U, windows, {RunAtTimeClasses_U,} Messages,
-  TypInfo, System.Actions, Vcl.ImgList, frmCommandConfig_U, RCPopupMenu,
+  TypInfo, System.Actions, Vcl.ImgList, frmCommandConfig_U, MPPopupMenu,
   Winapi.CommCtrl, System.Math, System.ImageList;
 
 type
@@ -81,7 +81,8 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
-    procedure ppTrayMenuMenuRightClick(Sender: TObject; Item: TMenuItem);
+    procedure ppTrayMenuMenuMiddleClick(Item: TMenuItem);
+    procedure ppTrayMenuMenuRightClick(Item: TMenuItem);
     procedure actCopyExecute(Sender: TObject);
     procedure tvItemsCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
@@ -94,7 +95,7 @@ type
 
     MouseButtonSwapped: Boolean;
 
-    ppTrayMenu: TRCPopupMenu;
+    ppTrayMenu: TMPPopupMenu;
 
     procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
     procedure CorrectTreeViewItemHeight;
@@ -482,11 +483,12 @@ begin
 
   ShowMsgIfDebug('MouseButtonSwapped', BoolToStr(MouseButtonSwapped, True));
 
-  ppTrayMenu := TRCPopupMenu.Create(Self);
+  ppTrayMenu := TMPPopupMenu.Create(Self);
   with ppTrayMenu do
   begin
     Images := TreeImageList;
     OwnerDraw := True;
+    OnMenuMiddleClick := ppTrayMenuMenuMiddleClick;
     OnMenuRightClick := ppTrayMenuMenuRightClick;
   end;
 
@@ -585,7 +587,7 @@ var
 
   procedure ProcessTreeItem(atn: TTreeNode; ami: TMenuItem);
   var
-    newMenuItem: TMyMenuItem;
+    newMenuItem: TMPMenuItem;
     vtn: TTreeNode;
     vCommonData: TCommandData;
     i: Integer;
@@ -602,7 +604,7 @@ var
     if not vCommonData.isVisible then
       Exit;
 
-    newMenuItem := TMyMenuItem.Create(AMenuItems);
+    newMenuItem := TMPMenuItem.Create(AMenuItems);
 
     with newMenuItem do
     begin
@@ -809,93 +811,6 @@ begin
   inherited WndProc(Message);
 end;
 
-{ procedure TfrmConfig.XMLToMenu(MenuItems: TMenuItem;
-  const NotifyEvent: TNotifyEvent);
-  var
-  XMLDoc: IXMLDocument;
-  cNode: IXMLNode;
-  //iImageListIndex: integer;
-  //w: word;
-
-  procedure ProcessNode(Node: IXMLNode; MenuItem: TMenuItem);
-  var
-  aNode: IXMLNode;
-  //NodeAttributes: TDOMNamedNodeMap;
-  s: string;// vBM: TBitmap;
-  newMenuItem: TMenuItem; vCommonData: TCommandData; vHandle: THandle;
-  begin
-  // такая проверка все равно есть перед заходом в рекурсию
-  //if aNode = nil then Exit; // выходим, если достигнут конец документа
-
-  //NodeAttributes := Node.Attributes; // for cache only
-
-  s := LowerCase( GetPropertyFromNodeAttributes(Node, 'isVisible') );
-  if (s = '') or (s = '1') then
-  begin
-  s := GetPropertyFromNodeAttributes(Node, 'Caption');
-  if s <> '' then
-  begin
-  // добавляем узел меню
-  newMenuItem := TMenuItem.Create(MenuItems);
-  newMenuItem.Caption := s;
-
-  newMenuItem.OnClick := NotifyEvent;
-
-  MenuItem.Add(newMenuItem);
-  end
-  else
-  Exit; // нет текста, то что и не видима
-  end
-  else
-  Exit;
-  // если не видим, значит и вложения не должны быть видны
-
-  vCommonData := TCommandData.Create(Node, False);
-
-  if not vCommonData.isGroup then
-  begin
-  newMenuItem.Bitmap.Canvas.Brush.Color := clMenu;
-  newMenuItem.Bitmap.Width := gMenuItemBmpWidth;
-  newMenuItem.Bitmap.Height := gMenuItemBmpHeight;
-
-  vHandle := MyExtractIcon(vCommonData.Command);
-  if vHandle <> 0 then
-  begin
-  DrawIconEx(newMenuItem.Bitmap.Canvas.Handle, 0, 0, vHandle,
-  gMenuItemBmpWidth, gMenuItemBmpHeight, 0,
-  newMenuItem.Bitmap.Canvas.Brush.Handle, DI_NORMAL);
-  end;
-
-  newMenuItem.Tag :=longint(vCommonData);
-  end;
-
-  // переходим к дочернему узлу
-  aNode := Node.ChildNodes.First;
-
-  // проходим по всем дочерним узлам
-  while aNode <> nil do
-  begin
-  ProcessNode(aNode, newMenuItem);
-  aNode := aNode.NextSibling;
-  end;
-  end;
-
-  begin
-  if not FileExists(ExtractFilePath(ParamStr(0)) + 'StartFromTray_tvItems.xml') then
-  Exit;
-  XMLDoc := TXMLDocument.Create(nil);
-
-  XMLDoc.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'StartFromTray_tvItems.xml');
-
-  cNode := XMLDoc.ChildNodes.FindNode('tree2xml').ChildNodes.First;
-  MenuItems.Clear; //iImageListIndex := 0;//MenuItems.Parent.ImageList.Clear;
-  while cNode <> nil do
-  begin
-  ProcessNode(cNode, MenuItems); // Рекурсия
-  cNode := cNode.NextSibling;
-  end;
-  end; }
-
 // запускается при старте и нажатии "Отмена"
 procedure TfrmConfig.XMLToTree(TreeNodes: TTreeNodes);
 var
@@ -962,7 +877,6 @@ var
   w: word; // ImageList: TCustomImageList;
 
 begin
-
   // ImageList := TTreeView(TreeNodes.Owner).Images;
   ImageListHandle := TreeImageList.Handle; // ImageList.Handle;
 
@@ -998,10 +912,8 @@ begin
 end;
 
 procedure TfrmConfig.DisposeTreeViewData;
-var
-  tn: TTreeNode;
 begin
-  tn := tvItems.TopItem;
+  var tn := tvItems.TopItem;
   while tn <> nil do
   begin
     DisposeTreeNodeData(tn);
@@ -1010,14 +922,13 @@ begin
 end;
 
 procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode);
-var
-  p: TCommandData;
 begin
+
   // if (TreeNode = nil) then Exit;
   if TreeNode.Data <> nil then
   begin
-    p := TCommandData(TreeNode.Data);
-    FreeAndNil(p);
+    var P := TCommandData(TreeNode.Data);
+    FreeAndNil(P);
     TreeNode.Data := nil;
   end;
 
@@ -1031,14 +942,11 @@ begin
 end;
 
 procedure TfrmConfig.ppTrayMenuItemOnClick(Sender: TObject);
-var
-  AMenuItem: TMenuItem;
-  vCommandData: TCommandData;
 begin
-  AMenuItem := (Sender as TMenuItem);
+  var AMenuItem := (Sender as TMenuItem);
   if AMenuItem.Count = 0 then
   begin
-    vCommandData := TCommandData(AMenuItem.Tag);
+    var vCommandData := TCommandData(AMenuItem.Tag);
     if not MouseButtonSwapped then
       vCommandData.Run(crtNormalRun)
     else
@@ -1046,13 +954,26 @@ begin
   end;
 end;
 
-procedure TfrmConfig.ppTrayMenuMenuRightClick(Sender: TObject; Item: TMenuItem);
-var
-  vCommandData: TCommandData;
+procedure TfrmConfig.ppTrayMenuMenuMiddleClick(Item: TMenuItem);
 begin
   if Item.Count = 0 then
   begin
-    vCommandData := TCommandData(Item.Tag);
+    for var I := 0 to tvItems.Items.Count - 1 do
+      if tvItems.Items[I].Data = Pointer(Item.Tag) then
+        begin
+          ppTrayMenu.CloseMenu;
+          Show;
+          tvItems.Selected := tvItems.Items[I];
+          break;
+        end;
+  end;
+end;
+
+procedure TfrmConfig.ppTrayMenuMenuRightClick(Item: TMenuItem);
+begin
+  if Item.Count = 0 then
+  begin
+    var vCommandData := TCommandData(Item.Tag);
     if not MouseButtonSwapped then
       vCommandData.Edit
     else
