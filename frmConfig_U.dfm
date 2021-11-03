@@ -77,7 +77,7 @@ object frmConfig: TfrmConfig
       Top = 33
       Width = 117
       Height = 25
-      Action = actAdd
+      Action = actAddElement
       TabOrder = 0
     end
     object btnSubAdd: TButton
@@ -208,10 +208,15 @@ object frmConfig: TfrmConfig
   object ActionList: TActionList
     Left = 36
     Top = 34
-    object actAdd: TAction
+    object actAddElement: TAction
       Category = 'Elements'
       Caption = 'Add'
-      OnExecute = actAddExecute
+      OnExecute = actAddElementExecute
+    end
+    object actAddGroup: TAction
+      Category = 'Elements'
+      Caption = 'Add'
+      OnExecute = actAddElementExecute
     end
     object actAddSub: TAction
       Category = 'Elements'

@@ -319,7 +319,7 @@ begin
         edtCommand.Text := Command;
         FOldCommandText := Command;
         edtCommandParameters.Text := CommandParameters;
-        cbIsVisible.Checked := isVisible;
+        //cbIsVisible.Checked := isVisible;
       end;
 
       for i := 0 to ControlCount - 1 do
@@ -359,7 +359,7 @@ begin
   begin
     Command := Trim(edtCommand.Text);
     CommandParameters := Trim(edtCommandParameters.Text);
-    isVisible := cbIsVisible.Checked;
+    //isVisible := cbIsVisible.Checked;
 
     isGroup := FAssignedTreeNode.HasChildren;
 

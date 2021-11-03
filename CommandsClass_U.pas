@@ -13,8 +13,6 @@ type
 
   TCmdWaitForRunningThread = class;
 
-  TCmdFolderWatchingThread = class;
-
   { TCommandData }
 
   TCommandList = TObjectList;
@@ -27,29 +25,15 @@ type
     FisGroup: boolean;
     FName: string;
     // уникальное имя (используется для автоматизации редактирования скриптов). Генерируется автоматически
-    FisVisible: boolean; // признак видимости
+    //FisVisible: boolean; // признак видимости
     Fcommand: String; // команда для выполнения
     FisRunning: boolean; // сейчас команда запущена
 
     FChilds: TCommandList;
 
-    FisRunAt: boolean;
-    FRunAtDateTime: TDateTime;
-
-    FNextRunAtDateTime: TDateTime;
-
-    FisRepeatRun: boolean;
-    FRepeatRunAtTime: TTime;
-
-    FisRun_isWhenOnlyFolderChange: boolean;
-    FisRun_WhenOnlyFolderChange: string;
-    FisRun_FolderChanged: boolean;
     FCommandParameters: string;
 
     FWaitForRunningThread: TCmdWaitForRunningThread;
-    FisRun_FolderWatchingThread: TCmdFolderWatchingThread;
-
-    procedure SetisRun_isWhenOnlyFolderChange(const Value: boolean);
 
     // just RunCommand
     function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
@@ -57,53 +41,29 @@ type
 
   public
     constructor Create; overload;
-    constructor Create(const NodeAttributes: IXMLNode;
-      const FillPropertyIsVisible: boolean); overload;
+    //constructor Create(const NodeAttributes: IXMLNode); overload;
 
     destructor Destroy; override;
 
-    // рассчитать время следующего запуска (вызывать только, если FisRunAt = true)
-    procedure CalcNextRunAtDateTime;
-
-    // function GetEditHelper: string;
     // edit
     procedure Edit;
     // запуск
     procedure Run(const RunType: TCommandRunType);
 
     procedure Assign(Dest: TCommandData);
+    procedure AssignFrom(SrcNode: IXMLNode);
     procedure AssignTo(DestNode: IXMLNode; const ACaption: String);
     // real property
     property isRunning: boolean read FisRunning write FisRunning;
   published // all this properties saves in xmls
 
     property Name: string read FName write FName;
-    property isVisible: boolean read FisVisible write FisVisible;
+    //property isVisible: boolean read FisVisible write FisVisible;
     property isGroup: boolean read FisGroup write FisGroup;
     property Childs: TCommandList read FChilds;
     property Command: string read Fcommand write Fcommand;
     property CommandParameters: string read FCommandParameters
       write FCommandParameters;
-
-    property isRunAt: boolean read FisRunAt write FisRunAt;
-    // под вопросом (может Set метод)
-    property RunAtDateTime: TDateTime read FRunAtDateTime write FRunAtDateTime;
-
-    property isRun_isWhenOnlyFolderChange: boolean
-      read FisRun_isWhenOnlyFolderChange write SetisRun_isWhenOnlyFolderChange;
-    property isRun_WhenOnlyFolderChange: string read FisRun_WhenOnlyFolderChange
-      write FisRun_WhenOnlyFolderChange;
-
-    property NextRunAtDateTime: TDateTime read FNextRunAtDateTime
-      write FNextRunAtDateTime;
-
-    property isRepeatRun: boolean read FisRepeatRun write FisRepeatRun;
-    property RepeatRunAtTime: TTime read FRepeatRunAtTime
-      write FRepeatRunAtTime;
-
-    // real properties (but saves in xml)
-    property isRun_FolderChanged: boolean read FisRun_FolderChanged
-      write FisRun_FolderChanged;
   end;
 {$M-}
   { TCommandWaitForRunningThread }
@@ -116,18 +76,6 @@ type
     procedure Execute; override;
   public
     constructor Create(const AProcessHandle: THandle; Command: TCommandData);
-  end;
-
-  { TCommandWaitForRunningThread }
-
-  TCmdFolderWatchingThread = class(TThread)
-  private
-    FWatchFolder: string;
-    Fcommand: TCommandData;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create(const AWatchFolder: string; ACommand: TCommandData);
   end;
 
 procedure TreeToXML(ATreeNodes: TTreeNodes);
@@ -227,123 +175,21 @@ begin
   inherited Create;
 
   FName := '';
-  FisVisible := True; // признак видимости
+  //FisVisible := True; // признак видимости
   FisGroup := false; // признак группы
   Fcommand := ''; // команда для выполнения
   FCommandParameters := ''; // параметр команды для выполнения
 
   FWaitForRunningThread := nil;
-  FisRun_FolderWatchingThread := nil;
-
-  FisRunAt := false;
-
-  GetLocalTime(vSysTime);
-  with vSysTime do
-    FRunAtDateTime := EncodeDate(wYear, wMonth, wDay) +
-      EncodeTime(wHour, wMinute, 0, 0);
-
-  FisRepeatRun := false;
-  FRepeatRunAtTime := Frac(FRunAtDateTime);
-
-  FisRun_isWhenOnlyFolderChange := false;
-  FisRun_WhenOnlyFolderChange := '';
 
   // real properties
   FisRunning := false;
-  FisRun_FolderChanged := false;
-end;
-
-constructor TCommandData.Create(const NodeAttributes: IXMLNode;
-  const FillPropertyIsVisible: boolean);
-
-var
-  i, FPropCount: integer;
-  TypeData: PTypeData;
-  FPropList: PPropList;
-  FProp: PPropInfo;
-  sDataToLoad: string;
-  sDataType: TSymbolName;
-begin
-  Create;
-
-  TypeData := GetTypeData(ClassInfo);
-  FPropCount := TypeData.PropCount;
-  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
-  try
-    GetPropInfos(ClassInfo, FPropList);
-    for i := 0 to FPropCount - 1 do
-    begin
-      FProp := FPropList[i];
-
-      sDataToLoad := GetPropertyFromNodeAttributes(NodeAttributes,
-        string(FProp.Name));
-
-      if sDataToLoad = '' then
-        Continue;
-
-      case FProp.PropType^.Kind of
-        tkUString:
-          SetStrProp(Self, FProp, sDataToLoad);
-        tkEnumeration, tkInteger:
-          SetOrdProp(Self, FProp, System.SysUtils.StrToInt(sDataToLoad));
-        tkFloat:
-          begin
-            sDataType := FProp.PropType^.Name;
-            if sDataType = 'TDateTime' then
-              SetFloatProp(Self, FProp, StrToDateTime(sDataToLoad))
-            else if sDataType = 'TTime' then
-              SetFloatProp(Self, FProp, StrToTime(sDataToLoad))
-          end;
-      end; // case
-    end; // for i .. FPropCount-1
-  finally
-    FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
-  end;
-
 end;
 
 destructor TCommandData.Destroy;
 begin
   if FWaitForRunningThread <> nil then
     FWaitForRunningThread.Terminate;
-
-  if FisRun_FolderWatchingThread <> nil then
-    FisRun_FolderWatchingThread.Terminate;
-end;
-
-procedure TCommandData.CalcNextRunAtDateTime;
-var
-  vNow: TDateTime;
-  vNowDate: TDate;
-begin
-  // FNextRunAtDateTime := NullDate; // по умолчанию (нет запуска)
-
-  // FisNextRunAt := False; // по умолчанию (нет запуска)
-
-  if FisGroup or not FisRunAt then
-    Exit;
-
-  vNow := Now;
-  if FRunAtDateTime > vNow then
-  begin
-    FNextRunAtDateTime := FRunAtDateTime;
-    // FisNextRunAt := True;
-  end
-  else // дата-время прошло, но есть повтор
-    if FisRepeatRun then
-    begin
-      vNowDate := Trunc(vNow);
-
-      // время больше текущего (перенести на след.день)
-      if CompareTime(vNow, FRepeatRunAtTime) = GreaterThanValue then
-        // текущее время больше
-        vNowDate := vNowDate + 1;
-
-      FNextRunAtDateTime := vNowDate + Frac(FRepeatRunAtTime);
-      // FisNextRunAt := True;
-    end
-    else // нет повтора - нет запуска
-      FisRunAt := false;
 end;
 
 function TCommandData.InternalRun(const AHelper: string;
@@ -486,27 +332,6 @@ begin
       FWaitForRunningThread := TCmdWaitForRunningThread.Create
         (ProcessHandle, Self);
     end;
-
-    // try
-
-    { except //todo: заменить на локализованную версию
-      MessageDlg('Cannot Run command "' +
-      FCommand + '"', mtError, [mbOK], 0);
-      end;//try..end }
-  end;
-end;
-
-procedure TCommandData.SetisRun_isWhenOnlyFolderChange(const Value: boolean);
-begin
-  if FisRun_isWhenOnlyFolderChange <> Value then
-  begin
-    if Value then
-      FisRun_FolderWatchingThread := TCmdFolderWatchingThread.Create
-        (FisRun_WhenOnlyFolderChange, Self)
-    else
-      FreeAndNil(FisRun_FolderWatchingThread);
-
-    FisRun_isWhenOnlyFolderChange := Value;
   end;
 end;
 
@@ -538,6 +363,50 @@ begin
           begin
           Raise EInvalidCast.Create('TCommandData.Assign: неожиданный тип ' + FProp.PropType^.Name + ' для свойства: ' + FProp.Name);
           end; }
+      end; // case
+    end; // for i .. FPropCount-1
+  finally
+    FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  end;
+end;
+
+procedure TCommandData.AssignFrom(SrcNode: IXMLNode);
+var
+  i, FPropCount: integer;
+  TypeData: PTypeData;
+  FPropList: PPropList;
+  FProp: PPropInfo;
+  sDataToLoad: string;
+  sDataType: TSymbolName;
+begin
+  TypeData := GetTypeData(ClassInfo);
+  FPropCount := TypeData.PropCount;
+  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  try
+    GetPropInfos(ClassInfo, FPropList);
+    for i := 0 to FPropCount - 1 do
+    begin
+      FProp := FPropList[i];
+
+      sDataToLoad := GetPropertyFromNodeAttributes(SrcNode,
+        string(FProp.Name));
+
+      if sDataToLoad = '' then
+        Continue;
+
+      case FProp.PropType^.Kind of
+        tkUString:
+          SetStrProp(Self, FProp, sDataToLoad);
+        tkEnumeration, tkInteger:
+          SetOrdProp(Self, FProp, System.SysUtils.StrToInt(sDataToLoad));
+        tkFloat:
+          begin
+            sDataType := FProp.PropType^.Name;
+            if sDataType = 'TDateTime' then
+              SetFloatProp(Self, FProp, StrToDateTime(sDataToLoad))
+            else if sDataType = 'TTime' then
+              SetFloatProp(Self, FProp, StrToTime(sDataToLoad))
+          end;
       end; // case
     end; // for i .. FPropCount-1
   finally
@@ -618,47 +487,6 @@ begin
     end;
   end;
   Fcommand.FWaitForRunningThread := nil;
-end;
-
-{ TCmdFolderWatchingThread }
-
-constructor TCmdFolderWatchingThread.Create(const AWatchFolder: string;
-  ACommand: TCommandData);
-begin
-  FWatchFolder := AWatchFolder;
-  Fcommand := ACommand;
-  inherited Create(false);
-end;
-
-procedure TCmdFolderWatchingThread.Execute;
-var
-  ChangeHandle: THandle;
-begin
-  { получаем хэндл события }
-  ChangeHandle := FindFirstChangeNotification(PChar(FWatchFolder), True,
-    FILE_NOTIFY_CHANGE_FILE_NAME + FILE_NOTIFY_CHANGE_DIR_NAME +
-    FILE_NOTIFY_CHANGE_ATTRIBUTES + FILE_NOTIFY_CHANGE_LAST_WRITE +
-    FILE_NOTIFY_CHANGE_SIZE); // FILE_NOTIFY_CHANGE_CREATION
-  { Если не удалось получить хэндл - выводим ошибку и прерываем выполнение }
-  Win32Check(ChangeHandle <> INVALID_HANDLE_VALUE);
-  try
-    { выполняем цикл пока }
-    while not Terminated do
-    begin
-      case WaitForSingleObject(ChangeHandle, 1000) of
-        WAIT_FAILED:
-          Terminate; { Ошибка, завершаем поток }
-        WAIT_OBJECT_0: // жождались
-          Fcommand.FisRun_FolderChanged := True;
-        WAIT_TIMEOUT:
-          ; // время вышло - ничего не делаем
-      end;
-      FindNextChangeNotification(ChangeHandle);
-    end;
-  finally
-    FindCloseChangeNotification(ChangeHandle);
-    Fcommand.FisRun_FolderWatchingThread := nil;
-  end;
 end;
 
 end.

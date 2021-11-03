@@ -14,7 +14,7 @@ type
   { TfrmConfig }
 
   TfrmConfig = class(TForm)
-    actAdd: TAction;
+    actAddElement: TAction;
     actAddSub: TAction;
     actCopy: TAction;
     actDel: TAction;
@@ -51,7 +51,8 @@ type
     cbLangs: TComboBox;
     lbLangs: TLabel;
     lblVer: TLabel;
-    procedure actAddExecute(Sender: TObject);
+    actAddGroup: TAction;
+    procedure actAddElementExecute(Sender: TObject);
     procedure actAddSubExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
     procedure actApplyUpdate(Sender: TObject);
@@ -183,7 +184,7 @@ begin
   IsModified := False;
 end;
 
-procedure TfrmConfig.actAddExecute(Sender: TObject);
+procedure TfrmConfig.actAddElementExecute(Sender: TObject);
 begin
   tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '',
     TCommandData.Create);
@@ -601,8 +602,8 @@ var
     end;
 
     vCommonData := TCommandData(atn.Data);
-    if not vCommonData.isVisible then
-      Exit;
+    {if not vCommonData.isVisible then
+      Exit;}
 
     newMenuItem := TMPMenuItem.Create(AMenuItems);
 
@@ -817,11 +818,11 @@ var
   ImageListHandle: HIMAGELIST;
 
   procedure ProcessNode(Node: IXMLNode; TreeNode: TTreeNode);
-  var
-    aNode: IXMLNode;
-    vCommandData: TCommandData;
-    iImageListIndex: Integer;
-    vhIcon: HICON;
+  //var
+    //aNode: IXMLNode;
+    //vCommandData: TCommandData;
+    //iImageListIndex: Integer;
+    //vhIcon: HICON;
     // w: word;
     // NodeAttributes: OleVariant; vCommonData: TCommandData;
   begin
@@ -833,15 +834,13 @@ var
     TreeNode := TreeNodes.AddChild(TreeNode, GetPropertyFromNodeAttributes(Node,
       'Caption'));
 
-    // vCommonData := TCommandData.Create(Node, True);
-
-    // TreeNode.Data := TCommandData.Create(Node, True);
-    vCommandData := TCommandData.Create(Node, True);
+    var vCommandData := TCommandData.Create;
+    vCommandData.AssignFrom(Node);
 
     TreeNode.Data := vCommandData;
 
     // переходим к дочернему узлу
-    aNode := Node.ChildNodes.First;
+    var aNode := Node.ChildNodes.First;
 
     // проходим по всем дочерним узлам
     while aNode <> nil do
@@ -861,8 +860,8 @@ var
     else
     begin
       // w := 0;
-      vhIcon := MyExtractIcon(vCommandData.Command);
-      iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
+      var vhIcon := MyExtractIcon(vCommandData.Command);
+      var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
       if vhIcon > 0 then
         DestroyIcon(vhIcon);
 
