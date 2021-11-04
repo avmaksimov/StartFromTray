@@ -148,8 +148,20 @@ object frmConfig: TfrmConfig
       Top = 37
       Width = 42
       Height = 13
+      Cursor = crHandPoint
       Alignment = taRightJustify
       Caption = 'Version: '
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clBlue
+      Font.Height = -11
+      Font.Name = 'Tahoma'
+      Font.Style = [fsUnderline]
+      ParentFont = False
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = lblVerClick
+      OnMouseEnter = lblVerMouseEnter
+      OnMouseLeave = lblVerMouseLeave
     end
     object btnApply: TButton
       Left = 328
@@ -182,6 +194,8 @@ object frmConfig: TfrmConfig
       Width = 167
       Height = 19
       Caption = 'Run at Windows start'
+      ParentShowHint = False
+      ShowHint = False
       TabOrder = 3
       OnClick = cbRunOnWindowsStartChange
     end

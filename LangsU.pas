@@ -297,6 +297,7 @@ begin
   MyWriteString('LangStrings', '@FileDialogExecutableFile', 'Executable file');
   MyWriteString('LangStrings', '@FileDialogAnyFile', 'Any file');
   MyWriteString('frmConfig', '@Version', 'Version:');
+  MyWriteString('frmConfig', '@VersionHint', 'Open the StartFromTray project website');
   MyWriteString('frmConfig\frmCommandConfig', '@IsRunning', 'Running');
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
   MyWriteString('frmExtensions', '@ChooseFileForRun',

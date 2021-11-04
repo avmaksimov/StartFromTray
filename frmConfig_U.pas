@@ -89,6 +89,9 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure cbLangsChange(Sender: TObject);
     procedure FormHide(Sender: TObject);
+    procedure lblVerMouseEnter(Sender: TObject);
+    procedure lblVerMouseLeave(Sender: TObject);
+    procedure lblVerClick(Sender: TObject);
   private
     { private declarations }
     IsModified: Boolean;
@@ -453,6 +456,7 @@ begin
   SetLang(StrPas(PChar(cbLangs.Items.Objects[cbLangs.ItemIndex])));
 
   lblVer.Caption := GetLangString(Name, 'Version') + ' ' + _GetBuildInfo;
+  lblVer.Hint := GetLangString(Name, 'VersionHint');
 end;
 
 procedure TfrmConfig.cbRunOnWindowsStartChange(Sender: TObject);
@@ -551,6 +555,21 @@ begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
   // LangStrings['frmConfig.Caption']; // 'Quick run from Tray - Options';
   tvItems.SetFocus;
+end;
+
+procedure TfrmConfig.lblVerClick(Sender: TObject);
+begin
+  ShellExecute(Handle, 'open', 'https://github.com/avmaksimov/StartFromTray', nil, nil, SW_SHOWNORMAL);
+end;
+
+procedure TfrmConfig.lblVerMouseEnter(Sender: TObject);
+begin
+  lblVer.Font.Color := clNavy;
+end;
+
+procedure TfrmConfig.lblVerMouseLeave(Sender: TObject);
+begin
+  lblVer.Font.Color := clBlue;
 end;
 
 procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
