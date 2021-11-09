@@ -72,7 +72,7 @@ object frmConfig: TfrmConfig
     Width = 373
     Height = 65
     TabOrder = 2
-    object btnAdd: TButton
+    object btnAddGroup: TButton
       Left = 6
       Top = 33
       Width = 117
@@ -80,7 +80,7 @@ object frmConfig: TfrmConfig
       Action = actAddGroup
       TabOrder = 0
     end
-    object btnSubAdd: TButton
+    object btnAddElement: TButton
       Left = 128
       Top = 33
       Width = 117
@@ -224,12 +224,6 @@ object frmConfig: TfrmConfig
       Category = 'Elements'
       Caption = 'Add group'
       OnExecute = actAddElementExecute
-    end
-    object actAddSub: TAction
-      Category = 'Elements'
-      Caption = 'Add child'
-      OnExecute = actAddSubExecute
-      OnUpdate = actCopyUpdate
     end
     object actCopy: TAction
       Category = 'Elements'

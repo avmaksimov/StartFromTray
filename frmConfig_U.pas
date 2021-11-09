@@ -15,7 +15,6 @@ type
 
   TfrmConfig = class(TForm)
     actAddElement: TAction;
-    actAddSub: TAction;
     actCopy: TAction;
     actDel: TAction;
     actClose: TAction;
@@ -24,13 +23,13 @@ type
     actItemUp: TAction;
     actOK: TAction;
     ActionList: TActionList;
-    btnAdd: TButton;
+    btnAddGroup: TButton;
     btnApply: TButton;
     btnClose: TButton;
     btnDel: TButton;
     btnCopy: TButton;
     btnOK: TButton;
-    btnSubAdd: TButton;
+    btnAddElement: TButton;
     btnExtensions: TButton;
     btnUp: TButton;
     btnDown: TButton;
@@ -953,8 +952,7 @@ begin
 end;
 
 procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode);
-begin
-
+begin     tvItems.Items
   // if (TreeNode = nil) then Exit;
   if TreeNode.Data <> nil then
   begin
