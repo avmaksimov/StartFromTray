@@ -333,6 +333,7 @@ with lvFilters do
         vNewItemIndex := Count - 1;
 
     Items.Move(ItemIndex, vNewItemIndex);
+    ItemIndex := vNewItemIndex;
     FAssignedListItemIndex := ItemIndex;
   end;
 end;

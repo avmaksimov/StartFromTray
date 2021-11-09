@@ -86,7 +86,6 @@ begin
               Item := GetSubMenu(Menu, IDItem)
             else
               begin
-                Item := -1;
                 break; //avmaksimov
               end;
 

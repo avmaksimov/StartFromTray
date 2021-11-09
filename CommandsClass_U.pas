@@ -169,8 +169,6 @@ end;
 { TCommandData }
 
 constructor TCommandData.Create;
-var
-  vSysTime: TSystemTime;
 begin
   inherited Create;
 

@@ -100,7 +100,7 @@ type
 
     ppTrayMenu: TMPPopupMenu;
 
-    procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
+    //procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
     procedure CorrectTreeViewItemHeight;
 
     procedure DisposeTreeViewData;
@@ -126,7 +126,7 @@ var
 implementation
 
 uses CommonU, frmFilters_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
-  Winapi.ShellAPI, System.UITypes;
+  Winapi.ShellAPI, System.IniFiles, System.UITypes;
 
 {$R *.dfm}
 { TfrmConfig }
@@ -537,6 +537,13 @@ begin
   IsModified := False;
 
   WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
+
+  with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
+    try
+      Visible := ReadBool('Main', 'ConfigShow', False);
+    finally
+      Free;
+    end;
 end;
 
 procedure TfrmConfig.FormDestroy(Sender: TObject);
@@ -552,7 +559,6 @@ end;
 procedure TfrmConfig.FormShow(Sender: TObject);
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
-  // LangStrings['frmConfig.Caption']; // 'Quick run from Tray - Options';
   tvItems.SetFocus;
 end;
 
@@ -608,7 +614,6 @@ var
   var
     newMenuItem: TMPMenuItem;
     vtn: TTreeNode;
-    vCommonData: TCommandData;
     i: Integer;
   begin
 
@@ -619,7 +624,7 @@ var
         AOldCommonDataList.Delete(i);
     end;
 
-    vCommonData := TCommandData(atn.Data);
+    //vCommonData := TCommandData(atn.Data);
     {if not vCommonData.isVisible then
       Exit;}
 
@@ -714,7 +719,6 @@ end;
 
 procedure TfrmConfig.tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
 var
-  vOldParentNode: TTreeNode;
   vMode: TNodeAttachMode; // vOldParentImageIndex: Integer;
 begin
   if (Source <> Sender) or (Sender <> tvItems) then
@@ -782,7 +786,7 @@ begin
     frmCommandConfig.Caption := S;
 end;
 
-procedure TfrmConfig.UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
+{procedure TfrmConfig.UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
 var
   vCommandData: TCommandData;
   vNewImageIndex: Integer;
@@ -808,7 +812,7 @@ begin
   end;
   ATreeNode.ImageIndex := vNewImageIndex;
   ATreeNode.SelectedIndex := vNewImageIndex;
-end;
+end;}
 
 procedure TfrmConfig.WMClose(var Message: TMessage);
 begin
