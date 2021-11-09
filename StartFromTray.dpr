@@ -7,7 +7,7 @@ uses
   CommonU in 'CommonU.pas',
   frmConfig_U in 'frmConfig_U.pas' {frmConfig},
   FilterClass_U in 'FilterClass_U.pas',
-  frmFilters_U in 'frmFilters_U.pas' {frmExtensions},
+  frmFilters_U in 'frmFilters_U.pas' {frmFilters},
   frmCommandConfig_U in 'frmCommandConfig_U.pas' {frmCommandConfig: TFrame},
   Vcl.Themes,
   Vcl.Styles,
@@ -20,7 +20,7 @@ uses
 begin
   Application.Initialize;
   Application.CreateForm(TfrmConfig, frmConfig);
-  Application.CreateForm(TfrmExtensions, frmExtensions);
+  Application.CreateForm(TfrmFilters, frmFilters);
   Application.ShowMainForm := False;
 
   GenDefaultFileLang;

@@ -4,11 +4,11 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Mask, {JvExMask, JvToolEdit,} ComCtrls,
+  Dialogs, StdCtrls, ExtCtrls, Mask, ComCtrls,
   FilterClass_U, Vcl.ImgList, System.ImageList;
 
 type
-  TfrmExtensions = class(TForm)
+  TfrmFilters = class(TForm)
     gbExtensions: TGroupBox;
     gbFiltersActions: TGroupBox;
     btnExtensionAdd: TButton;
@@ -16,7 +16,7 @@ type
     gbMainButtons: TGroupBox;
     btnOK: TButton;
     btnCancel: TButton;
-    lvExtensions: TListBox;
+    lvFilters: TListBox;
     btnExtensionDown: TButton;
     btnExtensionUp: TButton;
     gbExtensionProperties: TGroupBox;
@@ -35,28 +35,30 @@ type
     procedure btnExtensionUpClick(Sender: TObject);
     procedure btnExtensionDownClick(Sender: TObject);
     procedure edtNameChange(Sender: TObject);
-    procedure lvExtensionsClick(Sender: TObject);
+    procedure lvFiltersClick(Sender: TObject);
     procedure edtEditRunHelperAfterDialog(Sender: TObject; var AName: string;
       var AAction: Boolean);
     procedure edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure lvFiltersDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
   private
     { Private declarations }
     FAssignedData: TFilterData;
     FAssignedListItemIndex: Integer;
-    FAssigningListItemIndex: Boolean;
+    FIsAssigningListItemIndex: Boolean;
 
     procedure AssignCurrentItem;
     procedure SaveAssignedItem;
   public
     { Public declarations }
     procedure AssignFilters(AFilters: TStringList);
-    procedure MoveToFilters(AFilters: TStringList);
-    procedure ClearAllIfCancel;
+    procedure MoveToList(AFilters: TStringList);
   end;
 
 var
-  frmExtensions: TfrmExtensions;
+  frmFilters: TfrmFilters;
 
 implementation
 
@@ -64,7 +66,7 @@ uses LangsU, CommonU;
 
 {$R *.dfm}
 
-procedure TfrmExtensions.AssignFilters(AFilters: TStringList);
+procedure TfrmFilters.AssignFilters(AFilters: TStringList);
 var
   i: Integer;
   vFilter: TFilterData;
@@ -74,16 +76,16 @@ begin
     vFilter := TFilterData.Create;
     vFilter.Assign(TFilterData(AFilters.Objects[i]));
 
-    lvExtensions.Items.AddObject(AFilters[i], vFilter);
+    lvFilters.Items.AddObject(AFilters[i], vFilter);
   end;
 
   if AFilters.Count > 0 then
-    lvExtensions.ItemIndex := 0;
+    lvFilters.ItemIndex := 0;
 
   AssignCurrentItem;
 end;
 
-procedure TfrmExtensions.MoveToFilters(AFilters: TStringList);
+procedure TfrmFilters.MoveToList(AFilters: TStringList);
 var
   i: Integer;
 begin
@@ -92,34 +94,34 @@ begin
 
   AFilters.Clear;
 
-  for i := 0 to lvExtensions.Items.Count - 1 do
-    AFilters.AddObject(lvExtensions.Items[i],
-      TFilterData(lvExtensions.Items.Objects[i]));
+  for i := 0 to lvFilters.Items.Count - 1 do
+    AFilters.AddObject(lvFilters.Items[i],
+      TFilterData(lvFilters.Items.Objects[i]));
 
-  lvExtensions.Clear;
+  lvFilters.Clear;
 
 end;
 
-procedure TfrmExtensions.AssignCurrentItem;
+procedure TfrmFilters.AssignCurrentItem;
 var
   bSelected: Boolean;
 begin
-  bSelected := lvExtensions.ItemIndex > -1;
+  bSelected := lvFilters.ItemIndex > -1;
 
   M_SetChildsEnable(gbExtensionProperties, bSelected);
 
-  FAssigningListItemIndex := True;
+  FIsAssigningListItemIndex := True;
 
   if bSelected then
   begin
-    FAssignedListItemIndex := lvExtensions.ItemIndex;
+    FAssignedListItemIndex := lvFilters.ItemIndex;
 
-    edtName.Text := lvExtensions.Items[FAssignedListItemIndex];
+    edtName.Text := lvFilters.Items[FAssignedListItemIndex];
 
     if Visible then
       edtName.SetFocus;
 
-    FAssignedData := TFilterData(lvExtensions.Items.Objects
+    FAssignedData := TFilterData(lvFilters.Items.Objects
       [FAssignedListItemIndex]);
 
     with FAssignedData do
@@ -142,15 +144,15 @@ begin
     FAssignedData := nil;
     FAssignedListItemIndex := -1;
   end;
-  FAssigningListItemIndex := False;
+  FIsAssigningListItemIndex := False;
 end;
 
-procedure TfrmExtensions.SaveAssignedItem;
+procedure TfrmFilters.SaveAssignedItem;
 begin
   if (FAssignedListItemIndex < 0) or not Assigned(FAssignedData) then
     Exit;
 
-  lvExtensions.Items[FAssignedListItemIndex] := Trim(edtName.Text);
+  lvFilters.Items[FAssignedListItemIndex] := Trim(edtName.Text);
   with FAssignedData do
   begin
     Extensions := Trim(edtExtensions.Text);
@@ -160,21 +162,21 @@ begin
   end;
 end;
 
-procedure TfrmExtensions.btnCancelClick(Sender: TObject);
+procedure TfrmFilters.btnCancelClick(Sender: TObject);
 var
   i: Integer;
 begin
-  for i := 0 to lvExtensions.Items.Count - 1 do
-    TFilterData(lvExtensions.Items.Objects[i]).Free;
+  for i := 0 to lvFilters.Items.Count - 1 do
+    TFilterData(lvFilters.Items.Objects[i]).Free;
 
-  lvExtensions.Clear;
+  lvFilters.Clear;
 end;
 
-procedure TfrmExtensions.btnExtensionUpClick(Sender: TObject);
+procedure TfrmFilters.btnExtensionUpClick(Sender: TObject);
 var
   newItemIndex: Integer;
 begin
-  with lvExtensions do
+  with lvFilters do
     if (ItemIndex > 0) then
     begin
       newItemIndex := ItemIndex - 1;
@@ -184,11 +186,11 @@ begin
     end;
 end;
 
-procedure TfrmExtensions.btnExtensionDownClick(Sender: TObject);
+procedure TfrmFilters.btnExtensionDownClick(Sender: TObject);
 var
   newItemIndex: Integer;
 begin
-  with lvExtensions do
+  with lvFilters do
     if (ItemIndex > -1) and (ItemIndex < Count - 1) then
     begin
       newItemIndex := ItemIndex + 1;
@@ -198,11 +200,11 @@ begin
     end;
 end;
 
-procedure TfrmExtensions.btnExtensionAddClick(Sender: TObject);
+procedure TfrmFilters.btnExtensionAddClick(Sender: TObject);
 begin
   SaveAssignedItem;
 
-  with lvExtensions do
+  with lvFilters do
   begin
     Items.AddObject('', TFilterData.Create);
 
@@ -212,14 +214,12 @@ begin
   AssignCurrentItem;
 end;
 
-procedure TfrmExtensions.btnExtensionDeleteClick(Sender: TObject);
+procedure TfrmFilters.btnExtensionDeleteClick(Sender: TObject);
 var
   newItemIndex: Integer;
 begin
-  with lvExtensions do
+  with lvFilters do
   begin
-    // if (ItemIndex <= -1) and (Count > 0) then Exit;
-
     if (ItemIndex <= -1) or not AskForDeletion(Self, Items[ItemIndex]) then
       Exit;
 
@@ -237,37 +237,38 @@ begin
   AssignCurrentItem;
 end;
 
-procedure TfrmExtensions.btnOKClick(Sender: TObject);
-begin
-  SaveAssignedItem;
-end;
-
-procedure TfrmExtensions.ClearAllIfCancel;
+procedure TfrmFilters.btnOKClick(Sender: TObject);
 var
   i: Integer;
 begin
-  with lvExtensions do
-  begin
-    for i := 0 to Items.Count - 1 do
-      TFilterData(Items.Objects[i]).Free;
+  SaveAssignedItem;
+  for i := 0 to Filters.Count - 1 do
+    Filters.Objects[i].Free;
 
-    Clear;
-  end;
+  Filters.Clear;
+
+  for i := 0 to lvFilters.Items.Count - 1 do
+    Filters.AddObject(lvFilters.Items[i],
+      TFilterData(lvFilters.Items.Objects[i]));
+
+  lvFilters.Clear;
+
+  Filters_SaveToFile;
 end;
 
-procedure TfrmExtensions.edtEditRunHelperAfterDialog(Sender: TObject;
+procedure TfrmFilters.edtEditRunHelperAfterDialog(Sender: TObject;
   var AName: string; var AAction: Boolean);
 begin
   AName := ExtractRelativePath(GetCurrentDir, AName);
 end;
 
-procedure TfrmExtensions.edtNameChange(Sender: TObject);
+procedure TfrmFilters.edtNameChange(Sender: TObject);
 begin
-  if not FAssigningListItemIndex then
-    lvExtensions.Items[lvExtensions.ItemIndex] := edtName.Text;
+  if not FIsAssigningListItemIndex then
+    lvFilters.Items[lvFilters.ItemIndex] := edtName.Text;
 end;
 
-procedure TfrmExtensions.edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
+procedure TfrmFilters.edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
 const
   cTitles: array of string = ['ChooseFileForEdit', 'ChooseFileForRun'];
 var
@@ -284,9 +285,11 @@ begin
   end;
 end;
 
-procedure TfrmExtensions.FormShow(Sender: TObject);
+procedure TfrmFilters.FormShow(Sender: TObject);
 begin
-  FAssigningListItemIndex := False;
+  AssignFilters(Filters);
+
+  FIsAssigningListItemIndex := False;
   with OpenDialog.FileTypes do
   begin
     Clear;
@@ -303,15 +306,42 @@ begin
   end;
 end;
 
-procedure TfrmExtensions.lvExtensionsClick(Sender: TObject);
+procedure TfrmFilters.lvFiltersClick(Sender: TObject);
 begin
-  if (lvExtensions.ItemIndex < 0) or
-    (lvExtensions.ItemIndex = FAssignedListItemIndex) then
+  if (lvFilters.ItemIndex < 0) or
+    (lvFilters.ItemIndex = FAssignedListItemIndex) then
     Exit;
 
   SaveAssignedItem;
 
   AssignCurrentItem;
+end;
+
+procedure TfrmFilters.lvFiltersDragDrop(Sender, Source: TObject; X,
+  Y: Integer);
+begin
+  if (Source <> Sender) or (Sender <> lvFilters) then
+    Exit;
+with lvFilters do
+  begin
+    if ItemIndex < 0 then Exit;
+    var vNewItemIndex := ItemAtPos(TPoint.Create(X, Y), True);
+    if vNewItemIndex = -1 then
+      if Y < 0 then
+        vNewItemIndex := 0
+      else
+        vNewItemIndex := Count - 1;
+
+    Items.Move(ItemIndex, vNewItemIndex);
+    FAssignedListItemIndex := ItemIndex;
+  end;
+end;
+
+procedure TfrmFilters.lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
+  State: TDragState; var Accept: Boolean);
+begin
+  Accept := (Sender = Source) and (Sender = lvFilters) and
+    ((Sender as TListBox).ItemIndex >= 0);
 end;
 
 end.

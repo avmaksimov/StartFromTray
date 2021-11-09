@@ -1,9 +1,9 @@
-object frmExtensions: TfrmExtensions
+object frmFilters: TfrmFilters
   Left = 0
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Extensions'
-  ClientHeight = 258
+  ClientHeight = 255
   ClientWidth = 596
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -20,19 +20,22 @@ object frmExtensions: TfrmExtensions
     Left = 4
     Top = 0
     Width = 233
-    Height = 179
+    Height = 181
     Caption = 'Extensions'
     TabOrder = 0
-    object lvExtensions: TListBox
+    object lvFilters: TListBox
       Left = 6
       Top = 14
       Width = 221
-      Height = 155
+      Height = 159
       DoubleBuffered = True
+      DragMode = dmAutomatic
       ItemHeight = 13
       ParentDoubleBuffered = False
       TabOrder = 0
-      OnClick = lvExtensionsClick
+      OnClick = lvFiltersClick
+      OnDragDrop = lvFiltersDragDrop
+      OnDragOver = lvFiltersDragOver
     end
   end
   object gbFiltersActions: TGroupBox
@@ -111,7 +114,7 @@ object frmExtensions: TfrmExtensions
     Left = 243
     Top = 0
     Width = 348
-    Height = 179
+    Height = 181
     Caption = 'Extension'#39's properties '
     TabOrder = 3
     object lblRunHelper: TLabel

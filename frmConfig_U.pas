@@ -39,7 +39,6 @@ type
     gbProperties: TGroupBox;
     gbButtons: TGroupBox;
     gbMainButtons: TGroupBox;
-    Label1: TLabel;
     MenuItem1: TMenuItem;
     ppCMExit: TMenuItem;
     ppCMConfig: TMenuItem;
@@ -189,11 +188,13 @@ end;
 
 procedure TfrmConfig.actAddElementExecute(Sender: TObject);
 begin
-  tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '',
-    TCommandData.Create);
+  var vTag := (Sender as TAction).Tag; // -1 for Element and 0 for Group
+  var vComData := TCommandData.Create;
+  vComData.isGroup := (vTag = 0);
+  tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '', vComData);
 
-  tvItems.Selected.ImageIndex := -1;
-  tvItems.Selected.SelectedIndex := -1;
+  tvItems.Selected.ImageIndex := vTag;
+  tvItems.Selected.SelectedIndex := vTag;
 
   if tvItems.Items.Count = 1 then // first adding
     CorrectTreeViewItemHeight;
@@ -218,9 +219,6 @@ begin
     tvItems.Selected.SelectedIndex := -1;
 
     tvItems.Repaint;
-    // tvItems.Selected.Data := TCommandData.Create;
-
-    // gbProperties.Enabled := True;
 
     IsModified := True;
 
@@ -282,12 +280,12 @@ end;
 procedure TfrmConfig.actDelExecute(Sender: TObject);
 var
   futureSelNode: TTreeNode;
-  needToUpdateIsGroup: Boolean;
+  //needToUpdateIsGroup: Boolean;
 begin
   if Assigned(tvItems.Selected) and AskForDeletion(Self, tvItems.Selected.Text)
   then
   begin
-    needToUpdateIsGroup := False;
+    //needToUpdateIsGroup := False;
 
     DisposeTreeNodeData(tvItems.Selected);
 
@@ -304,8 +302,8 @@ begin
         // тогда пробуем выделить родителя
         if futureSelNode = nil then
           futureSelNode := tvItems.TopItem // пробуем выделить самый верхний
-        else // если есть родитель, то надо проверить его свойство группы
-          needToUpdateIsGroup := True;
+        //else // если есть родитель, то надо проверить его свойство группы
+         // needToUpdateIsGroup := True;
         // TCommandData(futureSelNode).isGroup := futureSelNode.HasChildren;
       end;
     end;
@@ -315,12 +313,12 @@ begin
 
     tvItems.Selected := futureSelNode;
 
-    if needToUpdateIsGroup and (tvItems.Selected <> nil) then
+    {if needToUpdateIsGroup and (tvItems.Selected <> nil) then
     begin
       TCommandData(tvItems.Selected.Data).isGroup :=
         tvItems.Selected.HasChildren;
       UpdateTreeNodeIcon(tvItems.Selected);
-    end;
+    end;}
 
     IsModified := True;
   end;
@@ -407,17 +405,18 @@ end;
 
 procedure TfrmConfig.btnExtensionsClick(Sender: TObject);
 begin
-  with frmExtensions do
+  frmFilters.ShowModal;
+  {with frmExtensions do
   begin
     AssignFilters(Filters);
     if ShowModal = mrOk then
     begin
-      MoveToFilters(Filters);
+      MoveToList(Filters);
       Filters_SaveToFile;
     end
     else
       ClearAllIfCancel;
-  end;
+  end;}
 end;
 
 procedure TfrmConfig.cbLangsChange(Sender: TObject);
@@ -715,16 +714,18 @@ end;
 
 procedure TfrmConfig.tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
 var
-  vTreeNode, vOldParentNode: TTreeNode;
+  vOldParentNode: TTreeNode;
   vMode: TNodeAttachMode; // vOldParentImageIndex: Integer;
 begin
-  if Source <> Sender then
+  if (Source <> Sender) or (Sender <> tvItems) then
     Exit;
 
-  vTreeNode := tvItems.GetNodeAt(X, Y); // element under mouse
+  var vTreeNode := tvItems.GetNodeAt(X, Y); // element under mouse
 
   if vTreeNode = tvItems.Selected then
     Exit; // the same element
+
+  IsModified := True;
 
   if vTreeNode = nil then
     // если переносим в пустое место, то добавить
@@ -733,14 +734,25 @@ begin
     else
       vMode := naAddFirst // at the begin
   else
-  begin
-    vMode := naAddChild; // .. иначе добавить родственником
-    TCommandData(vTreeNode.Data).isGroup := True;
-    UpdateTreeNodeIcon(vTreeNode);
-    { vTreeNode.ImageIndex := 0;
-      vTreeNode.SelectedIndex := 0; }
-  end;
+    begin
+      var vTreeNodeData := TCommandData(vTreeNode.Data);
+      if vTreeNodeData.isGroup then
+        begin
+        vMode := naAddChild;
+        //TCommandData(vTreeNode.Data).isGroup := True;
+        //UpdateTreeNodeIcon(vTreeNode);
+        end
+      else
+        begin
+        vMode := naInsert;
+        if (tvItems.Selected.DisplayRect(False)).Top < Y then
+          vTreeNode := vTreeNode.getNextSibling;
+        end;
+    end;
 
+  tvItems.Selected.MoveTo(vTreeNode, vMode);
+
+  {
   // if it was last children in Parent tree, so it's not a parent anymore
   vOldParentNode := tvItems.Selected.Parent;
   // vTreeNode is current parent
@@ -749,21 +761,18 @@ begin
   begin
     TCommandData(vOldParentNode.Data).isGroup := False;
     UpdateTreeNodeIcon(vOldParentNode);
-    { vOldParentImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle, vOldParentNode.ImageIndex,
-      MyExtractIcon(TCommandData(vOldParentNode.Data).Command));
+  end; }
 
-      vOldParentNode.ImageIndex := vOldParentImageIndex;
-      vOldParentNode.SelectedIndex := vOldParentImageIndex; }
-  end;
 
-  tvItems.Selected.MoveTo(vTreeNode, vMode);
-  IsModified := True;
+
 end;
 
 procedure TfrmConfig.tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
   State: TDragState; var Accept: Boolean);
 begin
-  Accept := (Sender = Source) and (Sender = tvItems);
+  //var vNode := tvItems.GetNodeAt(X, Y);
+  Accept := (Sender = Source) and (Sender = tvItems);// and
+    //((vNode = nil) or ((vNode <> nil) and (TCommandData(vNode.Data).isGroup)));
 end;
 
 procedure TfrmConfig.tvItemsEdited(Sender: TObject; Node: TTreeNode;
@@ -869,7 +878,7 @@ var
     end;
 
     // fix potencial and prev. bug then isGroup = 1 for no children node
-    vCommandData.isGroup := TreeNode.HasChildren;
+    vCommandData.isGroup := vCommandData.isGroup; //TreeNode.HasChildren;
 
     if vCommandData.isGroup then
     begin

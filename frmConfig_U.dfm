@@ -77,7 +77,7 @@ object frmConfig: TfrmConfig
       Top = 33
       Width = 117
       Height = 25
-      Action = actAddElement
+      Action = actAddGroup
       TabOrder = 0
     end
     object btnSubAdd: TButton
@@ -85,7 +85,7 @@ object frmConfig: TfrmConfig
       Top = 33
       Width = 117
       Height = 25
-      Action = actAddSub
+      Action = actAddElement
       TabOrder = 1
       WordWrap = True
     end
@@ -128,14 +128,6 @@ object frmConfig: TfrmConfig
     Width = 408
     Height = 93
     TabOrder = 3
-    object Label1: TLabel
-      Left = 186
-      Top = 7
-      Width = 3
-      Height = 13
-      Color = clBtnFace
-      ParentColor = False
-    end
     object lbLangs: TLabel
       Left = 7
       Top = 13
@@ -223,13 +215,14 @@ object frmConfig: TfrmConfig
     Left = 36
     Top = 34
     object actAddElement: TAction
+      Tag = -1
       Category = 'Elements'
-      Caption = 'Add'
+      Caption = 'Add element'
       OnExecute = actAddElementExecute
     end
     object actAddGroup: TAction
       Category = 'Elements'
-      Caption = 'Add'
+      Caption = 'Add group'
       OnExecute = actAddElementExecute
     end
     object actAddSub: TAction
@@ -272,13 +265,13 @@ object frmConfig: TfrmConfig
       OnUpdate = actApplyUpdate
     end
     object actItemUp: TAction
-      Category = 'Main'
+      Category = 'Elements'
       Caption = 'Up'
       OnExecute = actItemUpExecute
       OnUpdate = actItemUpUpdate
     end
     object actItemDown: TAction
-      Category = 'Main'
+      Category = 'Elements'
       Caption = 'Down'
       OnExecute = actItemDownExecute
       OnUpdate = actItemDownUpdate

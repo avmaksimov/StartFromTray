@@ -156,7 +156,7 @@
         </DCCReference>
         <DCCReference Include="FilterClass_U.pas"/>
         <DCCReference Include="frmFilters_U.pas">
-            <Form>frmExtensions</Form>
+            <Form>frmFilters</Form>
         </DCCReference>
         <DCCReference Include="frmCommandConfig_U.pas">
             <Form>frmCommandConfig</Form>
