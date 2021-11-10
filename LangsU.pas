@@ -4,9 +4,7 @@ interface
 
 uses Vcl.Forms, System.Classes, System.Generics.Collections;
 
-// ASaveAndExit - true, if it's called by the param and we have to save to Default.ini
-// otherwise - only to use in the app
-procedure GenDefaultFileLang { (const ASaveAndExit: Boolean) };
+procedure GenDefaultFileLang;
 function GetLangString(const ASection, AString: string): string;
 procedure SetLang(const ALangCode: string);
 
@@ -16,13 +14,6 @@ function LangFillListAndGetCurrent(const AStringList: TStrings): Integer;
 function AskForConfirmation(const AForm: TForm;
   const AConfirmation: string): Boolean;
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;
-// (const AFormHandle: THandle; const ACaption, AFormCaption: string): Boolean;
-
-// var LangStrings: TStringList;
-
-// type TLangStrings = TDictionary <string, string>;
-
-// var LangStrings: TLangStrings;
 
 implementation
 
@@ -38,21 +29,15 @@ var
   FLangFile: TMemIniFile = nil;
   FLangPath: string; // Path to Lang folder in app
 
-  // const cLangStrings: array of string = ('OK', 'Apply', 'Close', 'Cancel',
-  // 'Up', 'Down', 'Add', 'Add child', 'Delete', 'Copy');
-
 const
   ExcludesForFormConfig: TArray<string> = ['btnClose', 'lblVer'];
   ExcludesForFrameCommandConfig: TArray<string> = ['gbRunAtTime',
     'lblisRun_FolderChanged', 'lblNextRun', 'cbRunAt', 'cbIsRepeatRun',
     'cbisRun_isWhenFolderChange', 'cbIsVisible', 'lblIsRunning'];
-  // var vMemIniFile: TMemIniFile;
 
 procedure LangAddDefaultStrings(const AForcedWrite: Boolean); forward;
 
-// ASaveAndExit - true, if it's called by the param and we have to save to Default.ini
-// otherwise - only to use in the app
-procedure GenDefaultFileLang { (const ASaveAndExit: Boolean) };
+procedure GenDefaultFileLang;
   procedure WriteToLangFile(const ASectionName: string; AIdentPrefix: string;
     AComponent: TComponent);
   var
@@ -129,7 +114,7 @@ begin
   vFileName := { ExtractFilePath(ParamStr(0)) + cLangFolderName } FLangPath +
     'Default.ini';
   System.SysUtils.DeleteFile(vFileName);
-  FLangFile := TMemIniFile.Create(vFileName);
+  FLangFile := TMemIniFile.Create(vFileName, System.SysUtils.TEncoding.UTF8);
   with FLangFile do
   begin
     WriteString('LangProperties', '@LCID', '1033');
@@ -154,7 +139,6 @@ end;
 
 procedure SetLang(const ALangCode: string);
 
-// var vIniFile: TMemIniFile;
   procedure SetComponentPropertyFromIni(const AFormName: String;
     const AControl: TComponent; const APropertyName, APropertyIdent: string);
   var
@@ -234,7 +218,7 @@ begin
     raise Exception.CreateFmt('Language file "%s" is not found',
       [vLangFileName]);
   FreeAndNil(FLangFile); // prev lang ini
-  FLangFile := TMemIniFile.Create(vLangFileName);
+  FLangFile := TMemIniFile.Create(vLangFileName, System.SysUtils.TEncoding.UTF8);
   vSections := TStringList.Create;
   with FLangFile do
   begin
@@ -309,7 +293,7 @@ end;
 
 function LangFillListAndGetCurrent(const AStringList: TStrings): Integer;
 var
-  vSR: TSearchRec; { vIni: TIniFile; }
+  vSR: TSearchRec;
   sLangCode, sLangCaption: string;
   vUserDefaultLCID: LCID;
   vCurrentItemIndex, vCurrentItemIndexForLCID,
@@ -348,7 +332,7 @@ begin
   begin
     repeat
       sLangCode := TPath.GetFileNameWithoutExtension(vSR.Name);
-      with TIniFile.Create(FLangPath + vSR.Name) do
+      with TMemIniFile.Create(FLangPath + vSR.Name, System.SysUtils.TEncoding.UTF8) do
         try
           // ShowMessage(IntToStr(LCID(ReadInteger('LangProperties', '@LCID', 0))) + #13#10 + vCurrentItemIndex.ToString);
           sLangCaption := ReadString('LangProperties', '@Name', '');
