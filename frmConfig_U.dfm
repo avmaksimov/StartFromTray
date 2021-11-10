@@ -46,6 +46,16 @@ object frmConfig: TfrmConfig
       OnDragOver = tvItemsDragOver
       OnEdited = tvItemsEdited
     end
+    object Button1: TButton
+      Left = 244
+      Top = 357
+      Width = 75
+      Height = 25
+      Caption = 'Button1'
+      TabOrder = 1
+      Visible = False
+      OnClick = Button1Click
+    end
   end
   object gbProperties: TGroupBox
     Left = 381

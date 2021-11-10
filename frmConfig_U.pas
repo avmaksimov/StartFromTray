@@ -50,8 +50,8 @@ type
     lbLangs: TLabel;
     lblVer: TLabel;
     actAddGroup: TAction;
+    Button1: TButton;
     procedure actAddElementExecute(Sender: TObject);
-    procedure actAddSubExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
     procedure actApplyUpdate(Sender: TObject);
     procedure actCloseExecute(Sender: TObject);
@@ -90,6 +90,7 @@ type
     procedure lblVerMouseEnter(Sender: TObject);
     procedure lblVerMouseLeave(Sender: TObject);
     procedure lblVerClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { private declarations }
     IsModified: Boolean;
@@ -102,6 +103,7 @@ type
     //procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
     procedure CorrectTreeViewItemHeight;
 
+    function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
     procedure DisposeTreeViewData;
     procedure DisposeTreeNodeData(TreeNode: TTreeNode);
     procedure ppTrayMenuItemOnClick(Sender: TObject);
@@ -201,27 +203,6 @@ begin
   tvItems.Repaint;
 
   IsModified := True;
-end;
-
-procedure TfrmConfig.actAddSubExecute(Sender: TObject);
-begin
-  if tvItems.Selected <> nil then
-  begin
-    tvItems.Selected.Expanded := True;
-    tvItems.Selected.ImageIndex := 0;
-    tvItems.Selected.SelectedIndex := 0;
-
-    tvItems.Selected := tvItems.Items.AddChildObject(tvItems.Selected, '',
-      TCommandData.Create);
-
-    tvItems.Selected.ImageIndex := -1;
-    tvItems.Selected.SelectedIndex := -1;
-
-    tvItems.Repaint;
-
-    IsModified := True;
-
-  end;
 end;
 
 procedure TfrmConfig.actApplyUpdate(Sender: TObject);
@@ -324,7 +305,25 @@ begin
 end;
 
 procedure TfrmConfig.actCopyExecute(Sender: TObject);
-var
+begin
+  var vSelected := tvItems.Selected;
+  if not Assigned(vSelected) then
+    Exit;
+
+  tvItems.Items.BeginUpdate;
+  try
+    tvItems.Selected := CopyTreeNode(vSelected, nil);
+  finally
+    tvItems.Items.EndUpdate;
+  end;
+
+  // tvItems.Selected.ImageIndex := -1;
+  // tvItems.Selected.SelectedIndex := -1;
+
+  //tvItems.Repaint;
+
+  IsModified := True;
+{var
   vSelected: TTreeNode;
   vDest: TCommandData;
   vOldImageIndex: Integer;
@@ -350,7 +349,7 @@ begin
 
   tvItems.Repaint;
 
-  IsModified := True;
+  IsModified := True; }
 end;
 
 procedure TfrmConfig.actCopyUpdate(Sender: TObject);
@@ -418,6 +417,14 @@ begin
   end;}
 end;
 
+procedure TfrmConfig.Button1Click(Sender: TObject);
+begin
+  if tvItems.Selected.getNextSibling <> nil then
+    ShowMessage(tvItems.Selected.getNextSibling.Text)
+  else
+    ShowMessage('nil');
+end;
+
 procedure TfrmConfig.cbLangsChange(Sender: TObject);
   function _GetBuildInfo: string;
   var
@@ -439,10 +446,6 @@ procedure TfrmConfig.cbLangsChange(Sender: TObject);
                 (dwFileVersionMS and $FFFF).ToString + '.' +
                 (dwFileVersionLS shr 16).ToString + '.' +
                 (dwFileVersionLS and $FFFF).ToString;
-              {V1 := dwFileVersionMS shr 16;
-              V2 := dwFileVersionMS and $FFFF;
-              V3 := dwFileVersionLS shr 16;
-              V4 := dwFileVersionLS and $FFFF;}
             end;
           end;
         finally
@@ -941,6 +944,39 @@ begin
   TreeNodes.Owner.FullExpand;
 end;
 
+function TfrmConfig.CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
+begin
+  var vCommandData := TCommandData.Create;
+  TCommandData(TreeNode.Data).Assign(vCommandData);
+
+  if ParentTreeNode = nil then
+    Result := tvItems.Items.AddObject(TreeNode, TreeNode.Text, vCommandData)
+  else
+    Result := tvItems.Items.AddChildObject(ParentTreeNode, TreeNode.Text, vCommandData);
+
+  var vImageIndex: Integer;
+  // 0 for group, -1 for undef element
+  if TreeNode.ImageIndex <= 0 then
+    vImageIndex := TreeNode.ImageIndex
+  else
+    begin
+    var vIcon := TIcon.Create;
+    TreeImageList.GetIcon(TreeNode.ImageIndex, vIcon);
+    vImageIndex := TreeImageList.AddIcon(vIcon);
+    end;
+  Result.ImageIndex := vImageIndex;
+  Result.SelectedIndex := vImageIndex;
+  // child nodes
+  var vChildTreeNode := TreeNode.GetFirstChild;
+  while vChildTreeNode <> nil do
+    begin
+    CopyTreeNode(vChildTreeNode, Result);
+    vChildTreeNode := vChildTreeNode.getNextSibling;
+    end;
+
+  Result.Expanded := TreeNode.Expanded;
+end;
+
 procedure TfrmConfig.DisposeTreeViewData;
 begin
   var tn := tvItems.TopItem;
@@ -952,7 +988,7 @@ begin
 end;
 
 procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode);
-begin     tvItems.Items
+begin
   // if (TreeNode = nil) then Exit;
   if TreeNode.Data <> nil then
   begin

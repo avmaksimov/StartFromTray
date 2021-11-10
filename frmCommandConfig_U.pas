@@ -112,9 +112,9 @@ begin
   end;
   FOldCommandText := edtCommand.Text;
 
-  if FAssignedTreeNode.HasChildren then
-    vImageIndex := 0
-  else
+  //if FAssignedTreeNode.HasChildren then
+  //  vImageIndex := 0
+  //else
     vImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle,
       FAssignedTreeNode.ImageIndex, MyExtractIcon(edtCommand.Text));
 
@@ -127,11 +127,6 @@ begin
 end;
 
 procedure TfrmCommandConfig.edtCommandRightButtonClick(Sender: TObject);
-//var
-  //i, j: Integer;
-  //vExtensions, sCommand: string;
-  //bMatchedMaskFound: boolean;
-  //vExtensionArray: TStringDynArray;
 begin
   var sCommand := Trim(edtCommand.Text);
   with edtCommandOpenDialog do
@@ -312,7 +307,7 @@ begin
       if CommandData = nil then // в случае Отмены
         Exit;
 
-      FisCommand := not FAssignedTreeNode.HasChildren;
+      FisCommand := not CommandData.isGroup; //FAssignedTreeNode.HasChildren;
 
       with CommandData do
       begin
@@ -360,42 +355,8 @@ begin
     Command := Trim(edtCommand.Text);
     CommandParameters := Trim(edtCommandParameters.Text);
     //isVisible := cbIsVisible.Checked;
-
-    isGroup := FAssignedTreeNode.HasChildren;
-
-    { if FisCommand then
-      begin
-      isRunAt := cbRunAt.Checked;
-
-      if isRunAt then
-      begin
-      //RunAtDateTime := ComposeDateTime(edtRunAtDate.Date, edtRunAtTime.Time);
-      RunAtDateTime := Trunc(edtRunAtDate.Date) + Frac(edtRunAtTime.Time);
-
-      isRepeatRun := cbIsRepeatRun.Checked;
-      if isRepeatRun then
-      RepeatRunAtTime := edtRepeatRunAtTime.Time;
-
-      CalcNextRunAtDateTime;
-
-      if not isRunAt then //user fail with past time
-      begin
-      cbRunAt.Checked := False;
-      cbRunAtChange(cbRunAt);
-      end;
-      end; //isRunAt
-      if cbisRun_isWhenFolderChange.Checked then
-      isRun_WhenOnlyFolderChange := edtisRun_WhenFolderChange.Text;
-
-      // it must be after setting isRun_WhenOnlyFolderChange (Folder to watch)
-      isRun_isWhenOnlyFolderChange := cbisRun_isWhenFolderChange.Checked;
-      end; //FisCommand }
+    //isGroup := FAssignedTreeNode.HasChildren;
   end;
 end;
-
-{ procedure TfrmCommandConfig .RefreshCaption ;
-  begin
-  edtCaption.Text := FAssignedTreeNode.Text;
-  end; }
 
 end.
