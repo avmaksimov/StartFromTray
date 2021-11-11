@@ -59,7 +59,6 @@ begin
 
   vPaths := SplitString(GetEnvironmentVariable('PATH'), ';');
   for i := 0 to High(vPaths) do
-  begin
     begin
     s := vPaths[i] + '\' + AFileName;
     if FileExists(s) then
