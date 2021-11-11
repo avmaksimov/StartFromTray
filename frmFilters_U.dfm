@@ -13,6 +13,7 @@ object frmFilters: TfrmFilters
   Font.Style = []
   OldCreateOrder = False
   Position = poOwnerFormCenter
+  OnClose = FormClose
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
@@ -43,14 +44,14 @@ object frmFilters: TfrmFilters
     Top = 185
     Width = 233
     Height = 66
-    TabOrder = 1
+    TabOrder = 2
     object btnExtensionAdd: TButton
       Left = 6
       Top = 38
       Width = 105
       Height = 25
       Caption = 'Add'
-      TabOrder = 0
+      TabOrder = 2
       OnClick = btnExtensionAddClick
     end
     object btnExtensionDelete: TButton
@@ -59,7 +60,7 @@ object frmFilters: TfrmFilters
       Width = 105
       Height = 25
       Caption = 'Delete'
-      TabOrder = 1
+      TabOrder = 3
       OnClick = btnExtensionDeleteClick
     end
     object btnExtensionDown: TButton
@@ -68,7 +69,7 @@ object frmFilters: TfrmFilters
       Width = 105
       Height = 25
       Caption = 'Down'
-      TabOrder = 3
+      TabOrder = 1
       OnClick = btnExtensionDownClick
     end
     object btnExtensionUp: TButton
@@ -77,7 +78,7 @@ object frmFilters: TfrmFilters
       Width = 105
       Height = 25
       Caption = 'Up'
-      TabOrder = 2
+      TabOrder = 0
       OnClick = btnExtensionUpClick
     end
   end
@@ -86,7 +87,7 @@ object frmFilters: TfrmFilters
     Top = 185
     Width = 348
     Height = 66
-    TabOrder = 2
+    TabOrder = 3
     object btnOK: TButton
       Left = 115
       Top = 38
@@ -116,7 +117,7 @@ object frmFilters: TfrmFilters
     Width = 348
     Height = 181
     Caption = 'Extension'#39's properties '
-    TabOrder = 3
+    TabOrder = 1
     object lblRunHelper: TLabel
       Left = 12
       Top = 136

@@ -11,7 +11,7 @@ uses
   frmCommandConfig_U in 'frmCommandConfig_U.pas' {frmCommandConfig: TFrame},
   Vcl.Themes,
   Vcl.Styles,
-  System.SysUtils,
+  System.SysUtils, System.IniFiles,
   LangsU in 'LangsU.pas',
   MPPopupMenu in 'MPPopupMenu.pas';
 
@@ -25,19 +25,19 @@ begin
 
   GenDefaultFileLang;
 
-  { if FindCmdLineSwitch('GenDefaultFileLang') then
-    begin
-    GenDefaultFileLang;
-    Exit;
-    end; }
-
-  // SetLang('rus');
-
   with frmConfig do
   begin
     cbLangs.ItemIndex := LangFillListAndGetCurrent(cbLangs.Items);
     cbLangsChange(cbLangs);
   end;
+
+  with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
+    try
+      if ReadBool('Main', 'FiltersShow', False) then
+        frmFilters.ShowModal;
+    finally
+      Free;
+    end;
 
   Application.Run;
 

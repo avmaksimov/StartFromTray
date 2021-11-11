@@ -43,18 +43,23 @@ type
     procedure lvFiltersDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     { Private declarations }
+    FAssignedCaption: string;
     FAssignedData: TFilterData;
     FAssignedListItemIndex: Integer;
     FIsAssigningListItemIndex: Boolean;
+    FIsModified: Boolean;
 
     procedure AssignCurrentItem;
     procedure SaveAssignedItem;
+    function GetIsModified: Boolean;
   public
     { Public declarations }
     procedure AssignFilters(AFilters: TStringList);
     procedure MoveToList(AFilters: TStringList);
+    procedure ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
   end;
 
 var
@@ -102,27 +107,41 @@ begin
 
 end;
 
+procedure TfrmFilters.ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
+begin
+  btnOK.Enabled := FIsModified or GetIsModified;
+
+  var vItemIndex := lvFilters.ItemIndex;
+  btnExtensionUp.Enabled := vItemIndex > 0;
+  btnExtensionDown.Enabled := (vItemIndex >= 0) and (vItemIndex < lvFilters.Count - 1);
+  btnExtensionDelete.Enabled := vItemIndex > -1;
+end;
+
 procedure TfrmFilters.AssignCurrentItem;
 var
   bSelected: Boolean;
 begin
-  bSelected := lvFilters.ItemIndex > -1;
+  FIsAssigningListItemIndex := True;
+
+  FAssignedListItemIndex := lvFilters.ItemIndex;
+  bSelected := FAssignedListItemIndex > -1;
 
   M_SetChildsEnable(gbExtensionProperties, bSelected);
 
-  FIsAssigningListItemIndex := True;
-
   if bSelected then
   begin
-    FAssignedListItemIndex := lvFilters.ItemIndex;
+    //FAssignedListItemIndex := lvFilters.ItemIndex;
 
-    edtName.Text := lvFilters.Items[FAssignedListItemIndex];
+    //edtName.Text := lvFilters.Items[FAssignedListItemIndex];
 
-    if Visible then
-      edtName.SetFocus;
-
+    FAssignedCaption := lvFilters.Items[FAssignedListItemIndex];
     FAssignedData := TFilterData(lvFilters.Items.Objects
       [FAssignedListItemIndex]);
+
+    edtName.Text := FAssignedCaption;
+
+    //if Visible then
+    //  edtName.SetFocus;
 
     with FAssignedData do
     begin
@@ -134,6 +153,7 @@ begin
   end
   else
   begin
+    FAssignedCaption := '';
     edtName.Text := '';
 
     edtExtensions.Text := '';
@@ -142,7 +162,7 @@ begin
     edtRunHelper.Text := '';
 
     FAssignedData := nil;
-    FAssignedListItemIndex := -1;
+    //FAssignedListItemIndex := -1;
   end;
   FIsAssigningListItemIndex := False;
 end;
@@ -151,7 +171,7 @@ procedure TfrmFilters.SaveAssignedItem;
 begin
   if (FAssignedListItemIndex < 0) or not Assigned(FAssignedData) then
     Exit;
-
+  FIsModified := FIsModified or GetIsModified;
   lvFilters.Items[FAssignedListItemIndex] := Trim(edtName.Text);
   with FAssignedData do
   begin
@@ -285,8 +305,15 @@ begin
   end;
 end;
 
+procedure TfrmFilters.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Application.OnIdle := nil;
+end;
+
 procedure TfrmFilters.FormShow(Sender: TObject);
 begin
+  FIsModified := False;
+
   AssignFilters(Filters);
 
   FIsAssigningListItemIndex := False;
@@ -303,6 +330,19 @@ begin
       DisplayName := GetLangString('LangStrings', 'FileDialogAnyFile');
       FileMask := '*';
     end;
+  end;
+
+  Application.OnIdle := ApplicationOnFormIdle;
+end;
+
+function TfrmFilters.GetIsModified: Boolean;
+begin
+  Result := edtName.Text <> FAssignedCaption;
+  if not Result and Assigned(FAssignedData) then
+  begin
+    with FAssignedData do
+      Result := Result or (edtExtensions.Text <> Extensions) or
+        (edtRunHelper.Text <> RunHelper) or (edtEditHelper.Text <> EditHelper);
   end;
 end;
 
