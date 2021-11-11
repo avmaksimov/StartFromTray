@@ -108,10 +108,9 @@ procedure GenDefaultFileLang;
 var
   vFileName: string;
   viForm: Integer;
-  vForm: TForm; // vKey: string;
-  // vLangStringKeys: TArray<string>;
+  vForm: TForm;
 begin
-  vFileName := { ExtractFilePath(ParamStr(0)) + cLangFolderName } FLangPath +
+  vFileName := FLangPath +
     'Default.ini';
   System.SysUtils.DeleteFile(vFileName);
   FLangFile := TMemIniFile.Create(vFileName, System.SysUtils.TEncoding.UTF8);
@@ -128,7 +127,6 @@ begin
     end;
     DeleteFile(PChar(vFileName));
     UpdateFile;
-    // Free; // after it we Exit the App
   end; // with
 end;
 

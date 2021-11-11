@@ -60,13 +60,14 @@ begin
   vPaths := SplitString(GetEnvironmentVariable('PATH'), ';');
   for i := 0 to High(vPaths) do
   begin
+    begin
     s := vPaths[i] + '\' + AFileName;
     if FileExists(s) then
-    begin
+      begin
       Result := s;
       Exit;
+      end;
     end;
-  end;
   Result := ''; // else
 end;
 
@@ -116,19 +117,6 @@ begin
     if Result then
       Exit;
   end;
-
-  { if Pos(';', AExtensions) <= 0 then
-    Result := MatchesMask(AFilename, AExtensions)
-    else
-    begin
-    vMasksArray := SplitString(AExtensions, ';');
-    for i := 0 to High(vMasksArray) do
-    begin
-    Result := MatchesMask(AFilename, Trim(vMasksArray[i]));
-    if Result then
-    Break;
-    end;
-    end; }
 end;
 
 procedure ShowMsgIfDebug(const AParam, AValue: string);

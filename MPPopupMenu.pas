@@ -20,7 +20,7 @@ type
 
   TMPPopupMenu = class(TPopupMenu)
   private
-    FOnMenuRightClick, FOnMenuMiddleClick: TMenuItemClickEvent;
+    FOnItemMiddleClick, FOnItemRightClick: TMenuItemClickEvent;
   protected
     function DispatchRC(aHandle: HMENU; aPosition: Integer): Boolean;
     procedure MClick(AItem: TMenuItem);
@@ -30,10 +30,10 @@ type
     destructor Destroy; override;
     procedure Popup(X, Y: Integer); override;
   published
-    property OnMenuRightClick: TMenuItemClickEvent read FOnMenuRightClick
-      write FOnMenuRightClick;
-    property OnMenuMiddleClick: TMenuItemClickEvent read FOnMenuMiddleClick
-      write FOnMenuMiddleClick;
+    property OnItemMiddleClick: TMenuItemClickEvent read FOnItemMiddleClick
+      write FOnItemMiddleClick;
+    property OnItemRightClick: TMenuItemClickEvent read FOnItemRightClick
+      write FOnItemRightClick;
   end;
 
   TMPMenuItem = class(TMenuItem)
@@ -79,7 +79,7 @@ begin
           FindKind := fkHandle;
         for var I := 0 to Count - 1 do
         begin
-          var Item: Integer;
+          var Item: HMenu;
           if FindKind = fkHandle then
           begin
             if Menu <> 0 then
@@ -176,14 +176,14 @@ end;
 
 procedure TMPPopupMenu.MClick(AItem: TMenuItem);
 begin
-  if Assigned(FOnMenuMiddleClick) then
-    FOnMenuMiddleClick(AItem);
+  if Assigned(FOnItemMiddleClick) then
+    FOnItemMiddleClick(AItem);
 end;
 
 procedure TMPPopupMenu.RClick(AItem: TMenuItem);
 begin
-  if Assigned(FOnMenuRightClick) then
-    FOnMenuRightClick(AItem);
+  if Assigned(FOnItemRightClick) then
+    FOnItemRightClick(AItem);
 end;
 
 { var

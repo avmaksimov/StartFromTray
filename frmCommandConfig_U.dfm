@@ -91,6 +91,7 @@ object frmCommandConfig: TfrmCommandConfig
     Font.Style = []
     Images = ImageList
     ParentFont = False
+    RightButton.DisabledImageIndex = 1
     RightButton.ImageIndex = 0
     RightButton.Visible = True
     TabOrder = 4

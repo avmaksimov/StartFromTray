@@ -50,7 +50,6 @@ type
     lbLangs: TLabel;
     lblVer: TLabel;
     actAddGroup: TAction;
-    Button1: TButton;
     procedure actAddElementExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
     procedure actApplyUpdate(Sender: TObject);
@@ -80,8 +79,8 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
-    procedure ppTrayMenuMenuMiddleClick(Item: TMenuItem);
-    procedure ppTrayMenuMenuRightClick(Item: TMenuItem);
+    procedure ppTrayMenuItemMiddleClick(Item: TMenuItem);
+    procedure ppTrayMenuItemRightClick(Item: TMenuItem);
     procedure actCopyExecute(Sender: TObject);
     procedure tvItemsCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
@@ -90,7 +89,6 @@ type
     procedure lblVerMouseEnter(Sender: TObject);
     procedure lblVerMouseLeave(Sender: TObject);
     procedure lblVerClick(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
   private
     { private declarations }
     IsModified: Boolean;
@@ -417,14 +415,6 @@ begin
   end;}
 end;
 
-procedure TfrmConfig.Button1Click(Sender: TObject);
-begin
-  if tvItems.Selected.getNextSibling <> nil then
-    ShowMessage(tvItems.Selected.getNextSibling.Text)
-  else
-    ShowMessage('nil');
-end;
-
 procedure TfrmConfig.cbLangsChange(Sender: TObject);
   function _GetBuildInfo: string;
   var
@@ -494,8 +484,8 @@ begin
   begin
     Images := TreeImageList;
     OwnerDraw := True;
-    OnMenuMiddleClick := ppTrayMenuMenuMiddleClick;
-    OnMenuRightClick := ppTrayMenuMenuRightClick;
+    OnItemMiddleClick := ppTrayMenuItemMiddleClick;
+    OnItemRightClick := ppTrayMenuItemRightClick;
   end;
 
   // if not Swapped then tbRightButton else tbLeftButton
@@ -757,20 +747,6 @@ begin
     end;
 
   tvItems.Selected.MoveTo(vTreeNode, vMode);
-
-  {
-  // if it was last children in Parent tree, so it's not a parent anymore
-  vOldParentNode := tvItems.Selected.Parent;
-  // vTreeNode is current parent
-  if (vOldParentNode <> nil) and (vOldParentNode.Count <= 1) and
-    (vOldParentNode <> vTreeNode) then
-  begin
-    TCommandData(vOldParentNode.Data).isGroup := False;
-    UpdateTreeNodeIcon(vOldParentNode);
-  end; }
-
-
-
 end;
 
 procedure TfrmConfig.tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
@@ -819,8 +795,6 @@ end;}
 procedure TfrmConfig.WMClose(var Message: TMessage);
 begin
   actCloseExecute(actClose);
-  // Application.Title := TrayIcon.Hint; //'Quick run from Tray';
-  // Hide;
 end;
 
 procedure TfrmConfig.WndProc(var Message: TMessage);
@@ -907,32 +881,22 @@ var
 var
   XMLDoc: IXMLDocument;
   cNode: IXMLNode;
-  w: word; // ImageList: TCustomImageList;
+  w: word;
 
 begin
-  // ImageList := TTreeView(TreeNodes.Owner).Images;
   ImageListHandle := TreeImageList.Handle; // ImageList.Handle;
-
-  // ничего страшного, т.к. ppMenuItem использует тот же ImageList и мы его заново инициалищируем
-  // ImageList.Clear;
 
   // добавим иконку для папки, если не добавлено (всегда первая)
   w := 3;
-  // if ImageList.Count = 0 then
   ImageList_ReplaceIcon(ImageListHandle, -1,
     ExtractAssociatedIcon(Application.Handle, PChar('SHELL32.dll'), w));
 
   if not FileExists(ExtractFilePath(ParamStr(0)) + cItemsFileName) then
-    // 'StartFromTray_tvItems.xml') then
     Exit;
 
   XMLDoc := TXMLDocument.Create(nil);
 
   XMLDoc.LoadFromFile(ExtractFilePath(ParamStr(0)) + cItemsFileName);
-  // 'StartFromTray_tvItems.xml');
-
-  { iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1,
-    ExtractAssociatedIcon(Application.Handle, PChar('SHELL32.dll'), w)); }
 
   cNode := XMLDoc.ChildNodes.FindNode('tree2xml').ChildNodes.First;
   while cNode <> nil do
@@ -1019,7 +983,7 @@ begin
   end;
 end;
 
-procedure TfrmConfig.ppTrayMenuMenuMiddleClick(Item: TMenuItem);
+procedure TfrmConfig.ppTrayMenuItemMiddleClick(Item: TMenuItem);
 begin
   if Item.Count = 0 then
   begin
@@ -1034,7 +998,7 @@ begin
   end;
 end;
 
-procedure TfrmConfig.ppTrayMenuMenuRightClick(Item: TMenuItem);
+procedure TfrmConfig.ppTrayMenuItemRightClick(Item: TMenuItem);
 begin
   if Item.Count = 0 then
   begin
