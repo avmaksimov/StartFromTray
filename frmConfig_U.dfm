@@ -78,7 +78,7 @@ object frmConfig: TfrmConfig
       Width = 117
       Height = 25
       Action = actAddGroup
-      TabOrder = 0
+      TabOrder = 3
     end
     object btnAddElement: TButton
       Left = 128
@@ -86,7 +86,7 @@ object frmConfig: TfrmConfig
       Width = 117
       Height = 25
       Action = actAddElement
-      TabOrder = 1
+      TabOrder = 4
       WordWrap = True
     end
     object btnDel: TButton
@@ -103,7 +103,7 @@ object frmConfig: TfrmConfig
       Width = 117
       Height = 25
       Action = actCopy
-      TabOrder = 3
+      TabOrder = 5
     end
     object btnUp: TButton
       Left = 6
@@ -111,7 +111,7 @@ object frmConfig: TfrmConfig
       Width = 117
       Height = 25
       Action = actItemUp
-      TabOrder = 4
+      TabOrder = 0
     end
     object btnDown: TButton
       Left = 128
@@ -119,7 +119,7 @@ object frmConfig: TfrmConfig
       Width = 117
       Height = 25
       Action = actItemDown
-      TabOrder = 5
+      TabOrder = 1
     end
   end
   object gbMainButtons: TGroupBox
@@ -135,25 +135,28 @@ object frmConfig: TfrmConfig
       Height = 13
       Caption = 'Interface language:'
     end
-    object lblVer: TLabel
-      Left = 361
-      Top = 37
-      Width = 42
-      Height = 13
+    object lblVer: TLinkLabel
+      Left = 353
+      Top = 35
+      Width = 48
+      Height = 19
       Cursor = crHandPoint
       Alignment = taRightJustify
       Caption = 'Version: '
       Font.Charset = DEFAULT_CHARSET
-      Font.Color = clBlue
+      Font.Color = clWindowText
       Font.Height = -11
       Font.Name = 'Tahoma'
-      Font.Style = [fsUnderline]
+      Font.Style = []
       ParentFont = False
       ParentShowHint = False
       ShowHint = True
-      OnClick = lblVerClick
+      TabOrder = 2
+      TabStop = True
+      UseVisualStyle = True
       OnMouseEnter = lblVerMouseEnter
       OnMouseLeave = lblVerMouseLeave
+      OnLinkClick = lblVerLinkClick
     end
     object btnApply: TButton
       Left = 328
@@ -161,7 +164,7 @@ object frmConfig: TfrmConfig
       Width = 75
       Height = 25
       Action = actApply
-      TabOrder = 0
+      TabOrder = 6
     end
     object btnClose: TButton
       Left = 245
@@ -170,7 +173,7 @@ object frmConfig: TfrmConfig
       Height = 25
       Action = actClose
       Cancel = True
-      TabOrder = 1
+      TabOrder = 5
     end
     object btnOK: TButton
       Left = 162
@@ -178,7 +181,7 @@ object frmConfig: TfrmConfig
       Width = 75
       Height = 25
       Action = actOK
-      TabOrder = 2
+      TabOrder = 4
     end
     object cbRunOnWindowsStart: TCheckBox
       Left = 7
@@ -188,7 +191,7 @@ object frmConfig: TfrmConfig
       Caption = 'Run at Windows start'
       ParentShowHint = False
       ShowHint = False
-      TabOrder = 3
+      TabOrder = 1
       OnClick = cbRunOnWindowsStartChange
     end
     object btnExtensions: TButton
@@ -197,17 +200,17 @@ object frmConfig: TfrmConfig
       Width = 107
       Height = 25
       Caption = 'Extensions...'
-      TabOrder = 4
+      TabOrder = 3
       OnClick = btnExtensionsClick
     end
     object cbLangs: TComboBox
       Left = 162
       Top = 10
-      Width = 241
+      Width = 239
       Height = 21
       AutoCloseUp = True
       Style = csDropDownList
-      TabOrder = 5
+      TabOrder = 0
       OnChange = cbLangsChange
     end
   end

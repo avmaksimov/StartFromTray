@@ -54,7 +54,9 @@ type
     destructor Destroy; override;
     // procedure Assign (Source: TTreeNode);
     procedure Assign(Source: TPersistent); override;
-    procedure SaveAssigned;
+    procedure SetFocus; override;
+
+    function SaveAssigned: Boolean;
     function CheckFileCommandExists: boolean;
 
     // procedure RefreshCaption;
@@ -75,14 +77,14 @@ uses LangsU, System.StrUtils, CommonU, System.Masks, System.Math;
 
 procedure TfrmCommandConfig.btnEditClick(Sender: TObject);
 begin
-  SaveAssigned;
-  TCommandData(FAssignedTreeNode.Data).Edit;
+  if SaveAssigned then
+    TCommandData(FAssignedTreeNode.Data).Edit;
 end;
 
 procedure TfrmCommandConfig.btnRunClick(Sender: TObject);
 begin
-  SaveAssigned;
-  TCommandData(FAssignedTreeNode.Data).Run(crtNormalRun);
+  if SaveAssigned then
+    TCommandData(FAssignedTreeNode.Data).Run(crtNormalRun);
 end;
 
 procedure TfrmCommandConfig.edtCaptionChange(Sender: TObject);
@@ -227,6 +229,12 @@ begin
 
 end;
 
+procedure TfrmCommandConfig.SetFocus;
+begin
+  inherited;
+  edtCaption.SetFocus;
+end;
+
 procedure TfrmCommandConfig.TimerTimer(Sender: TObject);
 const
   vArLangStr: array [boolean] of string = ('IsNotRunning', 'IsRunning');
@@ -299,8 +307,8 @@ begin
 
       edtCaption.Text := FAssignedTreeNode.Text;
       CheckFileCommandExists;
-      if Self.Parent.Parent.Visible then
-        edtCaption.SetFocus;
+      //if Self.Parent.Parent.Visible then
+       // edtCaption.SetFocus;
 
       CommandData := TCommandData(FAssignedTreeNode.Data);
 
@@ -338,25 +346,57 @@ begin
   end;
 end;
 
-procedure TfrmCommandConfig.SaveAssigned;
-var
-  CommandData: TCommandData;
+function TfrmCommandConfig.SaveAssigned: Boolean;
+//var
+  //CommandData: TCommandData;
 begin
-  if (FAssignedTreeNode = nil) or not IsModified then
-    Exit;
+  if (FAssignedTreeNode = nil) then //or not IsModified then
+    Exit(True);
 
-  FAssignedTreeNode.Text := Trim(edtCaption.Text);
-  FAssignedCaption := FAssignedTreeNode.Text;
+  var vExceptionStr := '';
 
-  CommandData := TCommandData(FAssignedTreeNode.Data);
+  var vCaption := Trim(edtCaption.Text);
+  if (vCaption = '') then
+      vExceptionStr := GetLangString('frmConfig\frmCommandConfig', 'ErrorEmptyName');
 
-  with CommandData do
+  //CommandData := TCommandData(FAssignedTreeNode.Data);
+
+  with TCommandData(FAssignedTreeNode.Data) do
   begin
-    Command := Trim(edtCommand.Text);
-    CommandParameters := Trim(edtCommandParameters.Text);
-    //isVisible := cbIsVisible.Checked;
-    //isGroup := FAssignedTreeNode.HasChildren;
+    if isGroup then
+      begin
+      if (vExceptionStr <> '') then
+        begin
+        ErrorDialog((Self.Owner) as TForm, vExceptionStr);
+        Exit(False);
+        end;
+      end
+    else
+      begin
+      var vCommand := Trim(edtCommand.Text);
+      if (vCommand = '') then
+        begin
+        if vExceptionStr <> '' then
+          vExceptionStr := vExceptionStr + #13#10#13#10;
+        vExceptionStr := vExceptionStr + GetLangString('frmConfig\frmCommandConfig', 'ErrorCommand');
+        end;
+
+      if (vExceptionStr <> '') then
+        begin
+        ErrorDialog((Self.Owner) as TForm, vExceptionStr);
+        Exit(False);
+        end;
+
+      Command := vCommand;
+      //Command := Trim(edtCommand.Text);
+      CommandParameters := Trim(edtCommandParameters.Text);
+      //isVisible := cbIsVisible.Checked;
+      //isGroup := FAssignedTreeNode.HasChildren;
+      end;
   end;
+  FAssignedTreeNode.Text := vCaption; //Trim(edtCaption.Text);
+  FAssignedCaption := vCaption; //FAssignedTreeNode.Text;
+  Result := True;
 end;
 
 end.

@@ -53,7 +53,7 @@ type
     FIsModified: Boolean;
 
     procedure AssignCurrentItem;
-    procedure SaveAssignedItem;
+    function SaveAssignedItem: Boolean;
     function GetIsModified: Boolean;
   public
     { Public declarations }
@@ -167,19 +167,43 @@ begin
   FIsAssigningListItemIndex := False;
 end;
 
-procedure TfrmFilters.SaveAssignedItem;
+function TfrmFilters.SaveAssignedItem: Boolean;
 begin
   if (FAssignedListItemIndex < 0) or not Assigned(FAssignedData) then
-    Exit;
+    Exit(True);
+
   FIsModified := FIsModified or GetIsModified;
-  lvFilters.Items[FAssignedListItemIndex] := Trim(edtName.Text);
+
+  var vName := Trim(edtName.Text);
+  var vExtensions := Trim(edtExtensions.Text);
+
+  var vExceptionStr := '';
+
+  if (vName = '') then
+    vExceptionStr := GetLangString('frmExtensions', 'ErrorEmptyName');
+
+  if (vExtensions = '') then
+    begin
+    if vExceptionStr <> '' then
+      vExceptionStr := vExceptionStr + #13#10#13#10;
+    vExceptionStr := vExceptionStr + GetLangString('frmExtensions', 'ErrorEmptyExtensions');
+    end;
+
+  if (vExceptionStr <> '') then
+    begin
+    ErrorDialog(Self, vExceptionStr);
+    Exit(False);
+    end;
+
+  lvFilters.Items[FAssignedListItemIndex] := vName; //Trim(edtName.Text);
   with FAssignedData do
   begin
-    Extensions := Trim(edtExtensions.Text);
+    Extensions := vExtensions; //Trim(edtExtensions.Text);
 
     EditHelper := Trim(edtEditHelper.Text);
     RunHelper := Trim(edtRunHelper.Text);
   end;
+  Result := True;
 end;
 
 procedure TfrmFilters.btnCancelClick(Sender: TObject);
@@ -222,7 +246,8 @@ end;
 
 procedure TfrmFilters.btnExtensionAddClick(Sender: TObject);
 begin
-  SaveAssignedItem;
+  if not SaveAssignedItem then
+    Exit;
 
   with lvFilters do
   begin
@@ -232,6 +257,7 @@ begin
   end;
 
   AssignCurrentItem;
+  edtName.SetFocus;
 end;
 
 procedure TfrmFilters.btnExtensionDeleteClick(Sender: TObject);
@@ -352,7 +378,12 @@ begin
     (lvFilters.ItemIndex = FAssignedListItemIndex) then
     Exit;
 
-  SaveAssignedItem;
+  if not SaveAssignedItem then
+    begin
+    lvFilters.ItemIndex := FAssignedListItemIndex;
+    lvFilters.EndDrag(False);
+    edtName.SetFocus;
+    end;
 
   AssignCurrentItem;
 end;

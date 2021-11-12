@@ -14,6 +14,7 @@ function LangFillListAndGetCurrent(const AStringList: TStrings): Integer;
 function AskForConfirmation(const AForm: TForm;
   const AConfirmation: string): Boolean;
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;
+procedure ErrorDialog(const AForm: TForm; const ACaption: string);
 
 implementation
 
@@ -282,10 +283,16 @@ begin
   MyWriteString('frmConfig', '@VersionHint', 'Open the StartFromTray project website');
   MyWriteString('frmConfig\frmCommandConfig', '@IsRunning', 'Running');
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
+  MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName', 'Empty name. You have to write one');
+  MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand', 'Empty command (file to run). You have to write it');
   MyWriteString('frmExtensions', '@ChooseFileForRun',
     'Choose file for Run action');
   MyWriteString('frmExtensions', '@ChooseFileForEdit',
     'Choose file for Edit action');
+  MyWriteString('frmExtensions', '@ErrorEmptyName',
+    'Empty name. You have to write one');
+  MyWriteString('frmExtensions', '@ErrorEmptyExtensions',
+    'Empty extensions. You need at least one.');
   // end;
 end;
 
@@ -378,6 +385,12 @@ begin
   { Result := MessageBoxEx(AForm.Handle, PChar(Format(GetLangString('LangStrings', 'DeleteConfirm'),
     [ACaption])), PChar(AForm.Caption), MB_ICONWARNING or MB_YESNO or MB_DEFBUTTON2,
     StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = mrYes; }
+end;
+
+procedure ErrorDialog(const AForm: TForm; const ACaption: string);
+begin
+  MessageBoxEx(AForm.Handle, PChar(ACaption),
+    PChar(AForm.Caption), MB_ICONERROR, StrToIntDef(GetLangString('LangProperties', 'LCID'), 0))
 end;
 
 initialization

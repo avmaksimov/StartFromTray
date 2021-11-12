@@ -48,7 +48,7 @@ type
     frmCommandConfig: TfrmCommandConfig;
     cbLangs: TComboBox;
     lbLangs: TLabel;
-    lblVer: TLabel;
+    lblVer: TLinkLabel;
     actAddGroup: TAction;
     procedure actAddElementExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
@@ -89,6 +89,8 @@ type
     procedure lblVerMouseEnter(Sender: TObject);
     procedure lblVerMouseLeave(Sender: TObject);
     procedure lblVerClick(Sender: TObject);
+    procedure lblVerLinkClick(Sender: TObject; const Link: string;
+      LinkType: TSysLinkType);
   private
     { private declarations }
     IsModified: Boolean;
@@ -152,7 +154,8 @@ begin
   // if not IsModified then Exit;
 
   // сохраним редактируемые данные
-  frmCommandConfig.SaveAssigned;
+  if not frmCommandConfig.SaveAssigned then
+    Exit;
 
   TreeToXML(tvItems.Items); // заполнение RunAtTime здесь
 
@@ -187,20 +190,25 @@ end;
 
 procedure TfrmConfig.actAddElementExecute(Sender: TObject);
 begin
-  var vTag := (Sender as TAction).Tag; // -1 for Element and 0 for Group
-  var vComData := TCommandData.Create;
-  vComData.isGroup := (vTag = 0);
-  tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '', vComData);
+  if frmCommandConfig.SaveAssigned then
+    begin
+    var vTag := (Sender as TAction).Tag; // -1 for Element and 0 for Group
+    var vComData := TCommandData.Create;
+    vComData.isGroup := (vTag = 0);
+    tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '', vComData);
 
-  tvItems.Selected.ImageIndex := vTag;
-  tvItems.Selected.SelectedIndex := vTag;
+    tvItems.Selected.ImageIndex := vTag;
+    tvItems.Selected.SelectedIndex := vTag;
 
-  if tvItems.Items.Count = 1 then // first adding
-    CorrectTreeViewItemHeight;
+    if tvItems.Items.Count = 1 then // first adding
+      CorrectTreeViewItemHeight;
 
-  tvItems.Repaint;
+    tvItems.Repaint;
 
-  IsModified := True;
+    IsModified := True;
+    end;
+
+  frmCommandConfig.edtCaption.SetFocus;
 end;
 
 procedure TfrmConfig.actApplyUpdate(Sender: TObject);
@@ -308,19 +316,24 @@ begin
   if not Assigned(vSelected) then
     Exit;
 
-  tvItems.Items.BeginUpdate;
-  try
-    tvItems.Selected := CopyTreeNode(vSelected, nil);
-  finally
-    tvItems.Items.EndUpdate;
-  end;
+  if frmCommandConfig.SaveAssigned then
+    begin
+    tvItems.Items.BeginUpdate;
+    try
+      tvItems.Selected := CopyTreeNode(vSelected, nil);
+    finally
+      tvItems.Items.EndUpdate;
+    end;
 
-  // tvItems.Selected.ImageIndex := -1;
-  // tvItems.Selected.SelectedIndex := -1;
+    // tvItems.Selected.ImageIndex := -1;
+    // tvItems.Selected.SelectedIndex := -1;
 
-  //tvItems.Repaint;
+    //tvItems.Repaint;
 
-  IsModified := True;
+    IsModified := True;
+    end
+  else
+    frmCommandConfig.SetFocus;
 {var
   vSelected: TTreeNode;
   vDest: TCommandData;
@@ -446,7 +459,14 @@ procedure TfrmConfig.cbLangsChange(Sender: TObject);
 begin
   SetLang(StrPas(PChar(cbLangs.Items.Objects[cbLangs.ItemIndex])));
 
-  lblVer.Caption := GetLangString(Name, 'Version') + ' ' + _GetBuildInfo;
+  var vPrevVerWidth := lblVer.Width;
+  //lblVer.Caption := GetLangString(Name, 'Version') + ' ' + _GetBuildInfo;
+  lblVer.Caption := '<a href="https://github.com/avmaksimov/StartFromTray">' +
+    GetLangString(Name, 'Version') + ' ' + _GetBuildInfo + '</a>';
+
+
+
+  lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
   lblVer.Hint := GetLangString(Name, 'VersionHint');
 end;
 
@@ -556,12 +576,19 @@ end;
 
 procedure TfrmConfig.lblVerClick(Sender: TObject);
 begin
-  ShellExecute(Handle, 'open', 'https://github.com/avmaksimov/StartFromTray', nil, nil, SW_SHOWNORMAL);
+  //ShellExecute(Handle, 'open', 'https://github.com/avmaksimov/StartFromTray', nil, nil, SW_SHOWNORMAL);
+end;
+
+procedure TfrmConfig.lblVerLinkClick(Sender: TObject; const Link: string;
+  LinkType: TSysLinkType);
+begin
+  ShellExecute(Handle, 'open', PChar(Link), nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TfrmConfig.lblVerMouseEnter(Sender: TObject);
 begin
-  lblVer.Font.Color := clNavy;
+//  lblVer.Font.Color := clNavy;
+//  lblver.Repaint;
 end;
 
 procedure TfrmConfig.lblVerMouseLeave(Sender: TObject);
@@ -682,11 +709,11 @@ procedure TfrmConfig.tvItemsChanging(Sender: TObject; Node: TTreeNode;
 begin
   // AllowChange := (tvItems.Selected <> nil) and not Node.Deleting;
   if (tvItems.Selected <> nil) and not Node.Deleting then
-  begin
+    begin
     if frmCommandConfig.IsModified then
       IsModified := True;
-    frmCommandConfig.SaveAssigned;
-  end;
+    AllowChange := frmCommandConfig.SaveAssigned;
+    end;
   // Label1.Caption := Node.Text + '; ' + BoolToStr(TCommandData(frmDateTimeToRun1.ItemData).isRunAt, true);
 
   // Node.Data := frmDateTimeToRun1.ItemData;
