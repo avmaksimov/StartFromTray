@@ -124,7 +124,7 @@
         <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-        <VerInfo_Build>102</VerInfo_Build>
+        <VerInfo_Build>106</VerInfo_Build>
         <VerInfo_Debug>true</VerInfo_Debug>
         <DCC_RangeChecking>true</DCC_RangeChecking>
         <DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
@@ -133,7 +133,7 @@
         <VerInfo_AutoGenVersion>false</VerInfo_AutoGenVersion>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
         <DCC_DebugDCUs>true</DCC_DebugDCUs>
-        <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.102;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.106;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <BT_BuildType>Debug</BT_BuildType>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <VerInfo_Locale>1033</VerInfo_Locale>
@@ -155,8 +155,8 @@
             <Form>frmConfig</Form>
         </DCCReference>
         <DCCReference Include="FilterClass_U.pas"/>
-        <DCCReference Include="frmFilters_U.pas">
-            <Form>frmFilters</Form>
+        <DCCReference Include="frmExtensions_U.pas">
+            <Form>frmExtensions</Form>
         </DCCReference>
         <DCCReference Include="frmCommandConfig_U.pas">
             <Form>frmCommandConfig</Form>
@@ -254,7 +254,7 @@
                 </Resource_DLL_Projects>
                 <RDP_Source_Files>
                     <RDP_Source_Files Name="Item0">frmConfig_U.dfm</RDP_Source_Files>
-                    <RDP_Source_Files Name="Item1">frmFilters_U.dfm</RDP_Source_Files>
+                    <RDP_Source_Files Name="Item1">frmExtensions_U.dfm</RDP_Source_Files>
                     <RDP_Source_Files Name="Item2">frmCommandConfig_U.dfm</RDP_Source_Files>
                     <RDP_Source_Files Name="Item3">StartFromTray.drc</RDP_Source_Files>
                 </RDP_Source_Files>

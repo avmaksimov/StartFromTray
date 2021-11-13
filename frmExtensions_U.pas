@@ -1,14 +1,14 @@
-unit frmFilters_U;
+unit frmExtensions_U;
 
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, Mask, ComCtrls,
-  FilterClass_U, Vcl.ImgList, System.ImageList;
+  FilterClass_U, Vcl.ImgList, System.ImageList, Vcl.TitleBarCtrls;
 
 type
-  TfrmFilters = class(TForm)
+  TfrmExtensions = class(TForm)
     gbExtensions: TGroupBox;
     gbFiltersActions: TGroupBox;
     btnExtensionAdd: TButton;
@@ -28,6 +28,7 @@ type
     ImageList: TImageList;
     edtEditHelper: TButtonedEdit;
     edtRunHelper: TButtonedEdit;
+    TitleBarPanel: TTitleBarPanel;
     procedure btnExtensionAddClick(Sender: TObject);
     procedure btnExtensionDeleteClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
@@ -44,6 +45,7 @@ type
     procedure lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
   private
     { Private declarations }
     FAssignedCaption: string;
@@ -63,7 +65,7 @@ type
   end;
 
 var
-  frmFilters: TfrmFilters;
+  frmExtensions: TfrmExtensions;
 
 implementation
 
@@ -71,7 +73,7 @@ uses LangsU, CommonU;
 
 {$R *.dfm}
 
-procedure TfrmFilters.AssignFilters(AFilters: TStringList);
+procedure TfrmExtensions.AssignFilters(AFilters: TStringList);
 var
   i: Integer;
   vFilter: TFilterData;
@@ -90,7 +92,7 @@ begin
   AssignCurrentItem;
 end;
 
-procedure TfrmFilters.MoveToList(AFilters: TStringList);
+procedure TfrmExtensions.MoveToList(AFilters: TStringList);
 var
   i: Integer;
 begin
@@ -107,7 +109,7 @@ begin
 
 end;
 
-procedure TfrmFilters.ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
+procedure TfrmExtensions.ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
 begin
   btnOK.Enabled := FIsModified or GetIsModified;
 
@@ -117,7 +119,7 @@ begin
   btnExtensionDelete.Enabled := vItemIndex > -1;
 end;
 
-procedure TfrmFilters.AssignCurrentItem;
+procedure TfrmExtensions.AssignCurrentItem;
 var
   bSelected: Boolean;
 begin
@@ -167,7 +169,7 @@ begin
   FIsAssigningListItemIndex := False;
 end;
 
-function TfrmFilters.SaveAssignedItem: Boolean;
+function TfrmExtensions.SaveAssignedItem: Boolean;
 begin
   if (FAssignedListItemIndex < 0) or not Assigned(FAssignedData) then
     Exit(True);
@@ -206,7 +208,12 @@ begin
   Result := True;
 end;
 
-procedure TfrmFilters.btnCancelClick(Sender: TObject);
+procedure TfrmExtensions.TitleBarPanelCustomButtons0Click(Sender: TObject);
+begin
+  Application.Minimize;
+end;
+
+procedure TfrmExtensions.btnCancelClick(Sender: TObject);
 var
   i: Integer;
 begin
@@ -216,7 +223,7 @@ begin
   lvFilters.Clear;
 end;
 
-procedure TfrmFilters.btnExtensionUpClick(Sender: TObject);
+procedure TfrmExtensions.btnExtensionUpClick(Sender: TObject);
 var
   newItemIndex: Integer;
 begin
@@ -230,7 +237,7 @@ begin
     end;
 end;
 
-procedure TfrmFilters.btnExtensionDownClick(Sender: TObject);
+procedure TfrmExtensions.btnExtensionDownClick(Sender: TObject);
 var
   newItemIndex: Integer;
 begin
@@ -244,7 +251,7 @@ begin
     end;
 end;
 
-procedure TfrmFilters.btnExtensionAddClick(Sender: TObject);
+procedure TfrmExtensions.btnExtensionAddClick(Sender: TObject);
 begin
   if not SaveAssignedItem then
     Exit;
@@ -260,7 +267,7 @@ begin
   edtName.SetFocus;
 end;
 
-procedure TfrmFilters.btnExtensionDeleteClick(Sender: TObject);
+procedure TfrmExtensions.btnExtensionDeleteClick(Sender: TObject);
 var
   newItemIndex: Integer;
 begin
@@ -283,7 +290,7 @@ begin
   AssignCurrentItem;
 end;
 
-procedure TfrmFilters.btnOKClick(Sender: TObject);
+procedure TfrmExtensions.btnOKClick(Sender: TObject);
 var
   i: Integer;
 begin
@@ -302,19 +309,19 @@ begin
   Filters_SaveToFile;
 end;
 
-procedure TfrmFilters.edtEditRunHelperAfterDialog(Sender: TObject;
+procedure TfrmExtensions.edtEditRunHelperAfterDialog(Sender: TObject;
   var AName: string; var AAction: Boolean);
 begin
   AName := ExtractRelativePath(GetCurrentDir, AName);
 end;
 
-procedure TfrmFilters.edtNameChange(Sender: TObject);
+procedure TfrmExtensions.edtNameChange(Sender: TObject);
 begin
   if not FIsAssigningListItemIndex then
     lvFilters.Items[lvFilters.ItemIndex] := edtName.Text;
 end;
 
-procedure TfrmFilters.edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
+procedure TfrmExtensions.edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
 const
   cTitles: array of string = ['ChooseFileForEdit', 'ChooseFileForRun'];
 var
@@ -331,12 +338,12 @@ begin
   end;
 end;
 
-procedure TfrmFilters.FormClose(Sender: TObject; var Action: TCloseAction);
+procedure TfrmExtensions.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   Application.OnIdle := nil;
 end;
 
-procedure TfrmFilters.FormShow(Sender: TObject);
+procedure TfrmExtensions.FormShow(Sender: TObject);
 begin
   FIsModified := False;
 
@@ -361,7 +368,7 @@ begin
   Application.OnIdle := ApplicationOnFormIdle;
 end;
 
-function TfrmFilters.GetIsModified: Boolean;
+function TfrmExtensions.GetIsModified: Boolean;
 begin
   Result := edtName.Text <> FAssignedCaption;
   if not Result and Assigned(FAssignedData) then
@@ -372,7 +379,7 @@ begin
   end;
 end;
 
-procedure TfrmFilters.lvFiltersClick(Sender: TObject);
+procedure TfrmExtensions.lvFiltersClick(Sender: TObject);
 begin
   if (lvFilters.ItemIndex < 0) or
     (lvFilters.ItemIndex = FAssignedListItemIndex) then
@@ -388,7 +395,7 @@ begin
   AssignCurrentItem;
 end;
 
-procedure TfrmFilters.lvFiltersDragDrop(Sender, Source: TObject; X,
+procedure TfrmExtensions.lvFiltersDragDrop(Sender, Source: TObject; X,
   Y: Integer);
 begin
   if (Source <> Sender) or (Sender <> lvFilters) then
@@ -409,7 +416,7 @@ with lvFilters do
   end;
 end;
 
-procedure TfrmFilters.lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
+procedure TfrmExtensions.lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
   State: TDragState; var Accept: Boolean);
 begin
   Accept := (Sender = Source) and (Sender = lvFilters) and

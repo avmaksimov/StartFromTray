@@ -95,7 +95,6 @@ procedure GenDefaultFileLang;
         if not(((AFormOrFrame.Name = 'frmCommandConfig') and
             MatchStr(vComponent.Name, ExcludesForFrameCommandConfig)) or
           ((AFormOrFrame.Name = 'frmConfig') and MatchStr(vComponent.Name, ExcludesForFormConfig)))
-          //((AFormOrFrame.Name = 'frmConfig') and ((vComponent.Name = 'btnClose') or (vComponent.Name = 'lblVer'))))
         then
           WriteToLangFile(ASectionName, vComponent.Name, vComponent);
       end

@@ -7,7 +7,7 @@ uses
   ComCtrls, ExtCtrls, Menus, StdCtrls, ActnList, registry,
   CommandsClass_U, windows, {RunAtTimeClasses_U,} Messages,
   TypInfo, System.Actions, Vcl.ImgList, frmCommandConfig_U, MPPopupMenu,
-  Winapi.CommCtrl, System.Math, System.ImageList;
+  Winapi.CommCtrl, System.Math, System.ImageList, Vcl.TitleBarCtrls;
 
 type
 
@@ -50,6 +50,7 @@ type
     lbLangs: TLabel;
     lblVer: TLinkLabel;
     actAddGroup: TAction;
+    TitleBarPanel: TTitleBarPanel;
     procedure actAddElementExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
     procedure actApplyUpdate(Sender: TObject);
@@ -86,11 +87,10 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure cbLangsChange(Sender: TObject);
     procedure FormHide(Sender: TObject);
-    procedure lblVerMouseEnter(Sender: TObject);
-    procedure lblVerMouseLeave(Sender: TObject);
     procedure lblVerClick(Sender: TObject);
     procedure lblVerLinkClick(Sender: TObject; const Link: string;
       LinkType: TSysLinkType);
+    procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
   private
     { private declarations }
     IsModified: Boolean;
@@ -111,6 +111,8 @@ type
     procedure XMLToTree(TreeNodes: TTreeNodes);
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
       const NotifyEvent: TNotifyEvent; AOldCommonDataList: TList);
+    // it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
+    procedure UpdateLblVerLeftAndCaption;
     // due to don't terminate the App after close main window
     procedure WMClose(var Message: TMessage); message WM_CLOSE;
   protected
@@ -126,7 +128,7 @@ var
 
 implementation
 
-uses CommonU, frmFilters_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
+uses CommonU, frmExtensions_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
   Winapi.ShellAPI, System.IniFiles, System.UITypes;
 
 {$R *.dfm}
@@ -414,7 +416,7 @@ end;
 
 procedure TfrmConfig.btnExtensionsClick(Sender: TObject);
 begin
-  frmFilters.ShowModal;
+  frmExtensions.ShowModal;
   {with frmExtensions do
   begin
     AssignFilters(Filters);
@@ -458,15 +460,8 @@ procedure TfrmConfig.cbLangsChange(Sender: TObject);
   end;
 begin
   SetLang(StrPas(PChar(cbLangs.Items.Objects[cbLangs.ItemIndex])));
-
-  var vPrevVerWidth := lblVer.Width;
-  //lblVer.Caption := GetLangString(Name, 'Version') + ' ' + _GetBuildInfo;
-  lblVer.Caption := '<a href="https://github.com/avmaksimov/StartFromTray">' +
-    GetLangString(Name, 'Version') + ' ' + _GetBuildInfo + '</a>';
-
-
-
-  lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
+  if Visible then
+    UpdateLblVerLeftAndCaption;
   lblVer.Hint := GetLangString(Name, 'VersionHint');
 end;
 
@@ -550,12 +545,12 @@ begin
 
   WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
 
-  with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
+  {with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
     try
       Visible := ReadBool('Main', 'ConfigShow', False);
     finally
       Free;
-    end;
+    end;}
 end;
 
 procedure TfrmConfig.FormDestroy(Sender: TObject);
@@ -571,6 +566,7 @@ end;
 procedure TfrmConfig.FormShow(Sender: TObject);
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
+  UpdateLblVerLeftAndCaption;
   tvItems.SetFocus;
 end;
 
@@ -585,17 +581,6 @@ begin
   ShellExecute(Handle, 'open', PChar(Link), nil, nil, SW_SHOWNORMAL);
 end;
 
-procedure TfrmConfig.lblVerMouseEnter(Sender: TObject);
-begin
-//  lblVer.Font.Color := clNavy;
-//  lblver.Repaint;
-end;
-
-procedure TfrmConfig.lblVerMouseLeave(Sender: TObject);
-begin
-  lblVer.Font.Color := clBlue;
-end;
-
 procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
 begin
   Show;
@@ -604,6 +589,11 @@ end;
 procedure TfrmConfig.ppCMExitClick(Sender: TObject);
 begin
   Application.Terminate;
+end;
+
+procedure TfrmConfig.TitleBarPanelCustomButtons0Click(Sender: TObject);
+begin
+  Application.Minimize;
 end;
 
 procedure TfrmConfig.TrayIconMouseUp(Sender: TObject; Button: TMouseButton;
@@ -789,6 +779,44 @@ procedure TfrmConfig.tvItemsEdited(Sender: TObject; Node: TTreeNode;
 begin
   if Node.Text <> S then
     frmCommandConfig.Caption := S;
+end;
+
+// it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
+procedure TfrmConfig.UpdateLblVerLeftAndCaption;
+  function _GetBuildInfo: string;
+  var
+    VerInfoSize, VerValueSize, Dummy: DWORD;
+    VerInfo: Pointer;
+    VerValue: PVSFixedFileInfo;
+  begin
+    VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
+    if VerInfoSize > 0 then
+    begin
+        GetMem(VerInfo, VerInfoSize);
+        try
+          if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo) then
+          begin
+            VerQueryValue(VerInfo, '\', Pointer(VerValue), VerValueSize);
+            with VerValue^ do
+            begin
+              Result := (dwFileVersionMS shr 16).ToString + '.' +
+                (dwFileVersionMS and $FFFF).ToString + '.' +
+                (dwFileVersionLS shr 16).ToString + '.' +
+                (dwFileVersionLS and $FFFF).ToString;
+            end;
+          end;
+        finally
+          FreeMem(VerInfo, VerInfoSize);
+        end;
+    end;
+  end;
+begin
+  Application.Title := TrayIcon.Hint + ' - ' + Caption;
+
+  var vPrevVerWidth := lblVer.Width;
+  lblVer.Caption := '<a href="https://github.com/avmaksimov/StartFromTray">' +
+    GetLangString(Name, 'Version') + ' ' + _GetBuildInfo + '</a>';
+  lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
 end;
 
 {procedure TfrmConfig.UpdateTreeNodeIcon(const ATreeNode: TTreeNode);

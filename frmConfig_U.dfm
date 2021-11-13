@@ -1,19 +1,37 @@
 object frmConfig: TfrmConfig
   Left = 322
   Top = 137
-  BorderIcons = [biSystemMenu, biMinimize]
-  BorderStyle = bsDialog
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsSingle
   Caption = 'Run options'
-  ClientHeight = 483
-  ClientWidth = 793
+  ClientHeight = 520
+  ClientWidth = 796
   Color = clBtnFace
+  CustomTitleBar.Control = TitleBarPanel
+  CustomTitleBar.Enabled = True
+  CustomTitleBar.Height = 26
+  CustomTitleBar.BackgroundColor = 1327713
+  CustomTitleBar.ForegroundColor = clWhite
+  CustomTitleBar.InactiveBackgroundColor = clWhite
+  CustomTitleBar.InactiveForegroundColor = 10066329
+  CustomTitleBar.ButtonForegroundColor = clWhite
+  CustomTitleBar.ButtonBackgroundColor = 1327713
+  CustomTitleBar.ButtonHoverForegroundColor = clWhite
+  CustomTitleBar.ButtonHoverBackgroundColor = 1792901
+  CustomTitleBar.ButtonPressedForegroundColor = 65793
+  CustomTitleBar.ButtonPressedBackgroundColor = 2523066
+  CustomTitleBar.ButtonInactiveForegroundColor = 10066329
+  CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
+  GlassFrame.Enabled = True
+  GlassFrame.Top = 26
   OldCreateOrder = True
   Position = poScreenCenter
+  StyleElements = [seFont, seClient]
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnHide = FormHide
@@ -22,14 +40,14 @@ object frmConfig: TfrmConfig
   TextHeight = 13
   object gbItems: TGroupBox
     Left = 4
-    Top = 0
+    Top = 27
     Width = 373
     Height = 412
     Caption = 'Elements to run'
     TabOrder = 0
     object tvItems: TTreeView
-      Left = 6
-      Top = 16
+      Left = 3
+      Top = 15
       Width = 361
       Height = 390
       DoubleBuffered = True
@@ -48,8 +66,8 @@ object frmConfig: TfrmConfig
     end
   end
   object gbProperties: TGroupBox
-    Left = 381
-    Top = 0
+    Left = 383
+    Top = 27
     Width = 408
     Height = 382
     Caption = 'Properties'
@@ -68,7 +86,7 @@ object frmConfig: TfrmConfig
   end
   object gbButtons: TGroupBox
     Left = 4
-    Top = 416
+    Top = 445
     Width = 373
     Height = 65
     TabOrder = 2
@@ -123,10 +141,10 @@ object frmConfig: TfrmConfig
     end
   end
   object gbMainButtons: TGroupBox
-    Left = 381
-    Top = 388
+    Left = 383
+    Top = 415
     Width = 408
-    Height = 93
+    Height = 95
     TabOrder = 3
     object lbLangs: TLabel
       Left = 7
@@ -136,11 +154,12 @@ object frmConfig: TfrmConfig
       Caption = 'Interface language:'
     end
     object lblVer: TLinkLabel
-      Left = 353
-      Top = 35
-      Width = 48
-      Height = 19
+      Left = 352
+      Top = 37
+      Width = 46
+      Height = 17
       Cursor = crHandPoint
+      Align = alCustom
       Alignment = taRightJustify
       Caption = 'Version: '
       Font.Charset = DEFAULT_CHARSET
@@ -153,9 +172,6 @@ object frmConfig: TfrmConfig
       ShowHint = True
       TabOrder = 2
       TabStop = True
-      UseVisualStyle = True
-      OnMouseEnter = lblVerMouseEnter
-      OnMouseLeave = lblVerMouseLeave
       OnLinkClick = lblVerLinkClick
     end
     object btnApply: TButton
@@ -206,13 +222,28 @@ object frmConfig: TfrmConfig
     object cbLangs: TComboBox
       Left = 162
       Top = 10
-      Width = 239
+      Width = 241
       Height = 21
       AutoCloseUp = True
       Style = csDropDownList
       TabOrder = 0
       OnChange = cbLangsChange
     end
+  end
+  object TitleBarPanel: TTitleBarPanel
+    Left = 0
+    Top = 0
+    Width = 796
+    Height = 25
+    CustomButtons = <
+      item
+        ButtonType = sbMinimize
+        Enabled = True
+        Width = 32
+        Visible = True
+        OnClick = TitleBarPanelCustomButtons0Click
+      end>
+    ExplicitWidth = 314
   end
   object ActionList: TActionList
     Left = 36

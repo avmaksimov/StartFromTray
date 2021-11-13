@@ -1,25 +1,43 @@
-object frmFilters: TfrmFilters
+object frmExtensions: TfrmExtensions
   Left = 0
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Extensions'
-  ClientHeight = 255
-  ClientWidth = 596
+  ClientHeight = 287
+  ClientWidth = 585
   Color = clBtnFace
+  CustomTitleBar.Control = TitleBarPanel
+  CustomTitleBar.Enabled = True
+  CustomTitleBar.Height = 26
+  CustomTitleBar.BackgroundColor = 1327713
+  CustomTitleBar.ForegroundColor = clWhite
+  CustomTitleBar.InactiveBackgroundColor = clWhite
+  CustomTitleBar.InactiveForegroundColor = 10066329
+  CustomTitleBar.ButtonForegroundColor = clWhite
+  CustomTitleBar.ButtonBackgroundColor = 1327713
+  CustomTitleBar.ButtonHoverForegroundColor = clWhite
+  CustomTitleBar.ButtonHoverBackgroundColor = 1792901
+  CustomTitleBar.ButtonPressedForegroundColor = 65793
+  CustomTitleBar.ButtonPressedBackgroundColor = 2523066
+  CustomTitleBar.ButtonInactiveForegroundColor = 10066329
+  CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
+  GlassFrame.Enabled = True
+  GlassFrame.Top = 26
   OldCreateOrder = False
   Position = poOwnerFormCenter
+  StyleElements = [seFont, seClient]
   OnClose = FormClose
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object gbExtensions: TGroupBox
     Left = 4
-    Top = 0
+    Top = 26
     Width = 233
     Height = 181
     Caption = 'Extensions'
@@ -41,9 +59,9 @@ object frmFilters: TfrmFilters
   end
   object gbFiltersActions: TGroupBox
     Left = 4
-    Top = 185
+    Top = 211
     Width = 233
-    Height = 66
+    Height = 70
     TabOrder = 2
     object btnExtensionAdd: TButton
       Left = 6
@@ -84,12 +102,12 @@ object frmFilters: TfrmFilters
   end
   object gbMainButtons: TGroupBox
     Left = 243
-    Top = 185
-    Width = 348
-    Height = 66
+    Top = 211
+    Width = 336
+    Height = 70
     TabOrder = 3
     object btnOK: TButton
-      Left = 115
+      Left = 109
       Top = 38
       Width = 105
       Height = 25
@@ -100,7 +118,7 @@ object frmFilters: TfrmFilters
       OnClick = btnOKClick
     end
     object btnCancel: TButton
-      Left = 230
+      Left = 224
       Top = 38
       Width = 105
       Height = 25
@@ -113,27 +131,27 @@ object frmFilters: TfrmFilters
   end
   object gbExtensionProperties: TGroupBox
     Left = 243
-    Top = 0
-    Width = 348
+    Top = 24
+    Width = 336
     Height = 181
     Caption = 'Extension'#39's properties '
     TabOrder = 1
     object lblRunHelper: TLabel
-      Left = 12
+      Left = 6
       Top = 136
       Width = 213
       Height = 13
       Caption = 'Run (empty for the default action for open):'
     end
     object lblEditHelper: TLabel
-      Left = 12
+      Left = 6
       Top = 95
       Width = 206
       Height = 13
       Caption = 'Edit (empty for the default action for edit):'
     end
     object edtExtensions: TLabeledEdit
-      Left = 12
+      Left = 6
       Top = 72
       Width = 323
       Height = 21
@@ -143,7 +161,7 @@ object frmFilters: TfrmFilters
       TabOrder = 1
     end
     object edtName: TLabeledEdit
-      Left = 12
+      Left = 6
       Top = 33
       Width = 323
       Height = 21
@@ -154,7 +172,7 @@ object frmFilters: TfrmFilters
       OnChange = edtNameChange
     end
     object edtEditHelper: TButtonedEdit
-      Left = 12
+      Left = 6
       Top = 110
       Width = 323
       Height = 21
@@ -166,7 +184,7 @@ object frmFilters: TfrmFilters
     end
     object edtRunHelper: TButtonedEdit
       Tag = 1
-      Left = 12
+      Left = 6
       Top = 152
       Width = 323
       Height = 21
@@ -176,6 +194,24 @@ object frmFilters: TfrmFilters
       TabOrder = 3
       OnRightButtonClick = edtEdit_or_RunHelperRightButtonClick
     end
+  end
+  object TitleBarPanel: TTitleBarPanel
+    Left = 0
+    Top = 0
+    Width = 585
+    Height = 25
+    CustomButtons = <
+      item
+        ButtonType = sbMinimize
+        Enabled = True
+        Width = 32
+        Visible = True
+        OnClick = TitleBarPanelCustomButtons0Click
+      end>
+    ExplicitWidth = 596
+    DesignSize = (
+      585
+      25)
   end
   object OpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'

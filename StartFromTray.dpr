@@ -1,4 +1,3 @@
-// JCL_DEBUG_EXPERT_INSERTJDBG ON
 program StartFromTray;
 
 uses
@@ -7,11 +6,12 @@ uses
   CommonU in 'CommonU.pas',
   frmConfig_U in 'frmConfig_U.pas' {frmConfig},
   FilterClass_U in 'FilterClass_U.pas',
-  frmFilters_U in 'frmFilters_U.pas' {frmFilters},
+  frmExtensions_U in 'frmExtensions_U.pas' {frmExtensions},
   frmCommandConfig_U in 'frmCommandConfig_U.pas' {frmCommandConfig: TFrame},
   Vcl.Themes,
   Vcl.Styles,
-  System.SysUtils, System.IniFiles,
+  System.SysUtils,
+  System.IniFiles, vcl.Dialogs,
   LangsU in 'LangsU.pas',
   MPPopupMenu in 'MPPopupMenu.pas';
 
@@ -20,7 +20,7 @@ uses
 begin
   Application.Initialize;
   Application.CreateForm(TfrmConfig, frmConfig);
-  Application.CreateForm(TfrmFilters, frmFilters);
+  Application.CreateForm(TfrmExtensions, frmExtensions);
   Application.ShowMainForm := False;
 
   GenDefaultFileLang;
@@ -33,12 +33,18 @@ begin
 
   with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
     try
+      if ReadBool('Main', 'ConfigShow', False) then
+        frmConfig.Show;
       if ReadBool('Main', 'FiltersShow', False) then
-        frmFilters.ShowModal;
+        frmExtensions.ShowModal;
     finally
       Free;
     end;
-
+  //frmConfig.Show;
+  //frmConfig.tvItems.SetFocus;
+  //showmessage(Application.MainForm.Name);
+  //Application.BringToFront;
+  //frmConfig.Show;
   Application.Run;
 
 end.
