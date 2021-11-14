@@ -34,6 +34,8 @@ type
     FCommandParameters: string;
 
     FWaitForRunningThread: TCmdWaitForRunningThread;
+    FIconFilename: string;  // ='' when default
+    FIconFileIndex: Integer; // -1 when default
 
     // just RunCommand
     function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
@@ -64,6 +66,8 @@ type
     property Command: string read Fcommand write Fcommand;
     property CommandParameters: string read FCommandParameters
       write FCommandParameters;
+    property IconFilename: string read FIconFilename write FIconFilename;
+    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex default -1;
   end;
 {$M-}
   { TCommandWaitForRunningThread }
@@ -177,6 +181,8 @@ begin
   FisGroup := false; // признак группы
   Fcommand := ''; // команда для выполнения
   FCommandParameters := ''; // параметр команды для выполнения
+  FIconFilename := '';
+  FIconFileIndex := -1;
 
   FWaitForRunningThread := nil;
 
@@ -215,9 +221,8 @@ begin
   else
   begin
     vOperation := ADefaultOperation;
-    vFilename := PChar(Fcommand); // PChar('"' + FCommand + '"');
+    vFilename := PChar(Fcommand);
     vParameters := PChar(FCommandParameters);
-    // IfThen(FCommandParameters <> '', PChar('"' + FCommandParameters + '"'));
   end;
 
   FillChar(SEInfo, SizeOf(SEInfo), 0);
@@ -438,7 +443,12 @@ begin
         tkUString:
           sDataToSave := GetStrProp(Self, FProp);
         tkEnumeration, tkInteger:
-          sDataToSave := IntToStr(GetOrdProp(Self, FProp));
+          begin
+          var vDataInt := GetOrdProp(Self, FProp);
+          if vDataInt <> FProp.Default  then
+            sDataToSave := IntToStr(vDataInt);
+          //sDataToSave := IntToStr();
+          end;
         tkFloat:
           begin
             sDataType := FProp.PropType^.Name;

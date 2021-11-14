@@ -82,6 +82,9 @@ object frmConfig: TfrmConfig
       ExplicitLeft = 2
       ExplicitTop = 15
       ExplicitHeight = 365
+      inherited imgIcon: TImage
+        Proportional = True
+      end
     end
   end
   object gbButtons: TGroupBox

@@ -124,7 +124,7 @@
         <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-        <VerInfo_Build>115</VerInfo_Build>
+        <VerInfo_Build>123</VerInfo_Build>
         <VerInfo_Debug>true</VerInfo_Debug>
         <DCC_RangeChecking>true</DCC_RangeChecking>
         <DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
@@ -133,7 +133,7 @@
         <VerInfo_AutoGenVersion>false</VerInfo_AutoGenVersion>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
         <DCC_DebugDCUs>true</DCC_DebugDCUs>
-        <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.115;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.123;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <BT_BuildType>Debug</BT_BuildType>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <VerInfo_Locale>1033</VerInfo_Locale>

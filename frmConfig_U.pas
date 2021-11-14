@@ -976,7 +976,8 @@ var
     else
     begin
       // w := 0;
-      var vhIcon := MyExtractHIcon(vCommandData.Command);
+      var vhIcon := MyExtractHIcon(vCommandData.Command,
+        vCommandData.IconFilename, vCommandData.IconFileIndex);
       var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
       if vhIcon > 0 then
         DestroyIcon(vhIcon);

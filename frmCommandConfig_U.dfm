@@ -33,6 +33,14 @@ object frmCommandConfig: TfrmCommandConfig
     Caption = 'The command willn'#39't start until the previous copy running'
     WordWrap = True
   end
+  object imgIcon: TImage
+    Tag = 1
+    Left = 144
+    Top = 3
+    Width = 19
+    Height = 19
+    Center = True
+  end
   object edtCaption: TLabeledEdit
     Tag = 1
     Left = 8
@@ -52,8 +60,8 @@ object frmCommandConfig: TfrmCommandConfig
   end
   object cbIsVisible: TCheckBox
     Tag = 1
-    Left = 49
-    Top = 5
+    Left = 8
+    Top = 183
     Width = 137
     Height = 19
     Anchors = [akLeft, akTop, akRight]
@@ -108,27 +116,47 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Caption = 'Parameters:'
     TabOrder = 5
   end
+  object btnChangeIcon: TButton
+    Tag = 1
+    Left = 166
+    Top = 3
+    Width = 111
+    Height = 19
+    Caption = 'Change the Icon'
+    TabOrder = 6
+    OnClick = btnChangeIconClick
+  end
+  object btnDefaultIcon: TButton
+    Tag = 1
+    Left = 280
+    Top = 3
+    Width = 116
+    Height = 19
+    Caption = 'Default Icon'
+    TabOrder = 7
+    OnClick = btnDefaultIconClick
+  end
   object edtCommandOpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'
     FavoriteLinks = <>
     FileTypes = <>
     Options = [fdoNoValidate, fdoFileMustExist, fdoShareAware]
     Title = 'Browse for file to run'
-    Left = 336
-    Top = 8
+    Left = 352
+    Top = 342
   end
   object Timer: TTimer
     Enabled = False
     Interval = 500
     OnTimer = TimerTimer
-    Left = 240
-    Top = 12
+    Left = 264
+    Top = 342
   end
   object ImageList: TImageList
     Height = 15
     Width = 19
-    Left = 280
-    Top = 8
+    Left = 304
+    Top = 342
     Bitmap = {
       494C01010200AC00040013000F00FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       00000000000036000000280000004C0000000F0000000100200000000000D011

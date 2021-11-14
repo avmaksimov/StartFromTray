@@ -9,9 +9,14 @@ uses
 
 const
   cItemsFileName = 'Items.xml';
+  cIconHeigh = 19;
+  cIconWidth = 10;
 
 function MyExtendFileNameToFull(const AFileName: string): string;
-function MyExtractHIcon(AFileName: string): HIcon;
+
+function MyExtractHIconFromRes(AFileName: string; const AIconIndex: Integer): HIcon;
+function MyExtractHIcon(ACommand: string; const AIconFileName: string;
+  AIconFileIndex: Integer): HIcon;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts
@@ -59,13 +64,39 @@ begin
   Result := ''; // else
 end;
 
+function MyExtractHIconFromRes(AFileName: string; const AIconIndex: Integer): HIcon;
+begin
+  AFileName := AFileName.Trim;
+
+  if IsRelativePath(AFileName) then
+      AFileName := MyExtendFileNameToFull(AFileName);
+
+  if AFileName = '' then
+    Exit(0);
+
+  var vLargeIcon: hIcon := 0;
+  var vSmallIcon: HIcon := 1;
+  Result := ExtractIconEx(PChar(AFileName), AIconIndex, vLargeIcon, vSmallIcon, 1);
+  if Result > 0 then
+    Result := vSmallIcon;
+end;
+
 // now AFileName can be not full and be in Path
-function MyExtractHIcon(AFileName: string): HIcon;
+function MyExtractHIcon(ACommand: string; const AIconFileName: string;
+  AIconFileIndex: Integer): HIcon;
 var
   vExt: string;
   Info: TSHFileInfo;
 begin
-  vExt := ExtractFileExt(AFileName);
+  if AIconFileName <> '' then
+    begin
+    var vLargeIcon: hIcon := 0;
+    var vSmallIcon: HIcon := 1; // non zero
+    if ExtractIconEx(PChar(AIconFileName), AIconFileIndex, vLargeIcon, vSmallIcon, 1) > 0 then
+      Exit(vSmallIcon);
+    end;
+
+  vExt := ExtractFileExt(ACommand);
   if (vExt = '') or (vExt = '.') then
     Exit(0);
 
@@ -73,15 +104,15 @@ begin
 
   if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
   begin
-    if IsRelativePath(AFileName) then
-      AFileName := MyExtendFileNameToFull(AFileName);
-    if AFileName = '' then
-      AFileName := vExt; // not found - so default
+    if IsRelativePath(ACommand) then
+      ACommand := MyExtendFileNameToFull(ACommand);
+    if ACommand = '' then
+      ACommand := vExt; // not found - so default
   end
   else // common document - enough only Ext
-    AFileName := vExt;
+    ACommand := vExt;
 
-  Result := SHGetFileInfo(PChar(AFileName), FILE_ATTRIBUTE_NORMAL, Info,
+  Result := SHGetFileInfo(PChar(ACommand), FILE_ATTRIBUTE_NORMAL, Info,
     SizeOf(TSHFileInfo), SHGFI_ICON or SHGFI_SMALLICON or
     SHGFI_USEFILEATTRIBUTES);
   If Result <> 0 then
