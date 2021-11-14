@@ -70,7 +70,7 @@ type
 
 implementation
 
-uses LangsU, System.StrUtils, CommonU, System.Masks, System.Math;
+uses LangsU, frmConfig_U, System.StrUtils, CommonU, System.Masks, System.Math;
 
 {$R *.dfm}
 { TfrmCommandConfig }
@@ -99,7 +99,7 @@ procedure TfrmCommandConfig.edtCommandChange(Sender: TObject);
 var
   s: string;
   i: Integer;
-  vImageIndex: Integer;
+  //vImageIndex: Integer;
 begin
   if FAssigningState then
     Exit;
@@ -117,13 +117,18 @@ begin
   //if FAssignedTreeNode.HasChildren then
   //  vImageIndex := 0
   //else
-    vImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle,
-      FAssignedTreeNode.ImageIndex, MyExtractIcon(edtCommand.Text));
-
+  var vNewHIcon := MyExtractHIcon(edtCommand.Text);
+  var vImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle,
+      FAssignedTreeNode.ImageIndex, vNewHIcon);
+  if vNewHIcon > 0 then
+    DestroyIcon(vNewHIcon)
+  else if FAssignedTreeNode.ImageIndex > 0 then // if the icon was before but not now
+    frmConfig.ListDeletedImageIndexes.Add(FAssignedTreeNode.ImageIndex);
+    //frmConfig.TreeImageListRemoveIndexProperly(FAssignedTreeNode.ImageIndex);
   FAssignedTreeNode.ImageIndex := vImageIndex;
   FAssignedTreeNode.SelectedIndex := vImageIndex;
 
-  FAssignedTreeNode.Owner.Owner.Repaint;
+  FAssignedTreeNode.Owner.Owner.Repaint; //tvItems.Repaint
 
   CheckFileCommandExists;
 end;

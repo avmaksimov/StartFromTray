@@ -4,22 +4,22 @@ object frmConfig: TfrmConfig
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'Run options'
-  ClientHeight = 520
+  ClientHeight = 514
   ClientWidth = 796
   Color = clBtnFace
   CustomTitleBar.Control = TitleBarPanel
   CustomTitleBar.Enabled = True
   CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 1327713
+  CustomTitleBar.BackgroundColor = 5979674
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 1327713
+  CustomTitleBar.ButtonBackgroundColor = 5979674
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 1792901
-  CustomTitleBar.ButtonPressedForegroundColor = 65793
-  CustomTitleBar.ButtonPressedBackgroundColor = 2523066
+  CustomTitleBar.ButtonHoverBackgroundColor = 8214052
+  CustomTitleBar.ButtonPressedForegroundColor = clWhite
+  CustomTitleBar.ButtonPressedBackgroundColor = 11499057
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -243,7 +243,9 @@ object frmConfig: TfrmConfig
         Visible = True
         OnClick = TitleBarPanelCustomButtons0Click
       end>
-    ExplicitWidth = 314
+    DesignSize = (
+      796
+      25)
   end
   object ActionList: TActionList
     Left = 36

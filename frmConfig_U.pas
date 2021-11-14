@@ -7,7 +7,8 @@ uses
   ComCtrls, ExtCtrls, Menus, StdCtrls, ActnList, registry,
   CommandsClass_U, windows, {RunAtTimeClasses_U,} Messages,
   TypInfo, System.Actions, Vcl.ImgList, frmCommandConfig_U, MPPopupMenu,
-  Winapi.CommCtrl, System.Math, System.ImageList, Vcl.TitleBarCtrls;
+  Winapi.CommCtrl, System.Math, System.ImageList, Vcl.TitleBarCtrls,
+  System.Generics.Collections;
 
 type
 
@@ -106,11 +107,12 @@ type
     function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
     procedure DisposeTreeViewData;
     procedure DisposeTreeNodeData(TreeNode: TTreeNode);
+
     procedure ppTrayMenuItemOnClick(Sender: TObject);
     // procedure XMLToMenu(MenuItems: TMenuItem; const NotifyEvent: TNotifyEvent);
     procedure XMLToTree(TreeNodes: TTreeNodes);
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
-      const NotifyEvent: TNotifyEvent; AOldCommonDataList: TList);
+      const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
     // it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
     procedure UpdateLblVerLeftAndCaption;
     // due to don't terminate the App after close main window
@@ -119,6 +121,8 @@ type
     procedure WndProc(var Message: TMessage); override;
   public
     { public declarations }
+    ListDeletedImageIndexes: TList<Integer>;
+    //procedure TreeImageListRemoveIndexProperly(const AIndex: Integer);
   end;
 
 var
@@ -135,9 +139,9 @@ uses CommonU, frmExtensions_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
 { TfrmConfig }
 
 procedure TfrmConfig.actApplyExecute(Sender: TObject);
-var
+{var
   oldCommonData: TList;
-  procedure AddToOldCommonDataRecurse(AMenuItems: TMenuItem);
+  procedure AddToOldCommandDataRecurse(AMenuItems: TMenuItem);
   var
     i: Integer;
     vmi: TMenuItem;
@@ -148,9 +152,9 @@ var
       oldCommonData.Add(Pointer(vmi.Tag));
 
       if vmi.Count > 0 then
-        AddToOldCommonDataRecurse(vmi);
+        AddToOldCommandDataRecurse(vmi);
     end;
-  end;
+  end;}
 
 begin
   // if not IsModified then Exit;
@@ -163,18 +167,17 @@ begin
 
   // RunAtTime.LoadDataFromTreeNodes(tvItems.Items); // загрузить запланированное время
 
-  oldCommonData := TList.Create; // oldCommonData - список старых действий
-  try
-    AddToOldCommonDataRecurse(ppTrayMenu.Items);
+  //oldCommonData := TList.Create; // oldCommonData - список старых действий
+  //try
+    //AddToOldCommandDataRecurse(ppTrayMenu.Items);
 
     ppTrayMenu.Items.Clear;
 
-    TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick,
-      oldCommonData);
+    TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick); //, oldCommonData);
 
-  finally
-    oldCommonData.Free;
-  end;
+  //finally
+  //  oldCommonData.Free;
+  //end;
 
   { with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
     try
@@ -239,7 +242,7 @@ begin
       // перечитать из файла
       XMLToTree(tvItems.Items);
 
-      TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick, nil);
+      TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
 
       // если первый элемент есть, то эмулируем его Change
       { if tvItems.Items.Count > 1 then
@@ -274,7 +277,8 @@ begin
   then
   begin
     //needToUpdateIsGroup := False;
-
+    try
+    tvItems.Items.BeginUpdate;
     DisposeTreeNodeData(tvItems.Selected);
 
     // определим, что оставить выделенным
@@ -300,6 +304,9 @@ begin
     tvItems.Selected.Delete;
 
     tvItems.Selected := futureSelNode;
+    finally
+      tvItems.Items.EndUpdate;
+    end;
 
     {if needToUpdateIsGroup and (tvItems.Selected <> nil) then
     begin
@@ -503,6 +510,8 @@ begin
     OnItemRightClick := ppTrayMenuItemRightClick;
   end;
 
+  ListDeletedImageIndexes := TList<Integer>.Create;
+
   // if not Swapped then tbRightButton else tbLeftButton
   // ppTrayMenu.TrackButton := TTrackButton(MouseButtonSwapped);
   ppConfigMenu.TrackButton := TTrackButton(MouseButtonSwapped);
@@ -516,7 +525,7 @@ begin
 
   XMLToTree(tvItems.Items);
 
-  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick, nil);
+  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
 
   if tvItems.Items.Count > 0 then
   begin
@@ -615,23 +624,46 @@ end;
 
 // AOldCommonDataList - ссылка на старый список команд для удаления. Изначально передаём nil
 procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
-  const NotifyEvent: TNotifyEvent; AOldCommonDataList: TList);
-var
-  tn: TTreeNode;
+  const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
+  procedure TreeImageListRemoveUnnecessary;
+    begin
+    if ListDeletedImageIndexes.Count <= 0 then
+      Exit;
+    ListDeletedImageIndexes.Sort;
+    try
+      ATreeNodes.BeginUpdate;
+      for var I := ListDeletedImageIndexes.Count - 1 downto 0 do
+        begin
+        var vIndex: Integer := Integer(ListDeletedImageIndexes[I]);
+        if ImageList_Remove(TreeImageList.Handle, vIndex)then
+          for var J := 0 to ATreeNodes.Count - 1 do
+            begin
+            var vTVItem := ATreeNodes[J];
+            if vTVItem.SelectedIndex > vIndex then
+              begin
+              vTVItem.SelectedIndex := vTVItem.SelectedIndex - 1;
+              vTVItem.ImageIndex := vTVItem.SelectedIndex;
+              end;
+            end;
+        end;
+      finally
+        ListDeletedImageIndexes.Clear;
+        ATreeNodes.EndUpdate;
+      end;
+    end;
 
   procedure ProcessTreeItem(atn: TTreeNode; ami: TMenuItem);
   var
     newMenuItem: TMPMenuItem;
     vtn: TTreeNode;
-    i: Integer;
   begin
 
-    if AOldCommonDataList <> nil then
+    {if AOldCommonDataList <> nil then
     begin
       i := AOldCommonDataList.IndexOf(atn.Data);
       if i >= 0 then
         AOldCommonDataList.Delete(i);
-    end;
+    end;}
 
     //vCommonData := TCommandData(atn.Data);
     {if not vCommonData.isVisible then
@@ -643,11 +675,8 @@ var
     begin
       Caption := atn.Text;
       ImageIndex := atn.ImageIndex;
-      // Font.Color := IfThen(MyExtendFileNameToFull(vCommonData.Command) <> '',
-      // TColors.SysWindowText, TColors.Red);
       Tag := LongInt(atn.Data);
       OnClick := NotifyEvent;
-      // OnDrawItem := ppTrayMenuItemOnDrawItem;
     end;
 
     ami.Add(newMenuItem);
@@ -662,7 +691,10 @@ var
   end; (* ProcessTreeItem *)
 
 begin
-  tn := ATreeNodes.GetFirstNode; // TopNode;
+
+  TreeImageListRemoveUnnecessary;
+
+  var tn := ATreeNodes.GetFirstNode; // TopNode;
   while tn <> nil do
   begin
     ProcessTreeItem(tn, AMenuItems);
@@ -670,6 +702,27 @@ begin
     tn := tn.GetNextSibling;
   end;
 end;
+
+{procedure TfrmConfig.TreeImageListRemoveIndexProperly(const AIndex: Integer);
+begin
+  if AIndex <= 0 then //some optimization
+    Exit;
+  try
+    tvItems.Items.BeginUpdate;
+    ImageList_Remove(TreeImageList.Handle, AIndex);
+    for var I := 0 to tvItems.Items.Count - 1 do
+      begin
+      var vTVItem := tvItems.Items[I];
+      if vTVItem.ImageIndex > AIndex then
+        begin
+        vTVItem.ImageIndex := vTVItem.ImageIndex - 1;
+        vTVItem.SelectedIndex := vTVItem.ImageIndex;
+        end;
+      end;
+  finally
+    tvItems.Items.EndUpdate;
+  end;
+end;}
 
 procedure TfrmConfig.tvItemsChange(Sender: TObject; Node: TTreeNode);
 begin
@@ -923,7 +976,7 @@ var
     else
     begin
       // w := 0;
-      var vhIcon := MyExtractIcon(vCommandData.Command);
+      var vhIcon := MyExtractHIcon(vCommandData.Command);
       var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
       if vhIcon > 0 then
         DestroyIcon(vhIcon);
@@ -1014,6 +1067,8 @@ begin
     var P := TCommandData(TreeNode.Data);
     FreeAndNil(P);
     TreeNode.Data := nil;
+    frmConfig.ListDeletedImageIndexes.Add(TreeNode.ImageIndex);
+    //TreeImageListRemoveIndexProperly(TreeNode.ImageIndex);
   end;
 
   // child nodes

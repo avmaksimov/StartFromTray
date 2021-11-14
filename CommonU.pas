@@ -11,22 +11,11 @@ const
   cItemsFileName = 'Items.xml';
 
 function MyExtendFileNameToFull(const AFileName: string): string;
-function MyExtractIcon(AFileName: string): HIcon;
+function MyExtractHIcon(AFileName: string): HIcon;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts
 function MyMatchesExtensions(const AFileName, AExtensions: string): Boolean;
-
-{ procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
-
-  procedure XMLToTree(TreeNodes: TTreeNodes);
-
-  procedure XMLToMenu(MenuItems: TMenuItem; const NotifyEvent: TNotifyEvent); }
-
-{ procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
-  const NotifyEvent: TNotifyEvent; AOldCommonDataList: TList); }
-
-// procedure DeleteItemMenus(MenuItems: TMenuItem);
 
 procedure M_Error(const ErrorMessage: string);
 
@@ -71,7 +60,7 @@ begin
 end;
 
 // now AFileName can be not full and be in Path
-function MyExtractIcon(AFileName: string): HIcon;
+function MyExtractHIcon(AFileName: string): HIcon;
 var
   vExt: string;
   Info: TSHFileInfo;
