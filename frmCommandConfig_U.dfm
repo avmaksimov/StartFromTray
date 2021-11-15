@@ -34,12 +34,18 @@ object frmCommandConfig: TfrmCommandConfig
     WordWrap = True
   end
   object imgIcon: TImage
-    Tag = 1
-    Left = 144
-    Top = 3
+    Left = 55
+    Top = 181
     Width = 19
     Height = 19
     Center = True
+  end
+  object lblIcon: TLabel
+    Left = 8
+    Top = 183
+    Width = 25
+    Height = 13
+    Caption = 'Icon:'
   end
   object edtCaption: TLabeledEdit
     Tag = 1
@@ -60,8 +66,8 @@ object frmCommandConfig: TfrmCommandConfig
   end
   object cbIsVisible: TCheckBox
     Tag = 1
-    Left = 8
-    Top = 183
+    Left = 15
+    Top = 263
     Width = 137
     Height = 19
     Anchors = [akLeft, akTop, akRight]
@@ -117,20 +123,18 @@ object frmCommandConfig: TfrmCommandConfig
     TabOrder = 5
   end
   object btnChangeIcon: TButton
-    Tag = 1
-    Left = 166
-    Top = 3
-    Width = 111
+    Left = 80
+    Top = 181
+    Width = 156
     Height = 19
     Caption = 'Change the Icon'
     TabOrder = 6
     OnClick = btnChangeIconClick
   end
   object btnDefaultIcon: TButton
-    Tag = 1
-    Left = 280
-    Top = 3
-    Width = 116
+    Left = 238
+    Top = 181
+    Width = 156
     Height = 19
     Caption = 'Default Icon'
     TabOrder = 7

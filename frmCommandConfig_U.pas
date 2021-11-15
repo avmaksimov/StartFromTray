@@ -28,6 +28,7 @@ type
     btnChangeIcon: TButton;
     imgIcon: TImage;
     btnDefaultIcon: TButton;
+    lblIcon: TLabel;
     procedure edtCaptionChange(Sender: TObject);
     { procedure edtCommandBeforeDialog(Sender: TObject; var AName: string;
       var AAction: Boolean); }
