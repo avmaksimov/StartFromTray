@@ -45,6 +45,10 @@ begin
   //showmessage(Application.MainForm.Name);
   //Application.BringToFront;
   //frmConfig.Show;
+
+  // it has to be before Run, after all initialization
+  frmConfig.TrayIcon.Visible := True;
+
   Application.Run;
 
 end.

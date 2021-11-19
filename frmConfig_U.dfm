@@ -1,4 +1,5 @@
 object frmConfig: TfrmConfig
+  AlignWithMargins = True
   Left = 322
   Top = 137
   BorderIcons = [biSystemMenu]
@@ -10,16 +11,16 @@ object frmConfig: TfrmConfig
   CustomTitleBar.Control = TitleBarPanel
   CustomTitleBar.Enabled = True
   CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 5979674
+  CustomTitleBar.BackgroundColor = 155507
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 5979674
+  CustomTitleBar.ButtonBackgroundColor = 155507
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 8214052
+  CustomTitleBar.ButtonHoverBackgroundColor = 147018
   CustomTitleBar.ButtonPressedForegroundColor = clWhite
-  CustomTitleBar.ButtonPressedBackgroundColor = 11499057
+  CustomTitleBar.ButtonPressedBackgroundColor = 2571
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -39,8 +40,8 @@ object frmConfig: TfrmConfig
   PixelsPerInch = 96
   TextHeight = 13
   object gbItems: TGroupBox
-    Left = 4
-    Top = 27
+    Left = 6
+    Top = 25
     Width = 373
     Height = 412
     Caption = 'Elements to run'
@@ -234,9 +235,10 @@ object frmConfig: TfrmConfig
     end
   end
   object TitleBarPanel: TTitleBarPanel
-    Left = 0
-    Top = 0
-    Width = 796
+    AlignWithMargins = True
+    Left = 3
+    Top = 3
+    Width = 790
     Height = 25
     CustomButtons = <
       item
@@ -246,8 +248,11 @@ object frmConfig: TfrmConfig
         Visible = True
         OnClick = TitleBarPanelCustomButtons0Click
       end>
+    ExplicitLeft = -28
+    ExplicitTop = 22
+    ExplicitWidth = 802
     DesignSize = (
-      796
+      790
       25)
   end
   object ActionList: TActionList
@@ -313,7 +318,6 @@ object frmConfig: TfrmConfig
   object TrayIcon: TTrayIcon
     Hint = 'Quick run from Tray'
     PopupMenu = ppConfigMenu
-    Visible = True
     OnMouseUp = TrayIconMouseUp
     Left = 228
     Top = 47

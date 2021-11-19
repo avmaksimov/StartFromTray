@@ -619,7 +619,15 @@ begin
     ppTrayMenu.Popup(X, Y);
   end
   else if Button = mbMiddle then
+    begin
     Show;
+    ShowWindow(Handle, SW_RESTORE);
+    if frmExtensions.Visible then
+      begin
+      frmExtensions.SetFocus;
+      //ShowWindow(frmExtensions.Handle, SW_RESTORE);
+      end;
+    end;
 end;
 
 // AOldCommonDataList - ссылка на старый список команд для удаления. Изначально передаём nil

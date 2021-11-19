@@ -341,6 +341,7 @@ begin
   FAssignedTreeNode := nil;
   FOldCommandText := '';
   FAssigningState := False;
+  lblIsRunning.Caption := '';
 end;
 
 destructor TfrmCommandConfig.Destroy;
