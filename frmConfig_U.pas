@@ -5,8 +5,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   ComCtrls, ExtCtrls, Menus, StdCtrls, ActnList, registry,
-  CommandsClass_U, windows, {RunAtTimeClasses_U,} Messages,
-  TypInfo, System.Actions, Vcl.ImgList, frmCommandConfig_U, MPPopupMenu,
+  CommandsClass_U, windows, Messages,   TypInfo, System.Actions,
+  Vcl.ImgList, frmCommandConfig_U, MPPopupMenu,
   Winapi.CommCtrl, System.Math, System.ImageList, Vcl.TitleBarCtrls,
   System.Generics.Collections;
 
@@ -68,7 +68,6 @@ type
     procedure btnExtensionsClick(Sender: TObject);
     procedure cbRunOnWindowsStartChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure ppCMConfigClick(Sender: TObject);
     procedure ppCMExitClick(Sender: TObject);
@@ -88,12 +87,13 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure cbLangsChange(Sender: TObject);
     procedure FormHide(Sender: TObject);
-    procedure lblVerClick(Sender: TObject);
     procedure lblVerLinkClick(Sender: TObject; const Link: string;
       LinkType: TSysLinkType);
     procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
   private
     { private declarations }
+    gMenuItemBmpWidth, gMenuItemBmpHeight: integer;
+
     IsModified: Boolean;
     // IsTreeViewItemChanging: Boolean; // true if list changing
 
@@ -104,7 +104,7 @@ type
     //procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
     procedure CorrectTreeViewItemHeight;
 
-    function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
+    //function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
     procedure DisposeTreeViewData;
     procedure DisposeTreeNodeData(TreeNode: TTreeNode);
 
@@ -227,15 +227,17 @@ begin
   begin
     if AskForConfirmation(Self, GetLangString('LangStrings', 'CancelConfirm'))
     then
-    begin
+    begin //Cancel
       Hide;
 
       ppTrayMenu.Items.Clear; // Data will be cleared below
 
       DisposeTreeViewData;
-      frmCommandConfig.Assign(nil);
+      frmCommandConfig.ClearAssigned;//Assign(nil);
+      tvItems.OnChange := nil;
       tvItems.Items.Clear;
-      frmCommandConfig.Assign(nil);
+      tvItems.OnChange := tvItemsChange;
+      //frmCommandConfig.ClearAssigned;//Assign(nil);
       TreeImageList.Clear;
       IsModified := False;
 
@@ -299,7 +301,7 @@ begin
         // TCommandData(futureSelNode).isGroup := futureSelNode.HasChildren;
       end;
     end;
-    frmCommandConfig.Assign(nil);
+    frmCommandConfig.ClearAssigned;//Assign(nil);
     // avoid possible bug and better empty view for properties
     tvItems.Selected.Delete;
 
@@ -320,6 +322,42 @@ begin
 end;
 
 procedure TfrmConfig.actCopyExecute(Sender: TObject);
+  function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
+  begin
+  var vCommandData := TCommandData.Create;
+  TCommandData(TreeNode.Data).Assign(vCommandData);
+
+  if ParentTreeNode = nil then
+    Result := tvItems.Items.AddObject(TreeNode, TreeNode.Text, vCommandData)
+  else
+    Result := tvItems.Items.AddChildObject(ParentTreeNode, TreeNode.Text, vCommandData);
+
+  var vImageIndex: Integer;
+  // 0 for group, -1 for undef element
+  if TreeNode.ImageIndex <= 0 then
+    vImageIndex := TreeNode.ImageIndex
+  else
+    begin
+    var vIcon := TIcon.Create;
+    try
+      TreeImageList.GetIcon(TreeNode.ImageIndex, vIcon);
+      vImageIndex := TreeImageList.AddIcon(vIcon);
+    finally
+      vIcon.Free;
+    end; //try..finaly
+    end;
+  Result.ImageIndex := vImageIndex;
+  Result.SelectedIndex := vImageIndex;
+  // child nodes
+  var vChildTreeNode := TreeNode.GetFirstChild;
+  while vChildTreeNode <> nil do
+    begin
+    CopyTreeNode(vChildTreeNode, Result);
+    vChildTreeNode := vChildTreeNode.getNextSibling;
+    end;
+
+  Result.Expanded := TreeNode.Expanded;
+  end;
 begin
   var vSelected := tvItems.Selected;
   if not Assigned(vSelected) then
@@ -424,17 +462,6 @@ end;
 procedure TfrmConfig.btnExtensionsClick(Sender: TObject);
 begin
   frmExtensions.ShowModal;
-  {with frmExtensions do
-  begin
-    AssignFilters(Filters);
-    if ShowModal = mrOk then
-    begin
-      MoveToList(Filters);
-      Filters_SaveToFile;
-    end
-    else
-      ClearAllIfCancel;
-  end;}
 end;
 
 procedure TfrmConfig.cbLangsChange(Sender: TObject);
@@ -474,7 +501,6 @@ end;
 
 procedure TfrmConfig.cbRunOnWindowsStartChange(Sender: TObject);
 begin
-  // IsModified := True;
   with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
     try
       RootKey := HKEY_CURRENT_USER;
@@ -496,7 +522,6 @@ end;
 
 procedure TfrmConfig.FormCreate(Sender: TObject);
 begin
-  // ShowMessage('Test');
   MouseButtonSwapped := GetSystemMetrics(SM_SWAPBUTTON) <> 0;
 
   ShowMsgIfDebug('MouseButtonSwapped', BoolToStr(MouseButtonSwapped, True));
@@ -518,10 +543,13 @@ begin
 
   TrayIcon.Icon := Application.Icon;
 
+  gMenuItemBmpWidth := GetSystemMetrics(SM_CXMENUCHECK);
+  gMenuItemBmpHeight := GetSystemMetrics(SM_CYMENUCHECK);
   TreeImageList.Width := gMenuItemBmpWidth;
   TreeImageList.Height := gMenuItemBmpHeight;
 
   frmCommandConfig.TreeImageList := TreeImageList;
+  frmCommandConfig.ListDeletedImageIndexes := ListDeletedImageIndexes;
 
   XMLToTree(tvItems.Items);
 
@@ -532,7 +560,7 @@ begin
     CorrectTreeViewItemHeight;
   end
   else
-    frmCommandConfig.Assign(nil);
+    frmCommandConfig.ClearAssigned;//Assign(nil);
 
   with TRegistry.Create(KEY_READ) do
     try
@@ -545,26 +573,10 @@ begin
       Free;
     end;
 
-  // tvItems.FullExpand;
-
-  { RunAtTime := TRunAtTime.Create;
-    RunAtTime.LoadDataFromTreeNodes(tvItems.Items); // загрузить запланированное время }
-
   IsModified := False;
 
   WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
 
-  {with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
-    try
-      Visible := ReadBool('Main', 'ConfigShow', False);
-    finally
-      Free;
-    end;}
-end;
-
-procedure TfrmConfig.FormDestroy(Sender: TObject);
-begin
-  // FreeAndNil(RunAtTime);
 end;
 
 procedure TfrmConfig.FormHide(Sender: TObject);
@@ -577,11 +589,6 @@ begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
   UpdateLblVerLeftAndCaption;
   tvItems.SetFocus;
-end;
-
-procedure TfrmConfig.lblVerClick(Sender: TObject);
-begin
-  //ShellExecute(Handle, 'open', 'https://github.com/avmaksimov/StartFromTray', nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TfrmConfig.lblVerLinkClick(Sender: TObject; const Link: string;
@@ -625,12 +632,10 @@ begin
     if frmExtensions.Visible then
       begin
       frmExtensions.SetFocus;
-      //ShowWindow(frmExtensions.Handle, SW_RESTORE);
       end;
     end;
 end;
 
-// AOldCommonDataList - ссылка на старый список команд для удаления. Изначально передаём nil
 procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
   const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
   procedure TreeImageListRemoveUnnecessary;
@@ -665,18 +670,6 @@ procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
     newMenuItem: TMPMenuItem;
     vtn: TTreeNode;
   begin
-
-    {if AOldCommonDataList <> nil then
-    begin
-      i := AOldCommonDataList.IndexOf(atn.Data);
-      if i >= 0 then
-        AOldCommonDataList.Delete(i);
-    end;}
-
-    //vCommonData := TCommandData(atn.Data);
-    {if not vCommonData.isVisible then
-      Exit;}
-
     newMenuItem := TMPMenuItem.Create(AMenuItems);
 
     with newMenuItem do
@@ -711,27 +704,6 @@ begin
   end;
 end;
 
-{procedure TfrmConfig.TreeImageListRemoveIndexProperly(const AIndex: Integer);
-begin
-  if AIndex <= 0 then //some optimization
-    Exit;
-  try
-    tvItems.Items.BeginUpdate;
-    ImageList_Remove(TreeImageList.Handle, AIndex);
-    for var I := 0 to tvItems.Items.Count - 1 do
-      begin
-      var vTVItem := tvItems.Items[I];
-      if vTVItem.ImageIndex > AIndex then
-        begin
-        vTVItem.ImageIndex := vTVItem.ImageIndex - 1;
-        vTVItem.SelectedIndex := vTVItem.ImageIndex;
-        end;
-      end;
-  finally
-    tvItems.Items.EndUpdate;
-  end;
-end;}
-
 procedure TfrmConfig.tvItemsChange(Sender: TObject; Node: TTreeNode);
 begin
   // gbProperties.Enabled := True;
@@ -765,15 +737,11 @@ begin
       IsModified := True;
     AllowChange := frmCommandConfig.SaveAssigned;
     end;
-  // Label1.Caption := Node.Text + '; ' + BoolToStr(TCommandData(frmDateTimeToRun1.ItemData).isRunAt, true);
-
-  // Node.Data := frmDateTimeToRun1.ItemData;
 end;
 
 procedure TfrmConfig.tvItemsCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
-  // if not Assigned(Node.Data) or (MyExtendFileNameToFull(TCommandData(Node.Data).Command) <> '') then
   if Node.HasChildren or not Assigned(Node.Data) or
     ((Node = frmCommandConfig.AssignedTreeNode) and
     frmCommandConfig.CheckFileCommandExists) or
@@ -783,7 +751,7 @@ begin
   else
   begin
     Sender.Canvas.Font.Style := [fsStrikeOut]; // .Color := TColors.Red;
-    // Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
+    Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
   end;
 end;
 
@@ -813,8 +781,6 @@ begin
       if vTreeNodeData.isGroup then
         begin
         vMode := naAddChild;
-        //TCommandData(vTreeNode.Data).isGroup := True;
-        //UpdateTreeNodeIcon(vTreeNode);
         end
       else
         begin
@@ -984,8 +950,7 @@ var
     else
     begin
       // w := 0;
-      var vhIcon := MyExtractHIcon(vCommandData.Command,
-        vCommandData.IconFilename, vCommandData.IconFileIndex);
+      var vhIcon := MyExtractHIcon(vCommandData.Command, vCommandData);
       var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
       if vhIcon > 0 then
         DestroyIcon(vhIcon);
@@ -1025,7 +990,7 @@ begin
   TreeNodes.Owner.FullExpand;
 end;
 
-function TfrmConfig.CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
+{function TfrmConfig.CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
 begin
   var vCommandData := TCommandData.Create;
   TCommandData(TreeNode.Data).Assign(vCommandData);
@@ -1042,8 +1007,12 @@ begin
   else
     begin
     var vIcon := TIcon.Create;
-    TreeImageList.GetIcon(TreeNode.ImageIndex, vIcon);
-    vImageIndex := TreeImageList.AddIcon(vIcon);
+    try
+      TreeImageList.GetIcon(TreeNode.ImageIndex, vIcon);
+      vImageIndex := TreeImageList.AddIcon(vIcon);
+    finally
+      vIcon.Free;
+    end; //try..finaly
     end;
   Result.ImageIndex := vImageIndex;
   Result.SelectedIndex := vImageIndex;
@@ -1056,7 +1025,7 @@ begin
     end;
 
   Result.Expanded := TreeNode.Expanded;
-end;
+end;}
 
 procedure TfrmConfig.DisposeTreeViewData;
 begin

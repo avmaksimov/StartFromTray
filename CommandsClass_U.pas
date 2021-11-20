@@ -10,6 +10,7 @@ uses
 
 type
   TCommandRunType = (crtNormalRun, crtByTimeRun, crtEdit);
+  TCommandIconType = (citDefault, citFromFileRes, citFromFileExt);
 
   TCmdWaitForRunningThread = class;
 
@@ -19,7 +20,6 @@ type
 
   // директива для работы с RTTI
 {$M+}
-
   TCommandData = class
   private
     FisGroup: boolean;
@@ -34,8 +34,10 @@ type
     FCommandParameters: string;
 
     FWaitForRunningThread: TCmdWaitForRunningThread;
+
     FIconFilename: string;  // ='' when default
-    FIconFileIndex: Integer; // -1 when default
+    FIconFileIndex: Integer;
+    FIconType: TCommandIconType;
 
     // just RunCommand
     function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
@@ -66,8 +68,9 @@ type
     property Command: string read Fcommand write Fcommand;
     property CommandParameters: string read FCommandParameters
       write FCommandParameters;
+    property IconType: TCommandIconType read FIconType write FIconType;
     property IconFilename: string read FIconFilename write FIconFilename;
-    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex default -1;
+    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex;// default -1;
   end;
 {$M-}
   { TCommandWaitForRunningThread }
@@ -87,6 +90,8 @@ procedure TreeToXML(ATreeNodes: TTreeNodes);
 // получение значения свойства из атрибута (обход nil)
 function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
   const sProperty: String): string;
+
+function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
 
 // var MainCommandList: TCommandList; // основной список
 
@@ -170,6 +175,48 @@ begin
     Result := '';
 end;
 
+// now AFileName can be not full and be in Path
+function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
+var
+  vExt: string;
+  Info: TSHFileInfo;
+begin
+case ACommandData.IconType of
+  citFromFileRes:
+    begin
+    var vLargeIcon: hIcon := 0;
+    var vSmallIcon: HIcon := 1; // non zero
+    if ExtractIconEx(PChar(ACommandData.IconFilename), ACommandData.IconFileIndex, vLargeIcon, vSmallIcon, 1) > 0 then
+      Exit(vSmallIcon);
+    end;
+  else //ACommandData.IconType = 0
+    begin
+    vExt := ExtractFileExt(ACommand);
+    if (vExt = '') or (vExt = '.') then
+      Exit(0);
+
+    vExt := vExt.ToLower;
+
+    if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+    begin
+      if IsRelativePath(ACommand) then
+        ACommand := MyExtendFileNameToFull(ACommand);
+      if ACommand = '' then
+        ACommand := vExt; // not found - so default
+    end
+    else // common document - enough only Ext
+      ACommand := vExt;
+
+    Result := SHGetFileInfo(PChar(ACommand), FILE_ATTRIBUTE_NORMAL, Info,
+      SizeOf(TSHFileInfo), SHGFI_ICON or SHGFI_SMALLICON or
+      SHGFI_USEFILEATTRIBUTES);
+    If Result <> 0 then
+      Result := Info.HIcon
+      // Result := ExtractAssociatedIcon(Application.Handle, PChar(AFileName), w)
+    end;
+end; //case
+end;
+
 { TCommandData }
 
 constructor TCommandData.Create;
@@ -181,6 +228,7 @@ begin
   FisGroup := false; // признак группы
   Fcommand := ''; // команда для выполнения
   FCommandParameters := ''; // параметр команды для выполнения
+  FIconType := citDefault; // by Default
   FIconFilename := '';
   FIconFileIndex := -1;
 
@@ -375,23 +423,22 @@ end;
 
 procedure TCommandData.AssignFrom(SrcNode: IXMLNode);
 var
-  i, FPropCount: integer;
-  TypeData: PTypeData;
+  //TypeData: PTypeData;
   FPropList: PPropList;
   FProp: PPropInfo;
-  sDataToLoad: string;
-  sDataType: TSymbolName;
+  //sDataToLoad: string;
+  //sDataType: TSymbolName;
 begin
-  TypeData := GetTypeData(ClassInfo);
-  FPropCount := TypeData.PropCount;
+  //TypeData := GetTypeData(ClassInfo);
+  var FPropCount := GetTypeData(ClassInfo).PropCount;
   GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
   try
     GetPropInfos(ClassInfo, FPropList);
-    for i := 0 to FPropCount - 1 do
+    for var i := 0 to FPropCount - 1 do
     begin
       FProp := FPropList[i];
 
-      sDataToLoad := GetPropertyFromNodeAttributes(SrcNode,
+      var sDataToLoad := GetPropertyFromNodeAttributes(SrcNode,
         string(FProp.Name));
 
       if sDataToLoad = '' then
@@ -404,7 +451,7 @@ begin
           SetOrdProp(Self, FProp, System.SysUtils.StrToInt(sDataToLoad));
         tkFloat:
           begin
-            sDataType := FProp.PropType^.Name;
+            var sDataType := FProp.PropType^.Name;
             if sDataType = 'TDateTime' then
               SetFloatProp(Self, FProp, StrToDateTime(sDataToLoad))
             else if sDataType = 'TTime' then
@@ -415,6 +462,11 @@ begin
   finally
     FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
   end;
+
+
+  // patch for loading from XML
+  if (IconType = citDefault) and (IconFilename <> '') then
+    IconType := citFromFileRes;
 end;
 
 procedure TCommandData.AssignTo(DestNode: IXMLNode; const ACaption: String);
@@ -444,10 +496,10 @@ begin
           sDataToSave := GetStrProp(Self, FProp);
         tkEnumeration, tkInteger:
           begin
-          var vDataInt := GetOrdProp(Self, FProp);
+          {var vDataInt := GetOrdProp(Self, FProp);
           if vDataInt <> FProp.Default  then
-            sDataToSave := IntToStr(vDataInt);
-          //sDataToSave := IntToStr();
+            sDataToSave := IntToStr(vDataInt);}
+          sDataToSave := GetOrdProp(Self, FProp).ToString;
           end;
         tkFloat:
           begin

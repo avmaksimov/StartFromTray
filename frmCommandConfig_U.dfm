@@ -33,20 +33,6 @@ object frmCommandConfig: TfrmCommandConfig
     Caption = 'The command willn'#39't start until the previous copy running'
     WordWrap = True
   end
-  object imgIcon: TImage
-    Left = 55
-    Top = 181
-    Width = 19
-    Height = 19
-    Center = True
-  end
-  object lblIcon: TLabel
-    Left = 8
-    Top = 183
-    Width = 25
-    Height = 13
-    Caption = 'Icon:'
-  end
   object edtCaption: TLabeledEdit
     Tag = 1
     Left = 8
@@ -123,22 +109,14 @@ object frmCommandConfig: TfrmCommandConfig
     TabOrder = 5
   end
   object btnChangeIcon: TButton
-    Left = 80
-    Top = 181
-    Width = 156
+    Left = 242
+    Top = 4
+    Width = 154
     Height = 19
     Caption = 'Change the Icon'
+    PopupMenu = ppMenuChangeIcon
     TabOrder = 6
     OnClick = btnChangeIconClick
-  end
-  object btnDefaultIcon: TButton
-    Left = 238
-    Top = 181
-    Width = 156
-    Height = 19
-    Caption = 'Default Icon'
-    TabOrder = 7
-    OnClick = btnDefaultIconClick
   end
   object edtCommandOpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'
@@ -316,5 +294,27 @@ object frmCommandConfig: TfrmCommandConfig
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       00000000000000000000}
+  end
+  object ppMenuChangeIcon: TPopupMenu
+    AutoPopup = False
+    TrackButton = tbLeftButton
+    Left = 232
+    Top = 244
+    object miDefaultIcon: TMenuItem
+      AutoCheck = True
+      Caption = 'Default'
+      Default = True
+      RadioItem = True
+      OnClick = miDefaultIconClick
+    end
+    object miChooseFromFileRes: TMenuItem
+      AutoCheck = True
+      Caption = 'Choose from res file...'
+      RadioItem = True
+      OnClick = miChooseFromFileResClick
+    end
+    object miChooseFromFileExt: TMenuItem
+      Caption = 'Choose from file ext...'
+    end
   end
 end

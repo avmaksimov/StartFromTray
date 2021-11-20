@@ -11,7 +11,7 @@ uses
   Vcl.Themes,
   Vcl.Styles,
   System.SysUtils,
-  System.IniFiles, vcl.Dialogs,
+  System.IniFiles, WinAPI.Windows,
   LangsU in 'LangsU.pas',
   MPPopupMenu in 'MPPopupMenu.pas';
 
@@ -35,16 +35,12 @@ begin
     try
       if ReadBool('Main', 'ConfigShow', False) then
         frmConfig.Show;
+        //ShowWindow(frmConfig.Handle, SW_Restore);
       if ReadBool('Main', 'FiltersShow', False) then
         frmExtensions.ShowModal;
     finally
       Free;
     end;
-  //frmConfig.Show;
-  //frmConfig.tvItems.SetFocus;
-  //showmessage(Application.MainForm.Name);
-  //Application.BringToFront;
-  //frmConfig.Show;
 
   // it has to be before Run, after all initialization
   frmConfig.TrayIcon.Visible := True;

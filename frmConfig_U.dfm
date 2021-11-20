@@ -11,16 +11,16 @@ object frmConfig: TfrmConfig
   CustomTitleBar.Control = TitleBarPanel
   CustomTitleBar.Enabled = True
   CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 155507
+  CustomTitleBar.BackgroundColor = 5918747
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 155507
+  CustomTitleBar.ButtonBackgroundColor = 5918747
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 147018
+  CustomTitleBar.ButtonHoverBackgroundColor = 8154917
   CustomTitleBar.ButtonPressedForegroundColor = clWhite
-  CustomTitleBar.ButtonPressedBackgroundColor = 2571
+  CustomTitleBar.ButtonPressedBackgroundColor = 11377460
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -34,7 +34,6 @@ object frmConfig: TfrmConfig
   Position = poScreenCenter
   StyleElements = [seFont, seClient]
   OnCreate = FormCreate
-  OnDestroy = FormDestroy
   OnHide = FormHide
   OnShow = FormShow
   PixelsPerInch = 96
@@ -83,9 +82,6 @@ object frmConfig: TfrmConfig
       ExplicitLeft = 2
       ExplicitTop = 15
       ExplicitHeight = 365
-      inherited imgIcon: TImage
-        Proportional = True
-      end
     end
   end
   object gbButtons: TGroupBox
@@ -248,9 +244,6 @@ object frmConfig: TfrmConfig
         Visible = True
         OnClick = TitleBarPanelCustomButtons0Click
       end>
-    ExplicitLeft = -28
-    ExplicitTop = 22
-    ExplicitWidth = 802
     DesignSize = (
       790
       25)
