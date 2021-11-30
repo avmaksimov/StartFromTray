@@ -307,7 +307,7 @@ object frmCommandConfig: TfrmCommandConfig
       OnClick = miDefaultIconClick
     end
     object miChooseFromFileRes: TMenuItem
-      Caption = 'Choose from res file...'
+      Caption = 'Choose from file with icons...'
       RadioItem = True
       OnClick = miChooseFromFileResClick
     end
