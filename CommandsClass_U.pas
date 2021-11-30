@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, ShellApi, Dialogs, contnrs, ComCtrls, XMLDoc, XMLIntf, Windows,
-  Variants, System.TypInfo,
+  Variants, System.TypInfo, Winapi.ShlObj, Winapi.ShLwApi,
   DateUtils, Types, FilterClass_U, ComObj, ActiveX, System.UITypes,
   System.Classes;
 
@@ -38,6 +38,7 @@ type
     FIconFilename: string;  // ='' when default
     FIconFileIndex: Integer;
     FIconType: TCommandIconType;
+    FIconExt: string;
 
     // just RunCommand
     function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
@@ -57,6 +58,7 @@ type
     procedure Assign(Dest: TCommandData);
     procedure AssignFrom(SrcNode: IXMLNode);
     procedure AssignTo(DestNode: IXMLNode; const ACaption: String);
+    function  ExtractHIcon(const ACommand: string = ''): HIcon;
     // real property
     property isRunning: boolean read FisRunning write FisRunning;
   published // all this properties saves in xmls
@@ -71,6 +73,7 @@ type
     property IconType: TCommandIconType read FIconType write FIconType;
     property IconFilename: string read FIconFilename write FIconFilename;
     property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex;// default -1;
+    property IconExt: string read FIconExt write FIconExt;
   end;
 {$M-}
   { TCommandWaitForRunningThread }
@@ -91,13 +94,13 @@ procedure TreeToXML(ATreeNodes: TTreeNodes);
 function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
   const sProperty: String): string;
 
-function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
+//function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
 
 // var MainCommandList: TCommandList; // основной список
 
 implementation
 
-uses Winapi.ShlObj, Winapi.ShLwApi, CommonU;
+uses CommonU;
 
 procedure TreeToXML(ATreeNodes: TTreeNodes);
 var
@@ -176,11 +179,13 @@ begin
 end;
 
 // now AFileName can be not full and be in Path
-function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
+// Result: 0 or valid hIcon
+{function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
 var
   vExt: string;
   Info: TSHFileInfo;
 begin
+Result := 0;
 case ACommandData.IconType of
   citFromFileRes:
     begin
@@ -215,7 +220,7 @@ case ACommandData.IconType of
       // Result := ExtractAssociatedIcon(Application.Handle, PChar(AFileName), w)
     end;
 end; //case
-end;
+end;}
 
 { TCommandData }
 
@@ -231,6 +236,7 @@ begin
   FIconType := citDefault; // by Default
   FIconFilename := '';
   FIconFileIndex := -1;
+  FIconExt := '';
 
   FWaitForRunningThread := nil;
 
@@ -361,6 +367,55 @@ begin
   end;
 end;
 
+// now AFileName can be not full and be in Path
+// Result: 0 or valid hIcon
+function TCommandData.ExtractHIcon(const ACommand: string = ''): HIcon;
+begin
+Result := 0;
+if IconType in [citDefault, citFromFileExt] then
+  begin
+  var vFileForIcon: string;
+  if IconType = citDefault then
+    begin
+    if vFileForIcon <> '' then
+      vFileForIcon := ACommand
+    else
+      vFileForIcon := Command;
+
+    var vExt := ExtractFileExt(vFileForIcon);
+    if (vExt = '') or (vExt = '.') then
+      Exit(0);
+
+    vExt := vExt.ToLower;
+
+    if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+      begin
+      if IsRelativePath(vFileForIcon) then
+        vFileForIcon := MyExtendFileNameToFull(vFileForIcon);
+      if vFileForIcon = '' then
+        vFileForIcon := vExt; // not found - so default
+      end
+    else // common document - enough only Ext
+      vFileForIcon := vExt;
+    end
+  else //citFromFileExt
+    vFileForIcon := '.' + IconExt;
+  // IconType in [citDefault, citFromFileExt]
+  var Info: TSHFileInfo;
+  Result := SHGetFileInfo(PChar(vFileForIcon), FILE_ATTRIBUTE_NORMAL, Info,
+    SizeOf(TSHFileInfo), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_USEFILEATTRIBUTES);
+  If Result <> 0 then
+    Result := Info.HIcon
+  end //IconType in [citDefault, citFromFileExt]
+else //citFromFileRes
+  begin
+  var vLargeIcon: hIcon := 0;
+  var vSmallIcon: HIcon := 1; // non zero
+  if ExtractIconEx(PChar(IconFilename), IconFileIndex, vLargeIcon, vSmallIcon, 1) > 0 then
+    Result := vSmallIcon;
+  end;
+end;
+
 procedure TCommandData.Run(const RunType: TCommandRunType);
 var
   vFilterData: TFilterData;
@@ -465,8 +520,8 @@ begin
 
 
   // patch for loading from XML
-  if (IconType = citDefault) and (IconFilename <> '') then
-    IconType := citFromFileRes;
+  {if (IconType = citDefault) and (IconFilename <> '') then
+    IconType := citFromFileRes;}
 end;
 
 procedure TCommandData.AssignTo(DestNode: IXMLNode; const ACaption: String);

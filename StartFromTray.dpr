@@ -11,9 +11,11 @@ uses
   Vcl.Themes,
   Vcl.Styles,
   System.SysUtils,
-  System.IniFiles, WinAPI.Windows,
+  System.IniFiles,
+  WinAPI.Windows,
   LangsU in 'LangsU.pas',
-  MPPopupMenu in 'MPPopupMenu.pas';
+  MPPopupMenu in 'MPPopupMenu.pas',
+  frmChooseExt_U in 'frmChooseExt_U.pas' {frmChooseExt};
 
 {$R *.res}
 
@@ -21,6 +23,7 @@ begin
   Application.Initialize;
   Application.CreateForm(TfrmConfig, frmConfig);
   Application.CreateForm(TfrmExtensions, frmExtensions);
+  Application.CreateForm(TfrmChooseExt, frmChooseExt);
   Application.ShowMainForm := False;
 
   GenDefaultFileLang;
@@ -30,6 +33,9 @@ begin
     cbLangs.ItemIndex := LangFillListAndGetCurrent(cbLangs.Items);
     cbLangsChange(cbLangs);
   end;
+
+  if frmConfig.tvItems.Items.Count <= 0 then
+    frmConfig.Show;
 
   with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
     try
@@ -44,7 +50,6 @@ begin
 
   // it has to be before Run, after all initialization
   frmConfig.TrayIcon.Visible := True;
-
   Application.Run;
 
 end.

@@ -530,12 +530,10 @@ begin
   with ppTrayMenu do
   begin
     Images := TreeImageList;
-    OwnerDraw := True;
+    //OwnerDraw := True;
     OnItemMiddleClick := ppTrayMenuItemMiddleClick;
     OnItemRightClick := ppTrayMenuItemRightClick;
   end;
-
-  ListDeletedImageIndexes := TList<Integer>.Create;
 
   // if not Swapped then tbRightButton else tbLeftButton
   // ppTrayMenu.TrackButton := TTrackButton(MouseButtonSwapped);
@@ -543,13 +541,14 @@ begin
 
   TrayIcon.Icon := Application.Icon;
 
-  gMenuItemBmpWidth := GetSystemMetrics(SM_CXMENUCHECK);
-  gMenuItemBmpHeight := GetSystemMetrics(SM_CYMENUCHECK);
+  gMenuItemBmpWidth := GetSystemMetrics(SM_CXSMICON);//SM_CXMENUCHECK);
+  gMenuItemBmpHeight := GetSystemMetrics(SM_CYSMICON);//SM_CYMENUCHECK);
   TreeImageList.Width := gMenuItemBmpWidth;
   TreeImageList.Height := gMenuItemBmpHeight;
 
-  frmCommandConfig.TreeImageList := TreeImageList;
+  ListDeletedImageIndexes := TList<Integer>.Create;
   frmCommandConfig.ListDeletedImageIndexes := ListDeletedImageIndexes;
+  frmCommandConfig.TreeImageList := TreeImageList;
 
   XMLToTree(tvItems.Items);
 
@@ -560,7 +559,9 @@ begin
     CorrectTreeViewItemHeight;
   end
   else
-    frmCommandConfig.ClearAssigned;//Assign(nil);
+    begin
+    frmCommandConfig.ClearAssigned;
+    end;
 
   with TRegistry.Create(KEY_READ) do
     try
@@ -940,7 +941,7 @@ var
     end;
 
     // fix potencial and prev. bug then isGroup = 1 for no children node
-    vCommandData.isGroup := vCommandData.isGroup; //TreeNode.HasChildren;
+    //vCommandData.isGroup := vCommandData.isGroup; //TreeNode.HasChildren;
 
     if vCommandData.isGroup then
     begin
@@ -949,8 +950,7 @@ var
     end
     else
     begin
-      // w := 0;
-      var vhIcon := MyExtractHIcon(vCommandData.Command, vCommandData);
+      var vhIcon := vCommandData.ExtractHIcon();
       var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
       if vhIcon > 0 then
         DestroyIcon(vhIcon);

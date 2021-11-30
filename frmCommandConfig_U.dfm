@@ -301,20 +301,20 @@ object frmCommandConfig: TfrmCommandConfig
     Left = 232
     Top = 244
     object miDefaultIcon: TMenuItem
-      AutoCheck = True
       Caption = 'Default'
       Default = True
       RadioItem = True
       OnClick = miDefaultIconClick
     end
     object miChooseFromFileRes: TMenuItem
-      AutoCheck = True
       Caption = 'Choose from res file...'
       RadioItem = True
       OnClick = miChooseFromFileResClick
     end
     object miChooseFromFileExt: TMenuItem
       Caption = 'Choose from file ext...'
+      RadioItem = True
+      OnClick = miChooseFromFileExtClick
     end
   end
 end

@@ -9,16 +9,16 @@ object frmExtensions: TfrmExtensions
   CustomTitleBar.Control = TitleBarPanel
   CustomTitleBar.Enabled = True
   CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 1327713
+  CustomTitleBar.BackgroundColor = 7295494
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 1327713
+  CustomTitleBar.ButtonBackgroundColor = 7295494
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 1792901
-  CustomTitleBar.ButtonPressedForegroundColor = 65793
-  CustomTitleBar.ButtonPressedBackgroundColor = 2523066
+  CustomTitleBar.ButtonHoverBackgroundColor = 9990408
+  CustomTitleBar.ButtonPressedForegroundColor = clWhite
+  CustomTitleBar.ButtonPressedBackgroundColor = 13999627
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -131,7 +131,7 @@ object frmExtensions: TfrmExtensions
   end
   object gbExtensionProperties: TGroupBox
     Left = 243
-    Top = 24
+    Top = 26
     Width = 336
     Height = 181
     Caption = 'Extension'#39's properties '
@@ -208,7 +208,6 @@ object frmExtensions: TfrmExtensions
         Visible = True
         OnClick = TitleBarPanelCustomButtons0Click
       end>
-    ExplicitWidth = 596
     DesignSize = (
       585
       25)

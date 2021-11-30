@@ -42,6 +42,7 @@ type
     procedure miDefaultIconClick(Sender: TObject);
     procedure miChooseFromFileResClick(Sender: TObject);
     procedure btnChangeIconClick(Sender: TObject);
+    procedure miChooseFromFileExtClick(Sender: TObject);
   private
     { private declarations }
     FAssignedTreeNode: TTreeNode;
@@ -90,7 +91,7 @@ type
 
 implementation
 
-uses LangsU, frmConfig_U, System.StrUtils, CommonU, System.Masks, System.Math,
+uses LangsU, frmConfig_U, frmChooseExt_U, System.StrUtils, CommonU, System.Masks, System.Math,
   Winapi.ShlObj;
 
 {$R *.dfm}
@@ -249,14 +250,26 @@ begin
   end;
 end;
 
+procedure TfrmCommandConfig.miChooseFromFileExtClick(Sender: TObject);
+begin
+with frmChooseExt do
+  begin
+  Extension := FAssignedCommandData.IconExt;
+  if ShowModal = mrOk then
+    begin
+    FAssignedCommandData.IconType := citFromFileExt;
+    FAssignedCommandData.IconExt := Extension;
+    UpdateIcon;
+    miChooseFromFileExt.Checked := True;
+    end;
+  end;
+end;
+
 procedure TfrmCommandConfig.miChooseFromFileResClick(Sender: TObject);
 begin
   if not Assigned(FAssignedTreeNode) or not Assigned(FAssignedTreeNode.Data) then
     Exit;
 
-  //var vCommandData := TCommandData(FAssignedTreeNode.Data);
-
-  //var FileName: string := '';//'C:\Windows\System32\Shell32.dll';
   var vFileName: string := FAssignedCommandData.IconFilename;
   if vFileName = '' then
     begin
@@ -278,21 +291,9 @@ begin
       FAssignedCommandData.IconFilename := WideCharToString(pFileName);
       FAssignedCommandData.IconFileIndex := vIconIndex;
 
-      UpdateIcon
-      //vCommandData.IconFilename := WideCharToString(pFileName);
-      //vCommandData.IconFileIndex := vIconIndex;
-
-      //FAssignedTreeNode.ImageIndex := vIconIndex;
-      //FAssignedTreeNode.SelectedIndex := vIconIndex;
-      //FAssignedTreeNode.Owner.Owner.Repaint; //tvItems.Repaint
-
-      //edtCommandChange(nil);
+      UpdateIcon;
+      miChooseFromFileRes.Checked := True;
       end
-    else
-      case FAssignedCommandData.IconType of
-        citDefault: miDefaultIcon.Checked := True;
-        citFromFileExt: miChooseFromFileExt.Checked := True;
-      end; //case
   finally
     FreeMem(pFileName, MAX_PATH);
     end;
@@ -304,7 +305,7 @@ begin
   FAssignedCommandData.IconFilename := '';
   FAssignedCommandData.IconFileIndex := -1;
   UpdateIcon;
-  //edtCommandChange(nil);
+  miDefaultIcon.Checked := True;
 end;
 
 procedure TfrmCommandConfig.SetCaption(const AValue: string);
@@ -365,7 +366,7 @@ end;
 
 procedure TfrmCommandConfig.UpdateIcon;
 begin
-  var vNewHIcon := MyExtractHIcon(edtCommand.Text, FAssignedCommandData);
+  var vNewHIcon := FAssignedCommandData.ExtractHIcon(edtCommand.Text); //MyExtractHIcon(edtCommand.Text, FAssignedCommandData);
   var vImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle,
       FAssignedTreeNode.ImageIndex, vNewHIcon);
   if vNewHIcon > 0 then
