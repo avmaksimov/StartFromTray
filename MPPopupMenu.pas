@@ -72,46 +72,53 @@ begin
         end;
       end;
     WM_MENUSELECT:
-      with TWMMenuSelect(Message) do
       begin
-        var FindKind := fkCommand;
-        if MenuFlag and MF_POPUP <> 0 then
-          FindKind := fkHandle;
-        for var I := 0 to Count - 1 do
+      FActiveMenuItem := nil;
+      with TWMMenuSelect(Message) do
         begin
-          var Item: HMenu;
-          if FindKind = fkHandle then
+        if not ((MenuFlag and $FFFF > 0) and (Menu = 0)) then
           begin
-            if Menu <> 0 then
-              Item := GetSubMenu(Menu, IDItem)
-            else
-              begin
-                break; //avmaksimov
-              end;
-
-          end
-          else
-            Item := IDItem;
-          var FMenuItem := TPopupMenu(Items[I]).FindItem(Item, FindKind);
-          if FMenuItem <> nil then
+          var FindKind := fkCommand;
+          if MenuFlag and MF_POPUP <> 0 then
+            FindKind := fkHandle;
+          for var I := 0 to Count - 1 do
             begin
-              FActiveMenuItem := FMenuItem;
-              inherited;
-              Exit;
+              var Item: HMenu;
+              if FindKind = fkHandle then
+              begin
+                if Menu <> 0 then
+                  Item := GetSubMenu(Menu, IDItem)
+                else
+                  begin
+                  break; //avmaksimov
+                  end;
+
+              end
+              else
+                Item := IDItem;
+              var FMenuItem := TPopupMenu(Items[I]).FindItem(Item, FindKind);
+              if FMenuItem <> nil then
+                begin
+                FActiveMenuItem := FMenuItem;
+                  //inherited;
+                  //Exit;
+                end;
             end;
+          end;
+          //FActiveMenuItem := nil;
+          inherited;
         end;
-        FActiveMenuItem := nil;
-        inherited;
       end;
     WM_MBUTTONDOWN:
-      begin
-        for var i := 0 to Count - 1 do
+      if Assigned(FActiveMenuItem) then
         begin
-          var pm := TPopupMenu(Items[i]);
-          if pm is TMPPopupMenu then
-            TMPPopupMenu(Items[i]).MClick(FActiveMenuItem);
+          for var i := 0 to Count - 1 do
+          begin
+            var pm := TPopupMenu(Items[i]);
+            if pm is TMPPopupMenu then
+              TMPPopupMenu(Items[i]).MClick(FActiveMenuItem);
+          end;
         end;
-      end;
   end;
   inherited WndProc(Message);
 end;
@@ -158,7 +165,7 @@ const
   Flags: array [Boolean, TPopupAlignment] of Word =
     ((TPM_LEFTALIGN, TPM_RIGHTALIGN, TPM_CENTERALIGN),
     (TPM_RIGHTALIGN, TPM_LEFTALIGN, TPM_CENTERALIGN));
-  Buttons: array [TTrackButton] of Word = (TPM_RIGHTBUTTON, TPM_LEFTBUTTON);
+  //Buttons: array [TTrackButton] of Word = (TPM_RIGHTBUTTON, TPM_LEFTBUTTON);
 var
   AFlags: Integer;
 begin

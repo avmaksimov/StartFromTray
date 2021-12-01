@@ -9,7 +9,7 @@ uses
   System.Classes;
 
 type
-  TCommandRunType = (crtNormalRun, crtByTimeRun, crtEdit);
+  TCommandRunType = (crtNormalRun, crtEdit); // crtByTimeRun
   TCommandIconType = (citDefault, citFromFileRes, citFromFileExt);
 
   TCmdWaitForRunningThread = class;
@@ -39,10 +39,11 @@ type
     FIconFileIndex: Integer;
     FIconType: TCommandIconType;
     FIconExt: string;
+    FIsRunAsAdmin: Boolean;
 
     // just RunCommand
     function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
-      const RunType: TCommandRunType): THandle;
+      const RunType: TCommandRunType; const IsRunAsAdmin: Boolean): THandle;
 
   public
     constructor Create; overload;
@@ -70,6 +71,7 @@ type
     property Command: string read Fcommand write Fcommand;
     property CommandParameters: string read FCommandParameters
       write FCommandParameters;
+    property IsRunAsAdmin: Boolean read FIsRunAsAdmin write FIsRunAsAdmin;
     property IconType: TCommandIconType read FIconType write FIconType;
     property IconFilename: string read FIconFilename write FIconFilename;
     property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex;// default -1;
@@ -251,10 +253,10 @@ begin
 end;
 
 function TCommandData.InternalRun(const AHelper: string;
-  const ADefaultOperation: PChar; const RunType: TCommandRunType): THandle;
+  const ADefaultOperation: PChar; const RunType: TCommandRunType;
+  const IsRunAsAdmin: Boolean): THandle;
 const
-  strCommandRunType: array [TCommandRunType] of string = ('Normal Run',
-    'Run by time', 'Edit');
+  strCommandRunType: array [TCommandRunType] of string = ('Normal Run', 'Edit');
 var
   vOperation, vFilename, vParameters: PChar;
   SEInfo: TShellExecuteInfo;
@@ -270,7 +272,6 @@ begin
     vOperation := nil;
     vFilename := PChar('"' + AHelper + '"');
     vParameters := PChar('"' + Fcommand + '"' + FCommandParameters);
-    // IfThen(FCommandParameters <> '', ' "' + FCommandParameters + '"'));
   end
   else
   begin
@@ -278,6 +279,9 @@ begin
     vFilename := PChar(Fcommand);
     vParameters := PChar(FCommandParameters);
   end;
+
+  if (vOperation = nil) and IsRunAsAdmin then
+    vOperation := PChar('runas');
 
   FillChar(SEInfo, SizeOf(SEInfo), 0);
   with SEInfo do
@@ -361,7 +365,7 @@ begin
     else
       editHelper := '';
     if (editHelper <> '') or (GetAssociatedExeForEdit(Fcommand) <> '') then
-      InternalRun(editHelper, PChar('edit'), crtEdit)
+      InternalRun(editHelper, PChar('edit'), crtEdit, IsRunAsAdmin)
     else
       OpenFolderAndSelectFile(Fcommand);
   end;
@@ -431,7 +435,7 @@ begin
     else
       runHelper := '';
 
-    ProcessHandle := InternalRun(runHelper, nil, RunType);
+    ProcessHandle := InternalRun(runHelper, nil, RunType, IsRunAsAdmin);
     if ProcessHandle <> 0 then
     begin
       isRunning := True;

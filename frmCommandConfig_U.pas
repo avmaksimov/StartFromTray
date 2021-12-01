@@ -31,6 +31,8 @@ type
     miChooseFromFileRes: TMenuItem;
     miDefaultIcon: TMenuItem;
     miChooseFromFileExt: TMenuItem;
+    cbRunAsAdmin: TCheckBox;
+    Bevel1: TBevel;
     procedure edtCaptionChange(Sender: TObject);
     { procedure edtCommandBeforeDialog(Sender: TObject; var AName: string;
       var AAction: Boolean); }
@@ -245,6 +247,7 @@ begin
     with CommandData do
       Result := Result or (edtCommand.Text <> Command) or
         (edtCommandParameters.Text <> CommandParameters) or
+        (cbRunAsAdmin.Checked <> IsRunAsAdmin) or
         (FAssignedCommandData.IconFilename <> IconFilename) or
         (FAssignedCommandData.IconFileIndex <> IconFileIndex);
   end;
@@ -398,6 +401,7 @@ try
   edtCommand.Text := '';  FOldCommandText := '';
   lblIsRunning.Caption := '';
   edtCommandParameters.Text := '';
+  cbRunAsAdmin.Checked := False;
 finally
   FAssigningState := False;
   end;
@@ -448,6 +452,7 @@ begin
         edtCommand.Text := Command;
         FOldCommandText := Command;
         edtCommandParameters.Text := CommandParameters;
+        cbRunAsAdmin.Checked := IsRunAsAdmin;
         case IconType of
           citFromFileRes: miChooseFromFileRes.Checked := True;
           citFromFileExt: miChooseFromFileExt.Checked := True;
@@ -515,6 +520,7 @@ begin
       Command := vCommand;
       //Command := Trim(edtCommand.Text);
       CommandParameters := Trim(edtCommandParameters.Text);
+      IsRunAsAdmin := cbRunAsAdmin.Checked;
       IconType := FAssignedCommandData.IconType;
       IconFilename := FAssignedCommandData.IconFilename;
       IconFileIndex := FAssignedCommandData.IconFileIndex;
@@ -524,7 +530,7 @@ begin
   end;
   FAssignedTreeNode.Text := vCaption; //Trim(edtCaption.Text);
   FAssignedCaption := vCaption; //FAssignedTreeNode.Text;
-  FreeAndNil(FAssignedCommandData);
+  //FreeAndNil(FAssignedCommandData);
   Result := True;
 end;
 

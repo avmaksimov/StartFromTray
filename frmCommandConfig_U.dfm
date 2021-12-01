@@ -33,6 +33,13 @@ object frmCommandConfig: TfrmCommandConfig
     Caption = 'The command willn'#39't start until the previous copy running'
     WordWrap = True
   end
+  object Bevel1: TBevel
+    Left = 8
+    Top = 183
+    Width = 388
+    Height = 5
+    Shape = bsTopLine
+  end
   object edtCaption: TLabeledEdit
     Tag = 1
     Left = 8
@@ -117,6 +124,14 @@ object frmCommandConfig: TfrmCommandConfig
     PopupMenu = ppMenuChangeIcon
     TabOrder = 6
     OnClick = btnChangeIconClick
+  end
+  object cbRunAsAdmin: TCheckBox
+    Left = 8
+    Top = 194
+    Width = 388
+    Height = 17
+    Caption = 'Run as admin'
+    TabOrder = 7
   end
   object edtCommandOpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'
