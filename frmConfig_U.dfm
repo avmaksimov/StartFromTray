@@ -11,16 +11,16 @@ object frmConfig: TfrmConfig
   CustomTitleBar.Control = TitleBarPanel
   CustomTitleBar.Enabled = True
   CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 7295494
+  CustomTitleBar.BackgroundColor = 1788506
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 7295494
+  CustomTitleBar.ButtonBackgroundColor = 1788506
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 9990408
-  CustomTitleBar.ButtonPressedForegroundColor = clWhite
-  CustomTitleBar.ButtonPressedBackgroundColor = 13999627
+  CustomTitleBar.ButtonHoverBackgroundColor = 2451068
+  CustomTitleBar.ButtonPressedForegroundColor = 65793
+  CustomTitleBar.ButtonPressedBackgroundColor = 3444653
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -39,14 +39,14 @@ object frmConfig: TfrmConfig
   PixelsPerInch = 96
   TextHeight = 13
   object gbItems: TGroupBox
-    Left = 6
-    Top = 25
+    Left = 4
+    Top = 27
     Width = 373
     Height = 412
     Caption = 'Elements to run'
     TabOrder = 0
     object tvItems: TTreeView
-      Left = 3
+      Left = 6
       Top = 15
       Width = 361
       Height = 390
@@ -249,8 +249,8 @@ object frmConfig: TfrmConfig
       25)
   end
   object ActionList: TActionList
-    Left = 36
-    Top = 34
+    Left = 44
+    Top = 58
     object actAddElement: TAction
       Tag = -1
       Category = 'Elements'

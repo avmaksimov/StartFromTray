@@ -23,7 +23,7 @@ type
   TCommandData = class
   private
     FisGroup: boolean;
-    FName: string;
+    //FName: string;
     // уникальное имя (используется для автоматизации редактирования скриптов). Генерируется автоматически
     //FisVisible: boolean; // признак видимости
     Fcommand: String; // команда для выполнения
@@ -59,12 +59,12 @@ type
     procedure Assign(Dest: TCommandData);
     procedure AssignFrom(SrcNode: IXMLNode);
     procedure AssignTo(DestNode: IXMLNode; const ACaption: String);
-    function  ExtractHIcon(const ACommand: string = ''): HIcon;
+    function  ExtractHIcon{(const ACommand: string = '')}: HIcon;
     // real property
     property isRunning: boolean read FisRunning write FisRunning;
   published // all this properties saves in xmls
 
-    property Name: string read FName write FName;
+    //property Name: string read FName write FName;
     //property isVisible: boolean read FisVisible write FisVisible;
     property isGroup: boolean read FisGroup write FisGroup;
     property Childs: TCommandList read FChilds;
@@ -230,7 +230,7 @@ constructor TCommandData.Create;
 begin
   inherited Create;
 
-  FName := '';
+  //FName := '';
   //FisVisible := True; // признак видимости
   FisGroup := false; // признак группы
   Fcommand := ''; // команда для выполнения
@@ -373,7 +373,7 @@ end;
 
 // now AFileName can be not full and be in Path
 // Result: 0 or valid hIcon
-function TCommandData.ExtractHIcon(const ACommand: string = ''): HIcon;
+function TCommandData.ExtractHIcon{(const ACommand: string = '')}: HIcon;
 begin
 Result := 0;
 if IconType in [citDefault, citFromFileExt] then
@@ -381,9 +381,9 @@ if IconType in [citDefault, citFromFileExt] then
   var vFileForIcon: string;
   if IconType = citDefault then
     begin
-    if vFileForIcon <> '' then
+    {if vFileForIcon <> '' then
       vFileForIcon := ACommand
-    else
+    else}
       vFileForIcon := Command;
 
     var vExt := ExtractFileExt(vFileForIcon);
@@ -401,7 +401,7 @@ if IconType in [citDefault, citFromFileExt] then
       end
     else // common document - enough only Ext
       vFileForIcon := vExt;
-    end
+    end  // IconType = citDefault
   else //citFromFileExt
     vFileForIcon := '.' + IconExt;
   // IconType in [citDefault, citFromFileExt]

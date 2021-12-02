@@ -121,7 +121,7 @@ type
     procedure WndProc(var Message: TMessage); override;
   public
     { public declarations }
-    ListDeletedImageIndexes: TList<Integer>;
+    ListDeletedImageIndexes: TList<Word>;
     //procedure TreeImageListRemoveIndexProperly(const AIndex: Integer);
   end;
 
@@ -171,9 +171,9 @@ begin
   //try
     //AddToOldCommandDataRecurse(ppTrayMenu.Items);
 
-    ppTrayMenu.Items.Clear;
+  ppTrayMenu.Items.Clear;
 
-    TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick); //, oldCommonData);
+  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick); //, oldCommonData);
 
   //finally
   //  oldCommonData.Free;
@@ -546,7 +546,7 @@ begin
   TreeImageList.Width := gMenuItemBmpWidth;
   TreeImageList.Height := gMenuItemBmpHeight;
 
-  ListDeletedImageIndexes := TList<Integer>.Create;
+  ListDeletedImageIndexes := TList<Word>.Create;
   frmCommandConfig.ListDeletedImageIndexes := ListDeletedImageIndexes;
   frmCommandConfig.TreeImageList := TreeImageList;
 
@@ -639,32 +639,6 @@ end;
 
 procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
   const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
-  procedure TreeImageListRemoveUnnecessary;
-    begin
-    if ListDeletedImageIndexes.Count <= 0 then
-      Exit;
-    ListDeletedImageIndexes.Sort;
-    try
-      ATreeNodes.BeginUpdate;
-      for var I := ListDeletedImageIndexes.Count - 1 downto 0 do
-        begin
-        var vIndex: Integer := Integer(ListDeletedImageIndexes[I]);
-        if ImageList_Remove(TreeImageList.Handle, vIndex)then
-          for var J := 0 to ATreeNodes.Count - 1 do
-            begin
-            var vTVItem := ATreeNodes[J];
-            if vTVItem.SelectedIndex > vIndex then
-              begin
-              vTVItem.SelectedIndex := vTVItem.SelectedIndex - 1;
-              vTVItem.ImageIndex := vTVItem.SelectedIndex;
-              end;
-            end;
-        end;
-      finally
-        ListDeletedImageIndexes.Clear;
-        ATreeNodes.EndUpdate;
-      end;
-    end;
 
   procedure ProcessTreeItem(atn: TTreeNode; ami: TMenuItem);
   var
@@ -694,7 +668,30 @@ procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
 
 begin
 
-  TreeImageListRemoveUnnecessary;
+  if ListDeletedImageIndexes.Count > 0 then
+    begin
+    ListDeletedImageIndexes.Sort;
+    try
+      ATreeNodes.BeginUpdate;
+      for var I := ListDeletedImageIndexes.Count - 1 downto 0 do
+        begin
+        var vIndex: Integer := Integer(ListDeletedImageIndexes[I]);
+        if ImageList_Remove(TreeImageList.Handle, vIndex)then
+          for var J := 0 to ATreeNodes.Count - 1 do
+            begin
+            var vTVItem := ATreeNodes[J];
+            if vTVItem.SelectedIndex > vIndex then
+              begin
+              vTVItem.SelectedIndex := vTVItem.SelectedIndex - 1;
+              vTVItem.ImageIndex := vTVItem.SelectedIndex;
+              end;
+            end;
+        end;
+      finally
+        ListDeletedImageIndexes.Clear;
+        ATreeNodes.EndUpdate;
+      end;
+    end;
 
   var tn := ATreeNodes.GetFirstNode; // TopNode;
   while tn <> nil do

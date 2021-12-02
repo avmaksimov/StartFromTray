@@ -114,6 +114,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Height = 13
     EditLabel.Caption = 'Parameters:'
     TabOrder = 5
+    OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
     Left = 242
@@ -132,6 +133,7 @@ object frmCommandConfig: TfrmCommandConfig
     Height = 17
     Caption = 'Run as admin'
     TabOrder = 7
+    OnClick = cbRunAsAdminClick
   end
   object edtCommandOpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'

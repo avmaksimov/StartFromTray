@@ -91,7 +91,8 @@ Extension := edtExt.Text;
 end;
 
 procedure TfrmChooseExt.FormShow(Sender: TObject);
-procedure SyncToRight(const ALeft: TArray<string>; const ARight: TStringList);
+  // following in the footsteps of the algorithm: http://www.mlsite.net/blog/?p=2250 with some improvements
+  procedure SyncToRight(const ALeft: TArray<string>; const ARight: TStringList);
   begin
   var vLeft: Integer := 0; var vRight: Integer := 0;
   var vLeftCount := Length(ALeft); var vRightCount := ARight.Count;
@@ -220,6 +221,7 @@ try
   finally
     reg.Free
     end;
+  edtExt.SetFocus;
 end;
 
 procedure TfrmChooseExt.lbExtensionsClick(Sender: TObject);

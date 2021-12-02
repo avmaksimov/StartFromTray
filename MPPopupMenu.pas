@@ -64,10 +64,9 @@ begin
       begin
         for var i := 0 to Count - 1 do
         begin
-          var pm := TPopupMenu(Items[i]);
-          if pm is TMPPopupMenu then
-            if TMPPopupMenu(Items[i]).DispatchRC(Message.lParam, Message.wParam)
-            then
+		    var pm := TPopupMenu(Items[i]);
+        if (pm is TMPPopupMenu) and
+          (TMPPopupMenu(Items[i]).DispatchRC(Message.lParam, Message.wParam)) then
               Exit;
         end;
       end;
@@ -76,7 +75,8 @@ begin
       FActiveMenuItem := nil;
       with TWMMenuSelect(Message) do
         begin
-        if not ((MenuFlag and $FFFF > 0) and (Menu = 0)) then
+        // Check if popup menu is open: https://www.swissdelphicenter.ch/en/showcode.php?id=958
+		if not ((MenuFlag and $FFFF > 0) and (Menu = 0)) then
           begin
           var FindKind := fkCommand;
           if MenuFlag and MF_POPUP <> 0 then
@@ -85,7 +85,7 @@ begin
             begin
               var Item: HMenu;
               if FindKind = fkHandle then
-              begin
+                begin
                 if Menu <> 0 then
                   Item := GetSubMenu(Menu, IDItem)
                 else
@@ -93,7 +93,7 @@ begin
                   break; //avmaksimov
                   end;
 
-              end
+                end
               else
                 Item := IDItem;
               var FMenuItem := TPopupMenu(Items[I]).FindItem(Item, FindKind);
@@ -103,20 +103,20 @@ begin
                   //inherited;
                   //Exit;
                 end;
-            end;
-          end;
+            end; // for
+          end; // Check if popup menu is open
           //FActiveMenuItem := nil;
-          inherited;
-        end;
-      end;
+        end; // TWMMenuSelect(Message)
+	  inherited;
+      end; // WM_MENUSELECT
     WM_MBUTTONDOWN:
       if Assigned(FActiveMenuItem) then
         begin
-          for var i := 0 to Count - 1 do
+        for var i := 0 to Count - 1 do
           begin
-            var pm := TPopupMenu(Items[i]);
-            if pm is TMPPopupMenu then
-              TMPPopupMenu(Items[i]).MClick(FActiveMenuItem);
+		      var pm := TPopupMenu(Items[i]);
+          if pm is TMPPopupMenu then
+            TMPPopupMenu(Items[i]).MClick(FActiveMenuItem);
           end;
         end;
   end;
