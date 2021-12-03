@@ -9,8 +9,8 @@ uses
 
 const
   cItemsFileName = 'Items.xml';
-  cIconHeigh = 19;
-  cIconWidth = 10;
+  //cIconHeigh = 19;
+  //cIconWidth = 10;
 
 function MyExtendFileNameToFull(const AFileName: string): string;
 
@@ -40,7 +40,8 @@ var
   s: string;
   vPaths: TStringDynArray;
 begin
-  if FileExists(AFileName) then
+  if FileExists(AFileName) or //directory must be absolute path
+    (DirectoryExists(AFileName) and not IsRelativePath(AFileName)) then
   begin
     Result := AFileName;
     Exit;

@@ -300,8 +300,7 @@ begin
   else if gDebug then
   begin
     vGetLastError := GetLastError;
-    if vGetLastError <> 1155 then
-    // не установлена ассоциация (чтобы не было двойного сообщения об ошибке)
+    if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
     begin
       if vOperation = nil then
         sTechErrorMsg := 'nil'

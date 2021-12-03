@@ -51,7 +51,6 @@ type
     lbLangs: TLabel;
     lblVer: TLinkLabel;
     actAddGroup: TAction;
-    TitleBarPanel: TTitleBarPanel;
     procedure actAddElementExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
     procedure actApplyUpdate(Sender: TObject);
@@ -90,6 +89,8 @@ type
     procedure lblVerLinkClick(Sender: TObject; const Link: string;
       LinkType: TSysLinkType);
     procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
+    procedure FormConstrainedResize(Sender: TObject; var MinWidth, MinHeight,
+      MaxWidth, MaxHeight: Integer);
   private
     { private declarations }
     gMenuItemBmpWidth, gMenuItemBmpHeight: integer;
@@ -518,6 +519,13 @@ procedure TfrmConfig.CorrectTreeViewItemHeight;
 begin
   TreeView_SetItemHeight(tvItems.Items[0].Handle, gMenuItemBmpHeight +
     IfThen(Odd(gMenuItemBmpHeight), 3, 2));
+end;
+
+procedure TfrmConfig.FormConstrainedResize(Sender: TObject; var MinWidth,
+  MinHeight, MaxWidth, MaxHeight: Integer);
+begin
+  MinWidth := 808;
+  MinHeight := 525;
 end;
 
 procedure TfrmConfig.FormCreate(Sender: TObject);

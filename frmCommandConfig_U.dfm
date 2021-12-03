@@ -38,6 +38,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 183
     Width = 388
     Height = 5
+    Anchors = [akLeft, akTop, akRight]
     Shape = bsTopLine
   end
   object edtCaption: TLabeledEdit
@@ -73,6 +74,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 57
     Width = 75
     Height = 19
+    Anchors = [akTop, akRight]
     Caption = 'Edit'
     TabOrder = 2
     OnClick = btnEditClick
@@ -82,6 +84,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 57
     Width = 75
     Height = 19
+    Anchors = [akTop, akRight]
     Caption = 'Run'
     TabOrder = 3
     OnClick = btnRunClick
@@ -91,6 +94,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 78
     Width = 388
     Height = 21
+    Anchors = [akLeft, akTop, akRight]
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
@@ -110,6 +114,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 124
     Width = 388
     Height = 21
+    Anchors = [akLeft, akTop, akRight]
     EditLabel.Width = 59
     EditLabel.Height = 13
     EditLabel.Caption = 'Parameters:'
@@ -121,6 +126,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 4
     Width = 154
     Height = 19
+    Anchors = [akTop, akRight]
     Caption = 'Change the Icon'
     PopupMenu = ppMenuChangeIcon
     TabOrder = 6
@@ -131,7 +137,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 194
     Width = 388
     Height = 17
-    Caption = 'Run as admin'
+    Caption = 'Run as administrator'
     TabOrder = 7
     OnClick = cbRunAsAdminClick
   end
@@ -139,7 +145,7 @@ object frmCommandConfig: TfrmCommandConfig
     DefaultExtension = 'exe'
     FavoriteLinks = <>
     FileTypes = <>
-    Options = [fdoNoValidate, fdoFileMustExist, fdoShareAware]
+    Options = [fdoForceFileSystem, fdoPathMustExist, fdoShareAware, fdoNoTestFileCreate]
     Title = 'Browse for file to run'
     Left = 352
     Top = 342

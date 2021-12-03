@@ -2,25 +2,20 @@ object frmConfig: TfrmConfig
   AlignWithMargins = True
   Left = 322
   Top = 137
-  BorderIcons = [biSystemMenu]
-  BorderStyle = bsSingle
   Caption = 'Run options'
-  ClientHeight = 514
-  ClientWidth = 796
+  ClientHeight = 486
+  ClientWidth = 792
   Color = clBtnFace
-  CustomTitleBar.Control = TitleBarPanel
-  CustomTitleBar.Enabled = True
-  CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 1788506
+  CustomTitleBar.BackgroundColor = 7158279
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 1788506
+  CustomTitleBar.ButtonBackgroundColor = 7158279
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 2451068
-  CustomTitleBar.ButtonPressedForegroundColor = 65793
-  CustomTitleBar.ButtonPressedBackgroundColor = 3444653
+  CustomTitleBar.ButtonHoverBackgroundColor = 9851146
+  CustomTitleBar.ButtonPressedForegroundColor = clWhite
+  CustomTitleBar.ButtonPressedBackgroundColor = 13857037
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -28,28 +23,35 @@ object frmConfig: TfrmConfig
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  GlassFrame.Enabled = True
-  GlassFrame.Top = 26
   OldCreateOrder = True
   Position = poScreenCenter
   StyleElements = [seFont, seClient]
+  OnConstrainedResize = FormConstrainedResize
   OnCreate = FormCreate
   OnHide = FormHide
   OnShow = FormShow
+  DesignSize = (
+    792
+    486)
   PixelsPerInch = 96
   TextHeight = 13
   object gbItems: TGroupBox
-    Left = 4
-    Top = 27
+    Left = 2
+    Top = 1
     Width = 373
     Height = 412
+    Anchors = [akLeft, akTop, akBottom]
     Caption = 'Elements to run'
     TabOrder = 0
+    DesignSize = (
+      373
+      412)
     object tvItems: TTreeView
       Left = 6
       Top = 15
       Width = 361
       Height = 390
+      Anchors = [akLeft, akTop, akBottom]
       DoubleBuffered = True
       DragMode = dmAutomatic
       HideSelection = False
@@ -66,10 +68,11 @@ object frmConfig: TfrmConfig
     end
   end
   object gbProperties: TGroupBox
-    Left = 383
-    Top = 27
+    Left = 381
+    Top = 1
     Width = 408
     Height = 382
+    Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'Properties'
     TabOrder = 1
     inline frmCommandConfig: TfrmCommandConfig
@@ -85,10 +88,11 @@ object frmConfig: TfrmConfig
     end
   end
   object gbButtons: TGroupBox
-    Left = 4
-    Top = 445
+    Left = 2
+    Top = 419
     Width = 373
     Height = 65
+    Anchors = [akLeft, akBottom]
     TabOrder = 2
     object btnAddGroup: TButton
       Left = 6
@@ -141,11 +145,15 @@ object frmConfig: TfrmConfig
     end
   end
   object gbMainButtons: TGroupBox
-    Left = 383
-    Top = 415
+    Left = 381
+    Top = 389
     Width = 408
     Height = 95
+    Anchors = [akLeft, akRight, akBottom]
     TabOrder = 3
+    DesignSize = (
+      408
+      95)
     object lbLangs: TLabel
       Left = 7
       Top = 13
@@ -180,6 +188,7 @@ object frmConfig: TfrmConfig
       Width = 75
       Height = 25
       Action = actApply
+      Anchors = [akRight, akBottom]
       TabOrder = 6
     end
     object btnClose: TButton
@@ -188,6 +197,7 @@ object frmConfig: TfrmConfig
       Width = 75
       Height = 25
       Action = actClose
+      Anchors = [akRight, akBottom]
       Cancel = True
       TabOrder = 5
     end
@@ -197,6 +207,7 @@ object frmConfig: TfrmConfig
       Width = 75
       Height = 25
       Action = actOK
+      Anchors = [akRight, akBottom]
       TabOrder = 4
     end
     object cbRunOnWindowsStart: TCheckBox
@@ -229,24 +240,6 @@ object frmConfig: TfrmConfig
       TabOrder = 0
       OnChange = cbLangsChange
     end
-  end
-  object TitleBarPanel: TTitleBarPanel
-    AlignWithMargins = True
-    Left = 3
-    Top = 3
-    Width = 790
-    Height = 25
-    CustomButtons = <
-      item
-        ButtonType = sbMinimize
-        Enabled = True
-        Width = 32
-        Visible = True
-        OnClick = TitleBarPanelCustomButtons0Click
-      end>
-    DesignSize = (
-      790
-      25)
   end
   object ActionList: TActionList
     Left = 44
