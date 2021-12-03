@@ -6,18 +6,6 @@ object frmConfig: TfrmConfig
   ClientHeight = 486
   ClientWidth = 792
   Color = clBtnFace
-  CustomTitleBar.BackgroundColor = 7158279
-  CustomTitleBar.ForegroundColor = clWhite
-  CustomTitleBar.InactiveBackgroundColor = clWhite
-  CustomTitleBar.InactiveForegroundColor = 10066329
-  CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 7158279
-  CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 9851146
-  CustomTitleBar.ButtonPressedForegroundColor = clWhite
-  CustomTitleBar.ButtonPressedBackgroundColor = 13857037
-  CustomTitleBar.ButtonInactiveForegroundColor = 10066329
-  CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -71,7 +59,7 @@ object frmConfig: TfrmConfig
     Left = 381
     Top = 1
     Width = 408
-    Height = 382
+    Height = 412
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'Properties'
     TabOrder = 1
@@ -79,12 +67,12 @@ object frmConfig: TfrmConfig
       Left = 2
       Top = 15
       Width = 404
-      Height = 365
+      Height = 395
       Align = alClient
       TabOrder = 0
       ExplicitLeft = 2
       ExplicitTop = 15
-      ExplicitHeight = 365
+      ExplicitHeight = 395
     end
   end
   object gbButtons: TGroupBox
@@ -146,24 +134,17 @@ object frmConfig: TfrmConfig
   end
   object gbMainButtons: TGroupBox
     Left = 381
-    Top = 389
+    Top = 419
     Width = 408
-    Height = 95
+    Height = 65
     Anchors = [akLeft, akRight, akBottom]
     TabOrder = 3
     DesignSize = (
       408
-      95)
-    object lbLangs: TLabel
-      Left = 7
-      Top = 13
-      Width = 96
-      Height = 13
-      Caption = 'Interface language:'
-    end
+      65)
     object lblVer: TLinkLabel
-      Left = 352
-      Top = 37
+      Left = 10
+      Top = 12
       Width = 46
       Height = 17
       Cursor = crHandPoint
@@ -178,67 +159,47 @@ object frmConfig: TfrmConfig
       ParentFont = False
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 2
+      TabOrder = 0
       TabStop = True
       OnLinkClick = lblVerLinkClick
     end
     object btnApply: TButton
       Left = 328
-      Top = 61
+      Top = 31
       Width = 75
       Height = 25
       Action = actApply
       Anchors = [akRight, akBottom]
-      TabOrder = 6
+      TabOrder = 3
     end
     object btnClose: TButton
       Left = 245
-      Top = 61
+      Top = 31
       Width = 75
       Height = 25
       Action = actClose
       Anchors = [akRight, akBottom]
       Cancel = True
-      TabOrder = 5
+      TabOrder = 2
     end
     object btnOK: TButton
       Left = 162
-      Top = 61
+      Top = 31
       Width = 75
       Height = 25
       Action = actOK
       Anchors = [akRight, akBottom]
-      TabOrder = 4
-    end
-    object cbRunOnWindowsStart: TCheckBox
-      Left = 7
-      Top = 35
-      Width = 167
-      Height = 19
-      Caption = 'Run at Windows start'
-      ParentShowHint = False
-      ShowHint = False
       TabOrder = 1
-      OnClick = cbRunOnWindowsStartChange
     end
-    object btnExtensions: TButton
-      Left = 6
-      Top = 61
+    object btnOptions: TButton
+      Left = 10
+      Top = 31
       Width = 107
       Height = 25
-      Caption = 'Extensions...'
-      TabOrder = 3
-      OnClick = btnExtensionsClick
-    end
-    object cbLangs: TComboBox
-      Left = 162
-      Top = 10
-      Width = 241
-      Height = 21
-      AutoCloseUp = True
-      Style = csDropDownList
-      TabOrder = 0
-      OnChange = cbLangsChange
+      Caption = 'Options'
+      PopupMenu = ppOptionsMenu
+      TabOrder = 4
+      OnClick = btnOptionsClick
     end
   end
   object ActionList: TActionList
@@ -327,5 +288,34 @@ object frmConfig: TfrmConfig
     BkColor = 15790320
     Left = 212
     Top = 192
+  end
+  object ppOptionsMenu: TPopupMenu
+    Left = 506
+    Top = 449
+    object miOptionsLang: TMenuItem
+      Caption = 'Interface language'
+    end
+    object N1: TMenuItem
+      Caption = '-'
+    end
+    object miOptionsRunAtStart: TMenuItem
+      AutoCheck = True
+      Caption = 'Run at Windows start'
+      OnClick = miOptionsRunAtStartClick
+    end
+    object N2: TMenuItem
+      Caption = '-'
+    end
+    object miOptionsExtensions: TMenuItem
+      Caption = 'Extensions...'
+      OnClick = miOptionsExtensionsClick
+    end
+    object N3: TMenuItem
+      Caption = '-'
+    end
+    object miOptionsExitProgram: TMenuItem
+      Caption = 'Exit the program'
+      OnClick = miOptionsExitProgramClick
+    end
   end
 end

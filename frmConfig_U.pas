@@ -31,10 +31,8 @@ type
     btnCopy: TButton;
     btnOK: TButton;
     btnAddElement: TButton;
-    btnExtensions: TButton;
     btnUp: TButton;
     btnDown: TButton;
-    cbRunOnWindowsStart: TCheckBox;
     gbItems: TGroupBox;
     gbProperties: TGroupBox;
     gbButtons: TGroupBox;
@@ -47,10 +45,17 @@ type
     tvItems: TTreeView;
     TreeImageList: TImageList;
     frmCommandConfig: TfrmCommandConfig;
-    cbLangs: TComboBox;
-    lbLangs: TLabel;
     lblVer: TLinkLabel;
     actAddGroup: TAction;
+    btnOptions: TButton;
+    ppOptionsMenu: TPopupMenu;
+    miOptionsLang: TMenuItem;
+    N1: TMenuItem;
+    miOptionsRunAtStart: TMenuItem;
+    N2: TMenuItem;
+    miOptionsExtensions: TMenuItem;
+    N3: TMenuItem;
+    miOptionsExitProgram: TMenuItem;
     procedure actAddElementExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
     procedure actApplyUpdate(Sender: TObject);
@@ -64,8 +69,6 @@ type
     procedure actItemUpUpdate(Sender: TObject);
     procedure actOKExecute(Sender: TObject);
     procedure btnDelClick(Sender: TObject);
-    procedure btnExtensionsClick(Sender: TObject);
-    procedure cbRunOnWindowsStartChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure ppCMConfigClick(Sender: TObject);
@@ -84,13 +87,16 @@ type
     procedure actCopyExecute(Sender: TObject);
     procedure tvItemsCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
-    procedure cbLangsChange(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure lblVerLinkClick(Sender: TObject; const Link: string;
       LinkType: TSysLinkType);
     procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
     procedure FormConstrainedResize(Sender: TObject; var MinWidth, MinHeight,
       MaxWidth, MaxHeight: Integer);
+    procedure miOptionsExitProgramClick(Sender: TObject);
+    procedure btnOptionsClick(Sender: TObject);
+    procedure miOptionsRunAtStartClick(Sender: TObject);
+    procedure miOptionsExtensionsClick(Sender: TObject);
   private
     { private declarations }
     gMenuItemBmpWidth, gMenuItemBmpHeight: integer;
@@ -123,6 +129,7 @@ type
   public
     { public declarations }
     ListDeletedImageIndexes: TList<Word>;
+    procedure miOptionsLangClick(Sender: TObject);
     //procedure TreeImageListRemoveIndexProperly(const AIndex: Integer);
   end;
 
@@ -134,63 +141,23 @@ var
 implementation
 
 uses CommonU, frmExtensions_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
-  Winapi.ShellAPI, System.IniFiles, System.UITypes;
+  Winapi.ShellAPI, System.IniFiles, System.Types, System.UITypes;
 
 {$R *.dfm}
 { TfrmConfig }
 
 procedure TfrmConfig.actApplyExecute(Sender: TObject);
-{var
-  oldCommonData: TList;
-  procedure AddToOldCommandDataRecurse(AMenuItems: TMenuItem);
-  var
-    i: Integer;
-    vmi: TMenuItem;
-  begin
-    for i := 0 to AMenuItems.Count - 1 do
-    begin
-      vmi := AMenuItems[i];
-      oldCommonData.Add(Pointer(vmi.Tag));
-
-      if vmi.Count > 0 then
-        AddToOldCommandDataRecurse(vmi);
-    end;
-  end;}
-
 begin
-  // if not IsModified then Exit;
-
   // сохраним редактируемые данные
   if not frmCommandConfig.SaveAssigned then
     Exit;
 
   TreeToXML(tvItems.Items); // заполнение RunAtTime здесь
 
-  // RunAtTime.LoadDataFromTreeNodes(tvItems.Items); // загрузить запланированное время
-
-  //oldCommonData := TList.Create; // oldCommonData - список старых действий
-  //try
-    //AddToOldCommandDataRecurse(ppTrayMenu.Items);
-
   ppTrayMenu.Items.Clear;
 
   TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick); //, oldCommonData);
 
-  //finally
-  //  oldCommonData.Free;
-  //end;
-
-  { with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
-    try
-    RootKey := HKEY_CURRENT_USER;
-    if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
-    if cbRunOnWindowsStart.Checked then
-    WriteString('StartFromTray', ParamStr(0))
-    else
-    DeleteValue('StartFromTray');
-    finally
-    Free;
-    end; }
   IsModified := False;
 end;
 
@@ -311,13 +278,6 @@ begin
       tvItems.Items.EndUpdate;
     end;
 
-    {if needToUpdateIsGroup and (tvItems.Selected <> nil) then
-    begin
-      TCommandData(tvItems.Selected.Data).isGroup :=
-        tvItems.Selected.HasChildren;
-      UpdateTreeNodeIcon(tvItems.Selected);
-    end;}
-
     IsModified := True;
   end;
 end;
@@ -373,42 +333,10 @@ begin
       tvItems.Items.EndUpdate;
     end;
 
-    // tvItems.Selected.ImageIndex := -1;
-    // tvItems.Selected.SelectedIndex := -1;
-
-    //tvItems.Repaint;
-
     IsModified := True;
     end
   else
     frmCommandConfig.SetFocus;
-{var
-  vSelected: TTreeNode;
-  vDest: TCommandData;
-  vOldImageIndex: Integer;
-begin
-  vSelected := tvItems.Selected;
-  if not Assigned(vSelected) then
-    Exit;
-
-  vDest := TCommandData.Create;
-  TCommandData(vSelected.Data).Assign(vDest);
-  vOldImageIndex := vSelected.ImageIndex;
-
-  tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected,
-    tvItems.Selected.Text, vDest);
-
-  // frmCommandConfig.edtCommandChange Extract an icon and set valid ImageIndex
-  if vOldImageIndex <> 0 then
-    tvItems.Selected.ImageIndex := -1; // 0 is default value
-  frmCommandConfig.edtCommandChange(nil);
-
-  // tvItems.Selected.ImageIndex := -1;
-  // tvItems.Selected.SelectedIndex := -1;
-
-  tvItems.Repaint;
-
-  IsModified := True; }
 end;
 
 procedure TfrmConfig.actCopyUpdate(Sender: TObject);
@@ -460,59 +388,10 @@ begin
     tvItems.Items.Delete(tvItems.Selected);
 end;
 
-procedure TfrmConfig.btnExtensionsClick(Sender: TObject);
+procedure TfrmConfig.btnOptionsClick(Sender: TObject);
 begin
-  frmExtensions.ShowModal;
-end;
-
-procedure TfrmConfig.cbLangsChange(Sender: TObject);
-  function _GetBuildInfo: string;
-  var
-    VerInfoSize, VerValueSize, Dummy: DWORD;
-    VerInfo: Pointer;
-    VerValue: PVSFixedFileInfo;
-  begin
-    VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
-    if VerInfoSize > 0 then
-    begin
-        GetMem(VerInfo, VerInfoSize);
-        try
-          if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo) then
-          begin
-            VerQueryValue(VerInfo, '\', Pointer(VerValue), VerValueSize);
-            with VerValue^ do
-            begin
-              Result := (dwFileVersionMS shr 16).ToString + '.' +
-                (dwFileVersionMS and $FFFF).ToString + '.' +
-                (dwFileVersionLS shr 16).ToString + '.' +
-                (dwFileVersionLS and $FFFF).ToString;
-            end;
-          end;
-        finally
-          FreeMem(VerInfo, VerInfoSize);
-        end;
-    end;
-  end;
-begin
-  SetLang(StrPas(PChar(cbLangs.Items.Objects[cbLangs.ItemIndex])));
-  if Visible then
-    UpdateLblVerLeftAndCaption;
-  lblVer.Hint := GetLangString(Name, 'VersionHint');
-end;
-
-procedure TfrmConfig.cbRunOnWindowsStartChange(Sender: TObject);
-begin
-  with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
-    try
-      RootKey := HKEY_CURRENT_USER;
-      if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
-        if cbRunOnWindowsStart.Checked then
-          WriteString('StartFromTray', ParamStr(0))
-        else
-          DeleteValue('StartFromTray');
-    finally
-      Free;
-    end;
+ with btnOptions.ClientToScreen(point(0, btnOptions.Height)) do
+    btnOptions.PopupMenu.Popup(X, Y);
 end;
 
 procedure TfrmConfig.CorrectTreeViewItemHeight;
@@ -574,9 +453,12 @@ begin
   with TRegistry.Create(KEY_READ) do
     try
       RootKey := HKEY_CURRENT_USER;
-      cbRunOnWindowsStart.Checked :=
+      miOptionsRunAtStart.Checked :=
         OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Run') and
-        ValueExists('StartFromTray');
+          ValueExists('StartFromTray');
+      {cbRunOnWindowsStart.Checked :=
+        OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Run') and
+        ValueExists('StartFromTray');}
       IsModified := False;
     finally
       Free;
@@ -606,6 +488,70 @@ begin
   ShellExecute(Handle, 'open', PChar(Link), nil, nil, SW_SHOWNORMAL);
 end;
 
+procedure TfrmConfig.miOptionsExitProgramClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfrmConfig.miOptionsExtensionsClick(Sender: TObject);
+begin
+  frmExtensions.ShowModal;
+end;
+
+procedure TfrmConfig.miOptionsLangClick(Sender: TObject);
+  function _GetBuildInfo: string;
+  var
+    VerInfoSize, VerValueSize, Dummy: DWORD;
+    VerInfo: Pointer;
+    VerValue: PVSFixedFileInfo;
+  begin
+    VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
+    if VerInfoSize > 0 then
+    begin
+        GetMem(VerInfo, VerInfoSize);
+        try
+          if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo) then
+          begin
+            VerQueryValue(VerInfo, '\', Pointer(VerValue), VerValueSize);
+            with VerValue^ do
+            begin
+              Result := (dwFileVersionMS shr 16).ToString + '.' +
+                (dwFileVersionMS and $FFFF).ToString + '.' +
+                (dwFileVersionLS shr 16).ToString + '.' +
+                (dwFileVersionLS and $FFFF).ToString;
+            end;
+          end;
+        finally
+          FreeMem(VerInfo, VerInfoSize);
+        end;
+    end;
+  end;
+begin
+  var vMenuItem := TMenuItem(Sender);
+
+  SetLang(StrPas(PChar(vMenuItem.Tag)));
+  if Visible then
+    UpdateLblVerLeftAndCaption;
+  lblVer.Hint := GetLangString(Name, 'VersionHint');
+
+  vMenuItem.Checked := True;
+end;
+
+procedure TfrmConfig.miOptionsRunAtStartClick(Sender: TObject);
+begin
+  with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
+    try
+      RootKey := HKEY_CURRENT_USER;
+      if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
+        if miOptionsRunAtStart.Checked then
+          WriteString('StartFromTray', ParamStr(0))
+        else
+          DeleteValue('StartFromTray');
+    finally
+      Free;
+    end;
+end;
+
 procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
 begin
   Show;
@@ -613,7 +559,8 @@ end;
 
 procedure TfrmConfig.ppCMExitClick(Sender: TObject);
 begin
-  Application.Terminate;
+  Close;
+  //Application.Terminate;
 end;
 
 procedure TfrmConfig.TitleBarPanelCustomButtons0Click(Sender: TObject);
@@ -846,10 +793,10 @@ procedure TfrmConfig.UpdateLblVerLeftAndCaption;
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
 
-  var vPrevVerWidth := lblVer.Width;
+  //var vPrevVerWidth := lblVer.Width;
   lblVer.Caption := '<a href="https://github.com/avmaksimov/StartFromTray">' +
     GetLangString(Name, 'Version') + ' ' + _GetBuildInfo + '</a>';
-  lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
+  //lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
 end;
 
 {procedure TfrmConfig.UpdateTreeNodeIcon(const ATreeNode: TTreeNode);

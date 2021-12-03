@@ -30,8 +30,8 @@ begin
 
   with frmConfig do
   begin
-    cbLangs.ItemIndex := LangFillListAndGetCurrent(cbLangs.Items);
-    cbLangsChange(cbLangs);
+    miOptionsLangClick(miOptionsLang.Items[LangFillListAndGetCurrent(ppOptionsMenu,
+      miOptionsLang, miOptionsLangClick)]);
   end;
 
   if frmConfig.tvItems.Items.Count <= 0 then

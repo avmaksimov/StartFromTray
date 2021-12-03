@@ -105,7 +105,7 @@ procedure TfrmCommandConfig.btnChangeIconClick(Sender: TObject);
 begin
   //ppMenuChangeIcon.Popup(frmConfig.Left + btnChangeIcon.Left, frmConfig.Top + btnChangeIcon.Top);
   with btnChangeIcon.ClientToScreen(point(0, btnChangeIcon.Height)) do
-    ppMenuChangeIcon.Popup(X, Y);
+    btnChangeIcon.PopupMenu.Popup(X, Y);
 end;
 
 procedure TfrmCommandConfig.btnEditClick(Sender: TObject);

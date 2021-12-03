@@ -2,14 +2,16 @@ unit LangsU;
 
 interface
 
-uses Vcl.Forms, System.Classes, System.Generics.Collections;
+uses Vcl.Forms, System.Classes, System.Generics.Collections, Vcl.Menus;
 
 procedure GenDefaultFileLang;
 function GetLangString(const ASection, AString: string): string;
 procedure SetLang(const ALangCode: string);
 
+//get Index for AmiLang.Items with gen default LCID
+function LangFillListAndGetCurrent(const AMenu: TPopupMenu; const AmiLang: TMenuItem;
+  const AOnClick: TNotifyEvent): Integer;
 // get Index with gen default LCID
-function LangFillListAndGetCurrent(const AStringList: TStrings): Integer;
 
 function AskForConfirmation(const AForm: TForm;
   const AConfirmation: string): Boolean;
@@ -20,8 +22,7 @@ implementation
 
 uses System.SysUtils, System.IniFiles, System.TypInfo,
   System.StrUtils, Vcl.StdCtrls, Vcl.Controls, Vcl.ExtCtrls, Vcl.ActnList,
-  Vcl.Menus, Vcl.Dialogs, System.Generics.Defaults, Winapi.Windows,
-  System.IOUtils;
+  Vcl.Dialogs, System.Generics.Defaults, Winapi.Windows, System.IOUtils;
 
 const
   cLangFolderName = 'Langs';
@@ -101,7 +102,6 @@ procedure GenDefaultFileLang;
       else
         WriteComponents(ASectionName + '\' + vComponent.Name,
           vComponent as TFrame)
-        // WriteToLangFile(vComponent.Name, vComponent.Name, vComponent)
     end;
   end;
 
@@ -208,7 +208,6 @@ var
   DelimetedSectionName: TArray<string>;
   vForm, vFrame: TComponent;
   vFrameFound: Boolean; // delimiter \ for frame
-  // vLangStringKeys: TStringList; vLangStringKey: string;
 begin
   vLangFileName := { ExtractFilePath(ParamStr(0)) + cLangFolderName + '\' }
     FLangPath + ALangCode + '.ini';
@@ -295,19 +294,25 @@ begin
   // end;
 end;
 
-function LangFillListAndGetCurrent(const AStringList: TStrings): Integer;
-var
-  vSR: TSearchRec;
-  sLangCode, sLangCaption: string;
-  vUserDefaultLCID: LCID;
-  vCurrentItemIndex, vCurrentItemIndexForLCID,
-    vCurrentItemIndexForIniLang: Integer;
-  vCurrentIniLangCode: string;
+function LangFillListAndGetCurrent(const AMenu: TPopupMenu; const AmiLang: TMenuItem;
+  const AOnClick: TNotifyEvent): Integer;
+  procedure AddSubMenuItem(const ALangName, ALangCode: string);
+  begin
+  var vMenuItem := TMenuItem.Create(AMenu);
+  with vMenuItem do
+    begin
+    Caption := ALangName;
+    Tag := Integer(StrNew(PChar(ALangCode)));
+    RadioItem := True;
+    OnClick := AOnClick;
+    end;
+  AmiLang.Add(vMenuItem);
+  end;
 begin
   Result := 0; // LCID for user not found
-  vUserDefaultLCID := GetUserDefaultUILanguage(); // GetUserDefaultLCID();
-  // ShowMessage(UIntToStr(vUserDefaultLCID) + #13#10 + UIntToStr(GetUserDefaultLCID()));
+  var vUserDefaultLCID := GetUserDefaultUILanguage(); // GetUserDefaultLCID();
 
+  var vCurrentIniLangCode: string;
   with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
     try
       vCurrentIniLangCode := ReadString('Main', 'LangCode', '');
@@ -315,42 +320,38 @@ begin
       Free;
     end;
 
-  AStringList.AddObject('Default - English', TObject(StrNew(PChar('Default'))));
-  vCurrentItemIndex := 1;
-  // vCurrentItemIndexForLCID := 0;
-  // vCurrentItemIndexForIniLang := 0;
+  AddSubMenuItem('Default - English', 'Default');
 
+  var vCurrentItemIndexForIniLang: Integer;
   if vCurrentIniLangCode = 'Default' then
     vCurrentItemIndexForIniLang := 0
   else
     vCurrentItemIndexForIniLang := -1;
 
+  var vCurrentItemIndexForLCID: Integer;
   if StrToUIntDef(GetLangString('LangProperties', 'LCID'), 0) = vUserDefaultLCID
   then
     vCurrentItemIndexForLCID := 0
   else
     vCurrentItemIndexForLCID := -1;
-  // ShowMessageFmt('vCurrentItemIndexForIniLang: %d; vCurrentItemIndexForLCID: %d',
-  // [vCurrentItemIndexForIniLang, vCurrentItemIndexForLCID]);
+
+  var vSR: TSearchRec; var vCurrentItemIndex: Integer := 1;
   if FindFirst(FLangPath + '???.ini', faNormal, vSR) = 0 then
   begin
     repeat
-      sLangCode := TPath.GetFileNameWithoutExtension(vSR.Name);
+      var sLangCode := TPath.GetFileNameWithoutExtension(vSR.Name);
       with TMemIniFile.Create(FLangPath + vSR.Name, System.SysUtils.TEncoding.UTF8) do
         try
-          // ShowMessage(IntToStr(LCID(ReadInteger('LangProperties', '@LCID', 0))) + #13#10 + vCurrentItemIndex.ToString);
-          sLangCaption := ReadString('LangProperties', '@Name', '');
+          var sLangCaption := ReadString('LangProperties', '@Name', '');
           if sLangCaption <> '' then
           begin
             if (vCurrentItemIndexForLCID = -1) and
-              (LCID(ReadInteger('LangProperties', '@LCID', 0))
-              = vUserDefaultLCID) then
+              (LCID(ReadInteger('LangProperties', '@LCID', 0)) = vUserDefaultLCID) then
               vCurrentItemIndexForLCID := vCurrentItemIndex;
             if (vCurrentItemIndexForIniLang = -1) and
               (sLangCode = vCurrentIniLangCode) then
               vCurrentItemIndexForIniLang := vCurrentItemIndex;
-            AStringList.AddObject(sLangCaption,
-              TObject(StrNew(PChar(sLangCode))));
+            AddSubMenuItem(sLangCaption, sLangCode);
           end;
         finally
           Free;
@@ -359,8 +360,6 @@ begin
     until (FindNext(vSR) <> 0);
     System.SysUtils.FindClose(vSR);
   end;
-  // ShowMessageFmt('vCurrentItemIndexForIniLang: %d; vCurrentItemIndexForLCID: %d',
-  // [vCurrentItemIndexForIniLang, vCurrentItemIndexForLCID]);
   // choose the best match
   if vCurrentItemIndexForIniLang >= 0 then
     Result := vCurrentItemIndexForIniLang
@@ -377,13 +376,9 @@ begin
 end;
 
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;
-// (const AFormHandle: THandle; const ACaption, AFormCaption: string): Boolean;
 begin
   Result := AskForConfirmation(AForm,
     Format(GetLangString('LangStrings', 'DeleteConfirm'), [ACaption]));
-  { Result := MessageBoxEx(AForm.Handle, PChar(Format(GetLangString('LangStrings', 'DeleteConfirm'),
-    [ACaption])), PChar(AForm.Caption), MB_ICONWARNING or MB_YESNO or MB_DEFBUTTON2,
-    StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = mrYes; }
 end;
 
 procedure ErrorDialog(const AForm: TForm; const ACaption: string);
