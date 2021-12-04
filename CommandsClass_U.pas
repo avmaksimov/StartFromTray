@@ -42,8 +42,9 @@ type
     FIsRunAsAdmin: Boolean;
 
     // just RunCommand
-    function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
-      const RunType: TCommandRunType; const IsRunAsAdmin: Boolean): THandle;
+    {function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
+      const RunType: TCommandRunType; const IsRunAsAdmin: Boolean): THandle;}
+    function InternalRun(const AHelper: string; const RunType: TCommandRunType): THandle;
 
   public
     constructor Create; overload;
@@ -180,50 +181,6 @@ begin
     Result := '';
 end;
 
-// now AFileName can be not full and be in Path
-// Result: 0 or valid hIcon
-{function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
-var
-  vExt: string;
-  Info: TSHFileInfo;
-begin
-Result := 0;
-case ACommandData.IconType of
-  citFromFileRes:
-    begin
-    var vLargeIcon: hIcon := 0;
-    var vSmallIcon: HIcon := 1; // non zero
-    if ExtractIconEx(PChar(ACommandData.IconFilename), ACommandData.IconFileIndex, vLargeIcon, vSmallIcon, 1) > 0 then
-      Exit(vSmallIcon);
-    end;
-  else //ACommandData.IconType = 0
-    begin
-    vExt := ExtractFileExt(ACommand);
-    if (vExt = '') or (vExt = '.') then
-      Exit(0);
-
-    vExt := vExt.ToLower;
-
-    if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
-    begin
-      if IsRelativePath(ACommand) then
-        ACommand := MyExtendFileNameToFull(ACommand);
-      if ACommand = '' then
-        ACommand := vExt; // not found - so default
-    end
-    else // common document - enough only Ext
-      ACommand := vExt;
-
-    Result := SHGetFileInfo(PChar(ACommand), FILE_ATTRIBUTE_NORMAL, Info,
-      SizeOf(TSHFileInfo), SHGFI_ICON or SHGFI_SMALLICON or
-      SHGFI_USEFILEATTRIBUTES);
-    If Result <> 0 then
-      Result := Info.HIcon
-      // Result := ExtractAssociatedIcon(Application.Handle, PChar(AFileName), w)
-    end;
-end; //case
-end;}
-
 { TCommandData }
 
 constructor TCommandData.Create;
@@ -252,7 +209,7 @@ begin
     FWaitForRunningThread.Terminate;
 end;
 
-function TCommandData.InternalRun(const AHelper: string;
+{function TCommandData.InternalRun(const AHelper: string;
   const ADefaultOperation: PChar; const RunType: TCommandRunType;
   const IsRunAsAdmin: Boolean): THandle;
 const
@@ -317,6 +274,73 @@ begin
         IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' + sTechErrorMsg);
     end;
   end;
+end;}
+function TCommandData.InternalRun(const AHelper: string;
+  const RunType: TCommandRunType): THandle;
+const
+  strCommandRunType: array [TCommandRunType] of string = ('Normal Run', 'Edit');
+var
+  vOperation, vFilename, vParameters: PChar;
+  SEInfo: TShellExecuteInfo;
+  vGetLastError: Cardinal;
+  sTechErrorMsg: string;
+begin
+  Result := 0;
+
+  //CoInitializeEx(nil, COINIT_APARTMENTTHREADED or COINIT_DISABLE_OLE1DDE);
+
+  if AHelper <> '' then
+  begin
+    //vOperation := nil;
+    vFilename := PChar('"' + AHelper + '"');
+    vParameters := PChar('"' + Fcommand + '"' + FCommandParameters);
+  end
+  else
+  begin
+    //vOperation := ADefaultOperation;
+    vFilename := PChar(Fcommand);
+    vParameters := PChar(FCommandParameters);
+  end;
+
+  if not IsRunAsAdmin then
+    vOperation := nil
+  else
+    vOperation := PChar('runas');
+
+  FillChar(SEInfo, SizeOf(SEInfo), 0);
+  with SEInfo do
+  begin
+    cbSize := SizeOf(TShellExecuteInfo);
+    lpVerb := vOperation;
+    lpFile := vFilename;
+    lpParameters := vParameters;
+    lpDirectory := PChar(ExtractFilePath(Fcommand));
+    nShow := SW_SHOWNORMAL;
+    if RunType <> crtEdit then
+      fMask := SEE_MASK_NOCLOSEPROCESS;
+  end;
+  if ShellExecuteEx(@SEInfo) then
+    Result := SEInfo.hProcess
+  else if gDebug then
+  begin
+    vGetLastError := GetLastError;
+    if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
+    begin
+      if vOperation = nil then
+        sTechErrorMsg := 'nil'
+      else
+        sTechErrorMsg := vOperation;
+      sTechErrorMsg := sTechErrorMsg + '; ' + vFilename + '; ';
+      if vParameters = nil then
+        sTechErrorMsg := sTechErrorMsg + 'nil'
+      else
+        sTechErrorMsg := sTechErrorMsg + vParameters;
+
+      M_Error('Error with ' + strCommandRunType[RunType] + ': ' +
+        SysErrorMessage(vGetLastError) + LineFeed + 'Error code: ' +
+        IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' + sTechErrorMsg);
+    end;
+  end;
 end;
 
 procedure TCommandData.Edit;
@@ -342,29 +366,31 @@ procedure TCommandData.Edit;
     pResultSize := 255;
     pResult := StrAlloc(MAX_PATH);
     try
-      AssocQueryString(0, ASSOCSTR_EXECUTABLE, PChar(vFilename), 'edit',
-        pResult, @pResultSize);
-      Result := pResult;
+      if AssocQueryString(0, ASSOCSTR_EXECUTABLE, PChar(vFilename), 'edit',
+        pResult, @pResultSize) = S_OK then
+          Result := pResult;
     finally
       StrDispose(pResult);
     end;
   end;
 
-var
+{var
   vFilterData: TFilterData;
-  editHelper: string;
+  editHelper: string;}
 begin
   if Fcommand <> '' then
   begin
-    vFilterData := Filters_GetFilterByFilename(Fcommand);
+    var vFilterData := Filters_GetFilterByFilename(Fcommand);
+    var editHelper: string := '';
     if Assigned(vFilterData) then
-    begin
       editHelper := vFilterData.editHelper;
-    end
-    else
-      editHelper := '';
+    if editHelper = '' then
+      editHelper := GetAssociatedExeForEdit(Fcommand);
+    if editHelper <> '' then
+      InternalRun(editHelper, crtEdit)
+      {editHelper := '';
     if (editHelper <> '') or (GetAssociatedExeForEdit(Fcommand) <> '') then
-      InternalRun(editHelper, PChar('edit'), crtEdit, IsRunAsAdmin)
+      InternalRun(editHelper, PChar('edit'), crtEdit, IsRunAsAdmin)}
     else
       OpenFolderAndSelectFile(Fcommand);
   end;
@@ -434,7 +460,7 @@ begin
     else
       runHelper := '';
 
-    ProcessHandle := InternalRun(runHelper, nil, RunType, IsRunAsAdmin);
+    ProcessHandle := InternalRun(runHelper, RunType);
     if ProcessHandle <> 0 then
     begin
       isRunning := True;

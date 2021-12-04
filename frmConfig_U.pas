@@ -695,9 +695,10 @@ end;
 procedure TfrmConfig.tvItemsCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
-  if Node.HasChildren or not Assigned(Node.Data) or
+  //var vNormal: boolean := not Assigned(Node.Data);
+  if not Assigned(Node.Data) or TCommandData(Node.Data).isGroup  or
     ((Node = frmCommandConfig.AssignedTreeNode) and
-    frmCommandConfig.CheckFileCommandExists) or
+      frmCommandConfig.CheckFileCommandExists) or
     ((Node <> frmCommandConfig.AssignedTreeNode) and
     (MyExtendFileNameToFull(TCommandData(Node.Data).Command) <> '')) then
     Sender.Canvas.Font.Style := [] // .Color := TColors.SysWindowText
@@ -706,6 +707,17 @@ begin
     Sender.Canvas.Font.Style := [fsStrikeOut]; // .Color := TColors.Red;
     Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
   end;
+  {if Node.HasChildren or not Assigned(Node.Data) or
+    ((Node = frmCommandConfig.AssignedTreeNode) and
+      frmCommandConfig.CheckFileCommandExists) or
+    ((Node <> frmCommandConfig.AssignedTreeNode) and
+    (MyExtendFileNameToFull(TCommandData(Node.Data).Command) <> '')) then
+    Sender.Canvas.Font.Style := [] // .Color := TColors.SysWindowText
+  else
+  begin
+    Sender.Canvas.Font.Style := [fsStrikeOut]; // .Color := TColors.Red;
+    Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
+  end;}
 end;
 
 procedure TfrmConfig.tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
