@@ -60,6 +60,9 @@ type
     procedure Assign(Dest: TCommandData);
     procedure AssignFrom(SrcNode: IXMLNode);
     procedure AssignTo(DestNode: IXMLNode; const ACaption: String);
+    // If Command exists than return it else check in Path and result Fullname
+    // from Path or return '' if not found
+    function ExtendCommandToFullName: string;
     function  ExtractHIcon{(const ACommand: string = '')}: HIcon;
     // real property
     property isRunning: boolean read FisRunning write FisRunning;
@@ -393,6 +396,19 @@ begin
   end;
 end;
 
+// If Command exists than return it else check in Path and result Fullname
+// from Path or return '' if not found
+function TCommandData.ExtendCommandToFullName: string;
+begin
+  //directory must be absolute path
+  if DirectoryExists(Command) and not IsRelativePath(Command) then
+    begin
+    Exit(Command);
+    end;
+
+  Result := FileSearch(Command, GetEnvironmentVariable('PATH'));
+end;
+
 // now AFileName can be not full and be in Path
 // Result: 0 or valid hIcon
 function TCommandData.ExtractHIcon: HIcon;
@@ -405,16 +421,15 @@ if IconType in [citDefault, citFromFileExt] then
   var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
   if IconType = citDefault then
     begin
-    vFileForIcon := Command;
+    //vFileForIcon := Command;
 
     {var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
     if DirectoryExists(FCommand) and not IsRelativePath(FCommand) then
       vMask := 0;}
 
-
-    if not DirectoryExists(vFileForIcon) or IsRelativePath(FCommand) then
+    if not DirectoryExists(Command) or IsRelativePath(Command) then
       begin
-      var vExt := ExtractFileExt(vFileForIcon);
+      var vExt := ExtractFileExt(Command);
       if (vExt = '') or (vExt = '.') then
         Exit(0);
 
@@ -422,8 +437,9 @@ if IconType in [citDefault, citFromFileExt] then
 
       if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
         begin
-        if IsRelativePath(vFileForIcon) then
-          vFileForIcon := MyExtendFileNameToFull(vFileForIcon);
+        {if IsRelativePath(vFileForIcon) then
+          vFileForIcon := MyExtendFileNameToFull(vFileForIcon);}
+        vFileForIcon := ExtendCommandToFullName;
         if vFileForIcon = '' then
           vFileForIcon := vExt; // not found - so default
         end
@@ -431,7 +447,10 @@ if IconType in [citDefault, citFromFileExt] then
         vFileForIcon := vExt;
       end
     else
-      vMask := SHGFI_SYSICONINDEX
+      begin
+      vFileForIcon := Command;
+      vMask := SHGFI_SYSICONINDEX;
+      end;
     end  // IconType = citDefault
   else //citFromFileExt
     vFileForIcon := '.' + IconExt;

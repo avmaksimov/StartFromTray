@@ -700,7 +700,7 @@ begin
     ((Node = frmCommandConfig.AssignedTreeNode) and
       frmCommandConfig.CheckFileCommandExists) or
     ((Node <> frmCommandConfig.AssignedTreeNode) and
-    (MyExtendFileNameToFull(TCommandData(Node.Data).Command) <> '')) then
+    (TCommandData(Node.Data).ExtendCommandToFullName <> '')) then
     Sender.Canvas.Font.Style := [] // .Color := TColors.SysWindowText
   else
   begin

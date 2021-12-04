@@ -202,7 +202,7 @@ procedure TMPMenuItem.AdvancedDrawItem(ACanvas: TCanvas; ARect: TRect;
   State: TOwnerDrawState; TopLevel: Boolean);
 begin
   if (Tag <> 0) and (Count = 0) and
-    (MyExtendFileNameToFull(TCommandData(Tag).Command) = '') then
+    (TCommandData(Tag).ExtendCommandToFullName = '') then
     ACanvas.Font.Style := [fsStrikeOut];
   // ACanvas.Font.Color := clRed;
   // ACanvas.Font.Style := [fsBold];

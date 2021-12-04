@@ -12,7 +12,7 @@ const
   //cIconHeigh = 19;
   //cIconWidth = 10;
 
-function MyExtendFileNameToFull(const AFileName: string): string;
+//function MyExtendFileNameToFull(const AFileName: string): string;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts
@@ -34,7 +34,7 @@ uses Forms, Types, IniFiles, Vcl.Graphics, System.Masks, System.UITypes;
 
 // If Filename exists than return it else check in Path and result Fullname
 // from Path or return '' if not found
-function MyExtendFileNameToFull(const AFileName: string): string;
+{function MyExtendFileNameToFull(const AFileName: string): string;
 begin
   //directory must be absolute path
   if DirectoryExists(AFileName) and not IsRelativePath(AFileName) then
@@ -61,7 +61,7 @@ begin
       end;
     end;
   Result := ''; // else}
-end;
+//end;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts

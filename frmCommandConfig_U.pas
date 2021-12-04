@@ -388,7 +388,7 @@ end;
 
 function TfrmCommandConfig.CheckFileCommandExists: boolean;
 begin
-  Result := {(edtCommand.Text = '') or }(MyExtendFileNameToFull(FAssignedCommandData.Command) <> '');
+  Result := {(edtCommand.Text = '') or }(FAssignedCommandData.ExtendCommandToFullName <> '');
   edtCommand.Font.Color := IfThen(Result, TColors.SysWindowText, TColors.Red);
 end;
 
