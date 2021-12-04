@@ -103,7 +103,7 @@ function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
 
 implementation
 
-uses CommonU;
+uses CommonU, Winapi.CommCtrl;
 
 procedure TreeToXML(ATreeNodes: TTreeNodes);
 var
@@ -374,9 +374,6 @@ procedure TCommandData.Edit;
     end;
   end;
 
-{var
-  vFilterData: TFilterData;
-  editHelper: string;}
 begin
   if Fcommand <> '' then
   begin
@@ -398,43 +395,58 @@ end;
 
 // now AFileName can be not full and be in Path
 // Result: 0 or valid hIcon
-function TCommandData.ExtractHIcon{(const ACommand: string = '')}: HIcon;
+function TCommandData.ExtractHIcon: HIcon;
 begin
 Result := 0;
 if IconType in [citDefault, citFromFileExt] then
   begin
   var vFileForIcon: string;
+  // must be zero only for directory with full path because if it's relative may it's not a folder)).
+  var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
   if IconType = citDefault then
     begin
-    {if vFileForIcon <> '' then
-      vFileForIcon := ACommand
-    else}
-      vFileForIcon := Command;
+    vFileForIcon := Command;
 
-    var vExt := ExtractFileExt(vFileForIcon);
-    if (vExt = '') or (vExt = '.') then
-      Exit(0);
+    {var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
+    if DirectoryExists(FCommand) and not IsRelativePath(FCommand) then
+      vMask := 0;}
 
-    vExt := vExt.ToLower;
 
-    if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+    if not DirectoryExists(vFileForIcon) or IsRelativePath(FCommand) then
       begin
-      if IsRelativePath(vFileForIcon) then
-        vFileForIcon := MyExtendFileNameToFull(vFileForIcon);
-      if vFileForIcon = '' then
-        vFileForIcon := vExt; // not found - so default
+      var vExt := ExtractFileExt(vFileForIcon);
+      if (vExt = '') or (vExt = '.') then
+        Exit(0);
+
+      vExt := vExt.ToLower;
+
+      if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+        begin
+        if IsRelativePath(vFileForIcon) then
+          vFileForIcon := MyExtendFileNameToFull(vFileForIcon);
+        if vFileForIcon = '' then
+          vFileForIcon := vExt; // not found - so default
+        end
+      else // common document - enough only Ext
+        vFileForIcon := vExt;
       end
-    else // common document - enough only Ext
-      vFileForIcon := vExt;
+    else
+      vMask := SHGFI_SYSICONINDEX
     end  // IconType = citDefault
   else //citFromFileExt
     vFileForIcon := '.' + IconExt;
   // IconType in [citDefault, citFromFileExt]
   var Info: TSHFileInfo;
+  ZeroMemory(@Info, SizeOf(Info));
   Result := SHGetFileInfo(PChar(vFileForIcon), FILE_ATTRIBUTE_NORMAL, Info,
-    SizeOf(TSHFileInfo), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_USEFILEATTRIBUTES);
+    SizeOf(TSHFileInfo), {SHGFI_USEFILEATTRIBUTES} vMask or SHGFI_SMALLICON or SHGFI_ICON or SHGFI_OPENICON);
   If Result <> 0 then
-    Result := Info.HIcon
+    begin
+    if vMask <> SHGFI_SYSICONINDEX then
+      Result := Info.HIcon
+    else
+      Result := ImageList_GetIcon(Result, Info.iIcon, ILD_NORMAL);
+    end;
   end //IconType in [citDefault, citFromFileExt]
 else //citFromFileRes
   begin
@@ -632,5 +644,8 @@ begin
   end;
   Fcommand.FWaitForRunningThread := nil;
 end;
+
+//initialization
+//SystemImageList := SHGetFileInfo('',0,Info,SizeOf(Info),SHGFI_SYSICONINDEX or SHGFI_ICON);
 
 end.

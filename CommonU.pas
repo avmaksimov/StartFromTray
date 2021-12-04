@@ -35,29 +35,32 @@ uses Forms, Types, IniFiles, Vcl.Graphics, System.Masks, System.UITypes;
 // If Filename exists than return it else check in Path and result Fullname
 // from Path or return '' if not found
 function MyExtendFileNameToFull(const AFileName: string): string;
-var
-  i: integer;
-  s: string;
-  vPaths: TStringDynArray;
 begin
-  if FileExists(AFileName) or //directory must be absolute path
+  //directory must be absolute path
+  if DirectoryExists(AFileName) and not IsRelativePath(AFileName) then
+    begin
+    Exit(AFileName);
+    end;
+
+  Result := FileSearch(AFileName, GetEnvironmentVariable('PATH'));
+
+  {if FileExists(AFileName) or //directory must be absolute path
     (DirectoryExists(AFileName) and not IsRelativePath(AFileName)) then
   begin
     Result := AFileName;
     Exit;
   end;
 
-  vPaths := SplitString(GetEnvironmentVariable('PATH'), ';');
-  for i := 0 to High(vPaths) do
+  var vPaths := SplitString(GetEnvironmentVariable('PATH'), ';');
+  for var i := 0 to High(vPaths) do
     begin
-    s := vPaths[i] + '\' + AFileName;
-    if FileExists(s) then
+    Result := vPaths[i] + '\' + AFileName;
+    if FileExists(Result) then
       begin
-      Result := s;
       Exit;
       end;
     end;
-  Result := ''; // else
+  Result := ''; // else}
 end;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
