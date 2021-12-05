@@ -291,7 +291,7 @@ object frmConfig: TfrmConfig
   end
   object ppOptionsMenu: TPopupMenu
     Left = 506
-    Top = 449
+    Top = 423
     object miOptionsLang: TMenuItem
       Caption = 'Interface language'
     end

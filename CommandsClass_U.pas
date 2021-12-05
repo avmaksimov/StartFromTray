@@ -63,22 +63,22 @@ type
     // If Command exists than return it else check in Path and result Fullname
     // from Path or return '' if not found
     function ExtendCommandToFullName: string;
-    function  ExtractHIcon{(const ACommand: string = '')}: HIcon;
+    function GetImageIndex(const AImageListHandle: Integer): Integer;
     // real property
     property isRunning: boolean read FisRunning write FisRunning;
   published // all this properties saves in xmls
 
     //property Name: string read FName write FName;
     //property isVisible: boolean read FisVisible write FisVisible;
-    property isGroup: boolean read FisGroup write FisGroup;
+    property isGroup: boolean read FisGroup write FisGroup default False;
     property Childs: TCommandList read FChilds;
     property Command: string read Fcommand write Fcommand;
     property CommandParameters: string read FCommandParameters
       write FCommandParameters;
-    property IsRunAsAdmin: Boolean read FIsRunAsAdmin write FIsRunAsAdmin;
-    property IconType: TCommandIconType read FIconType write FIconType;
+    property IsRunAsAdmin: Boolean read FIsRunAsAdmin write FIsRunAsAdmin default False;
+    property IconType: TCommandIconType read FIconType write FIconType default citDefault;
     property IconFilename: string read FIconFilename write FIconFilename;
-    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex;// default -1;
+    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex default -1;
     property IconExt: string read FIconExt write FIconExt;
   end;
 {$M-}
@@ -99,10 +99,6 @@ procedure TreeToXML(ATreeNodes: TTreeNodes);
 // получение значения свойства из атрибута (обход nil)
 function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
   const sProperty: String): string;
-
-//function MyExtractHIcon(ACommand: string; const ACommandData: TCommandData): HIcon;
-
-// var MainCommandList: TCommandList; // основной список
 
 implementation
 
@@ -411,9 +407,9 @@ end;
 
 // now AFileName can be not full and be in Path
 // Result: 0 or valid hIcon
-function TCommandData.ExtractHIcon: HIcon;
+function TCommandData.GetImageIndex(const AImageListHandle: Integer): Integer;
 begin
-Result := 0;
+var vHIcon: HIcon := 0;
 if IconType in [citDefault, citFromFileExt] then
   begin
   var vFileForIcon: string;
@@ -421,30 +417,24 @@ if IconType in [citDefault, citFromFileExt] then
   var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
   if IconType = citDefault then
     begin
-    //vFileForIcon := Command;
-
-    {var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
-    if DirectoryExists(FCommand) and not IsRelativePath(FCommand) then
-      vMask := 0;}
+    if isGroup then
+      Exit(0); // already created for group and Default IconType
 
     if not DirectoryExists(Command) or IsRelativePath(Command) then
       begin
       var vExt := ExtractFileExt(Command);
-      if (vExt = '') or (vExt = '.') then
-        Exit(0);
-
-      vExt := vExt.ToLower;
-
-      if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+      if (vExt <> '') and (vExt <> '.') then
         begin
-        {if IsRelativePath(vFileForIcon) then
-          vFileForIcon := MyExtendFileNameToFull(vFileForIcon);}
-        vFileForIcon := ExtendCommandToFullName;
-        if vFileForIcon = '' then
-          vFileForIcon := vExt; // not found - so default
-        end
-      else // common document - enough only Ext
-        vFileForIcon := vExt;
+        vExt := vExt.ToLower;
+        if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+          begin
+          vFileForIcon := ExtendCommandToFullName;
+          if vFileForIcon = '' then
+            vFileForIcon := vExt; // not found - so default
+          end
+        else // common document - enough only Ext
+          vFileForIcon := vExt;
+        end;
       end
     else
       begin
@@ -462,9 +452,12 @@ if IconType in [citDefault, citFromFileExt] then
   If Result <> 0 then
     begin
     if vMask <> SHGFI_SYSICONINDEX then
-      Result := Info.HIcon
+      vHIcon := Info.HIcon
     else
-      Result := ImageList_GetIcon(Result, Info.iIcon, ILD_NORMAL);
+      begin
+      DestroyIcon(Info.HIcon);
+      vHIcon := ImageList_GetIcon(Result, Info.iIcon, ILD_NORMAL);
+      end;
     end;
   end //IconType in [citDefault, citFromFileExt]
 else //citFromFileRes
@@ -472,8 +465,15 @@ else //citFromFileRes
   var vLargeIcon: hIcon := 0;
   var vSmallIcon: HIcon := 1; // non zero
   if ExtractIconEx(PChar(IconFilename), IconFileIndex, vLargeIcon, vSmallIcon, 1) > 0 then
-    Result := vSmallIcon;
+    vHIcon := vSmallIcon;
   end;
+if vHIcon > 0 then
+  begin
+  Result := ImageList_ReplaceIcon(AImageListHandle, -1, vHIcon);
+  DestroyIcon(vHIcon);
+  end
+else
+  Result := -1;
 end;
 
 procedure TCommandData.Run(const RunType: TCommandRunType);
@@ -611,10 +611,10 @@ begin
           sDataToSave := GetStrProp(Self, FProp);
         tkEnumeration, tkInteger:
           begin
-          {var vDataInt := GetOrdProp(Self, FProp);
-          if vDataInt <> FProp.Default  then
-            sDataToSave := IntToStr(vDataInt);}
-          sDataToSave := GetOrdProp(Self, FProp).ToString;
+          var vDataInt := GetOrdProp(Self, FProp);
+          if (FProp.Default = Low(Integer)) or (vDataInt <> FProp.Default) then
+            sDataToSave := IntToStr(vDataInt);
+          //sDataToSave := GetOrdProp(Self, FProp).ToString;
           end;
         tkFloat:
           begin

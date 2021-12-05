@@ -122,6 +122,7 @@ object frmCommandConfig: TfrmCommandConfig
     OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
+    Tag = 1
     Left = 242
     Top = 4
     Width = 154

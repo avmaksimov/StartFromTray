@@ -374,12 +374,13 @@ end;
 
 procedure TfrmCommandConfig.UpdateIcon;
 begin
-  var vNewHIcon := FAssignedCommandData.ExtractHIcon({edtCommand.Text}); //MyExtractHIcon(edtCommand.Text, FAssignedCommandData);
+  {var vNewHIcon := FAssignedCommandData.ExtractHIcon);
   var vImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle,
       -1, vNewHIcon); //FAssignedTreeNode.ImageIndex
   if vNewHIcon > 0 then
-    DestroyIcon(vNewHIcon);
-  {else }if FAssignedTreeNode.ImageIndex > 0 then // if the icon was before but not now
+    DestroyIcon(vNewHIcon);}
+  var vImageIndex := FAssignedCommandData.GetImageIndex(TreeImageList.Handle);
+  if FAssignedTreeNode.ImageIndex > 0 then // if the icon was before but not now
     ListDeletedImageIndexes.Add(FAssignedTreeNode.ImageIndex);
   FAssignedTreeNode.ImageIndex := vImageIndex;
   FAssignedTreeNode.SelectedIndex := vImageIndex;
@@ -444,8 +445,8 @@ begin
 
       //var CommandData := TCommandData(FAssignedTreeNode.Data);
 
-      if FAssignedTreeNode.Data = nil then // в случае Отмены
-        Exit;
+      {if FAssignedTreeNode.Data = nil then // в случае Отмены
+        Exit;}
 
       FAssignedCommandData := TCommandData.Create;
       TCommandData(FAssignedTreeNode.Data).Assign(FAssignedCommandData);
@@ -526,21 +527,9 @@ begin
       end;
 
     FAssignedCommandData.Assign(TCommandData(FAssignedTreeNode.Data));
-      {Command := vCommand;
-      //Command := Trim(edtCommand.Text);
-      CommandParameters := Trim(edtCommandParameters.Text);
-      IsRunAsAdmin := cbRunAsAdmin.Checked;
-      IconType := FAssignedCommandData.IconType;
-      IconFilename := FAssignedCommandData.IconFilename;
-      IconFileIndex := FAssignedCommandData.IconFileIndex;
-      IconExt := FAssignedCommandData.IconExt;}
-      //isVisible := cbIsVisible.Checked;
-      //isGroup := FAssignedTreeNode.HasChildren;
-      //end;
   end;
-  FAssignedTreeNode.Text := vCaption; //Trim(edtCaption.Text);
-  FAssignedCaption := vCaption; //FAssignedTreeNode.Text;
-  //FreeAndNil(FAssignedCommandData);
+  FAssignedTreeNode.Text := vCaption;
+  FAssignedCaption := vCaption;
   Result := True;
 end;
 

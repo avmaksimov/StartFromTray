@@ -907,21 +907,21 @@ var
     // fix potencial and prev. bug then isGroup = 1 for no children node
     //vCommandData.isGroup := vCommandData.isGroup; //TreeNode.HasChildren;
 
-    if vCommandData.isGroup then
+    {if vCommandData.isGroup then
     begin
       TreeNode.ImageIndex := 0;
       TreeNode.SelectedIndex := 0;
     end
     else
     begin
-      var vhIcon := vCommandData.ExtractHIcon();
+      {var vhIcon := vCommandData.ExtractHIcon();
       var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
       if vhIcon > 0 then
-        DestroyIcon(vhIcon);
-
+        DestroyIcon(vhIcon);}
+      var iImageListIndex := vCommandData.GetImageIndex(ImageListHandle);
       TreeNode.ImageIndex := iImageListIndex;
       TreeNode.SelectedIndex := iImageListIndex;
-    end;
+    //end;
   end;
 
 var
