@@ -154,6 +154,32 @@ begin
 
   ppTrayMenu.Items.Clear;
 
+  if ListDeletedImageIndexes.Count > 0 then
+    begin
+    ListDeletedImageIndexes.Sort;
+    var vTreeNodes := tvItems.Items;
+    try
+      vTreeNodes.BeginUpdate;
+      for var I := ListDeletedImageIndexes.Count - 1 downto 0 do
+        begin
+        var vIndex: Integer := Integer(ListDeletedImageIndexes[I]);
+        if ImageList_Remove(TreeImageList.Handle, vIndex)then
+          for var J := 0 to vTreeNodes.Count - 1 do
+            begin
+            var vTVItem := vTreeNodes[J];
+            if vTVItem.SelectedIndex > vIndex then
+              begin
+              vTVItem.SelectedIndex := vTVItem.SelectedIndex - 1;
+              vTVItem.ImageIndex := vTVItem.SelectedIndex;
+              end;
+            end;
+        end;
+      finally
+        ListDeletedImageIndexes.Clear;
+        vTreeNodes.EndUpdate;
+      end;
+    end;
+
   TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick); //, oldCommonData);
 
   IsModified := False;
@@ -621,32 +647,6 @@ procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
   end; (* ProcessTreeItem *)
 
 begin
-
-  if ListDeletedImageIndexes.Count > 0 then
-    begin
-    ListDeletedImageIndexes.Sort;
-    try
-      ATreeNodes.BeginUpdate;
-      for var I := ListDeletedImageIndexes.Count - 1 downto 0 do
-        begin
-        var vIndex: Integer := Integer(ListDeletedImageIndexes[I]);
-        if ImageList_Remove(TreeImageList.Handle, vIndex)then
-          for var J := 0 to ATreeNodes.Count - 1 do
-            begin
-            var vTVItem := ATreeNodes[J];
-            if vTVItem.SelectedIndex > vIndex then
-              begin
-              vTVItem.SelectedIndex := vTVItem.SelectedIndex - 1;
-              vTVItem.ImageIndex := vTVItem.SelectedIndex;
-              end;
-            end;
-        end;
-      finally
-        ListDeletedImageIndexes.Clear;
-        ATreeNodes.EndUpdate;
-      end;
-    end;
-
   var tn := ATreeNodes.GetFirstNode; // TopNode;
   while tn <> nil do
   begin
@@ -1005,6 +1005,8 @@ procedure TfrmConfig.ReloadData;
   end;
 begin
   XMLToTree(tvItems.Items);
+
+  ListDeletedImageIndexes.Clear;
 
   TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);
 
