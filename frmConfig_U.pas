@@ -90,7 +90,6 @@ type
     procedure FormHide(Sender: TObject);
     procedure lblVerLinkClick(Sender: TObject; const Link: string;
       LinkType: TSysLinkType);
-    procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
     procedure FormConstrainedResize(Sender: TObject; var MinWidth, MinHeight,
       MaxWidth, MaxHeight: Integer);
     procedure miOptionsExitProgramClick(Sender: TObject);
@@ -108,16 +107,15 @@ type
 
     ppTrayMenu: TMPPopupMenu;
 
-    //procedure UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
     procedure CorrectTreeViewItemHeight;
 
-    //function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
-    procedure DisposeTreeViewData;
-    procedure DisposeTreeNodeData(TreeNode: TTreeNode);
+    procedure DisposeTreeNodeData(TreeNode: TTreeNode; const AddToListDeletedImageIndexes: Boolean);
+
+    procedure ReloadData;
 
     procedure ppTrayMenuItemOnClick(Sender: TObject);
     // procedure XMLToMenu(MenuItems: TMenuItem; const NotifyEvent: TNotifyEvent);
-    procedure XMLToTree(TreeNodes: TTreeNodes);
+    //procedure XMLToTree(TreeNodes: TTreeNodes);
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
       const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
     // it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
@@ -200,8 +198,15 @@ begin
 
       ppTrayMenu.Items.Clear; // Data will be cleared below
 
-      DisposeTreeViewData;
-      frmCommandConfig.ClearAssigned;//Assign(nil);
+      //DisposeTreeViewData;
+      var tn := tvItems.TopItem;
+      while tn <> nil do
+        begin
+        DisposeTreeNodeData(tn, False);
+        tn := tn.GetNextSibling;
+        end;
+
+      //frmCommandConfig.ClearAssigned;//Assign(nil);
       tvItems.OnChange := nil;
       tvItems.Items.Clear;
       tvItems.OnChange := tvItemsChange;
@@ -209,10 +214,11 @@ begin
       TreeImageList.Clear;
       IsModified := False;
 
+      ReloadData;
       // перечитать из файла
-      XMLToTree(tvItems.Items);
+      //XMLToTree(tvItems.Items);
 
-      TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
+      //TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
 
       // если первый элемент есть, то эмулируем его Change
       { if tvItems.Items.Count > 1 then
@@ -249,7 +255,7 @@ begin
     //needToUpdateIsGroup := False;
     try
     tvItems.Items.BeginUpdate;
-    DisposeTreeNodeData(tvItems.Selected);
+    DisposeTreeNodeData(tvItems.Selected, True);
 
     // определим, что оставить выделенным
     futureSelNode := tvItems.Selected.GetNextSibling;
@@ -437,7 +443,9 @@ begin
   frmCommandConfig.ListDeletedImageIndexes := ListDeletedImageIndexes;
   frmCommandConfig.TreeImageList := TreeImageList;
 
-  XMLToTree(tvItems.Items);
+  ReloadData;
+
+  {XMLToTree(tvItems.Items);
 
   TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
 
@@ -448,7 +456,7 @@ begin
   else
     begin
     frmCommandConfig.ClearAssigned;
-    end;
+    end;}
 
   with TRegistry.Create(KEY_READ) do
     try
@@ -456,9 +464,6 @@ begin
       miOptionsRunAtStart.Checked :=
         OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Run') and
           ValueExists('StartFromTray');
-      {cbRunOnWindowsStart.Checked :=
-        OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Run') and
-        ValueExists('StartFromTray');}
       IsModified := False;
     finally
       Free;
@@ -560,12 +565,6 @@ end;
 procedure TfrmConfig.ppCMExitClick(Sender: TObject);
 begin
   Close;
-  //Application.Terminate;
-end;
-
-procedure TfrmConfig.TitleBarPanelCustomButtons0Click(Sender: TObject);
-begin
-  Application.Minimize;
 end;
 
 procedure TfrmConfig.TrayIconMouseUp(Sender: TObject; Button: TMouseButton;
@@ -593,7 +592,7 @@ begin
 end;
 
 procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
-  const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
+  const NotifyEvent: TNotifyEvent);
 
   procedure ProcessTreeItem(atn: TTreeNode; ami: TMenuItem);
   var
@@ -659,25 +658,9 @@ end;
 
 procedure TfrmConfig.tvItemsChange(Sender: TObject; Node: TTreeNode);
 begin
-  // gbProperties.Enabled := True;
-  // frmCommandConfig.edtCaption.SetFocus;
-
-  // if (Node <> nil) and (Node.Data <> nil) then
   begin
-    // IsTreeViewItemChanging := True;
-    // if Showing then
-    // if Visible then
-    // нет смысла в оптимизации - вызывается один раз и для корня - так и надо!
     frmCommandConfig.Assign(Node);
-
-    // IsTreeViewItemChanging := False;
   end
-  { else // скорей всего, первый элемент создается
-    begin
-    gbProperties.Enabled := True;
-    frmCommandConfig.edtCaption.SetFocus;
-    end; }
-
 end;
 
 procedure TfrmConfig.tvItemsChanging(Sender: TObject; Node: TTreeNode;
@@ -707,17 +690,6 @@ begin
     Sender.Canvas.Font.Style := [fsStrikeOut]; // .Color := TColors.Red;
     Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
   end;
-  {if Node.HasChildren or not Assigned(Node.Data) or
-    ((Node = frmCommandConfig.AssignedTreeNode) and
-      frmCommandConfig.CheckFileCommandExists) or
-    ((Node <> frmCommandConfig.AssignedTreeNode) and
-    (MyExtendFileNameToFull(TCommandData(Node.Data).Command) <> '')) then
-    Sender.Canvas.Font.Style := [] // .Color := TColors.SysWindowText
-  else
-  begin
-    Sender.Canvas.Font.Style := [fsStrikeOut]; // .Color := TColors.Red;
-    Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
-  end;}
 end;
 
 procedure TfrmConfig.tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
@@ -811,34 +783,6 @@ begin
   //lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
 end;
 
-{procedure TfrmConfig.UpdateTreeNodeIcon(const ATreeNode: TTreeNode);
-var
-  vCommandData: TCommandData;
-  vNewImageIndex: Integer;
-  vIcon: THandle;
-begin
-  vCommandData := TCommandData(ATreeNode.Data);
-  if vCommandData.isGroup then
-    vNewImageIndex := 0
-  else
-  begin
-    vIcon := MyExtractIcon(vCommandData.Command);
-    if vIcon > 0 then
-    begin
-      if ATreeNode.ImageIndex <= 0 then
-        vNewImageIndex := -1 // add
-      else
-        vNewImageIndex := ATreeNode.ImageIndex;
-      vNewImageIndex := ImageList_ReplaceIcon(TTreeView(ATreeNode.TreeView)
-        .Images.Handle, vNewImageIndex, vIcon)
-    end
-    else
-      vNewImageIndex := -1;
-  end;
-  ATreeNode.ImageIndex := vNewImageIndex;
-  ATreeNode.SelectedIndex := vNewImageIndex;
-end;}
-
 procedure TfrmConfig.WMClose(var Message: TMessage);
 begin
   actCloseExecute(actClose);
@@ -868,23 +812,12 @@ begin
 end;
 
 // запускается при старте и нажатии "Отмена"
-procedure TfrmConfig.XMLToTree(TreeNodes: TTreeNodes);
+{procedure TfrmConfig.XMLToTree(TreeNodes: TTreeNodes);
 var
   ImageListHandle: HIMAGELIST;
 
   procedure ProcessNode(Node: IXMLNode; TreeNode: TTreeNode);
-  //var
-    //aNode: IXMLNode;
-    //vCommandData: TCommandData;
-    //iImageListIndex: Integer;
-    //vhIcon: HICON;
-    // w: word;
-    // NodeAttributes: OleVariant; vCommonData: TCommandData;
   begin
-    // if aNode = nil then Exit; // выходим, если достигнут конец документа
-
-    // NodeAttributes := Node.Attributes; // for cache only
-
     // добавляем узел в дерево
     TreeNode := TreeNodes.AddChild(TreeNode, GetPropertyFromNodeAttributes(Node,
       'Caption'));
@@ -904,20 +837,6 @@ var
       aNode := aNode.NextSibling;
     end;
 
-    // fix potencial and prev. bug then isGroup = 1 for no children node
-    //vCommandData.isGroup := vCommandData.isGroup; //TreeNode.HasChildren;
-
-    {if vCommandData.isGroup then
-    begin
-      TreeNode.ImageIndex := 0;
-      TreeNode.SelectedIndex := 0;
-    end
-    else
-    begin
-      {var vhIcon := vCommandData.ExtractHIcon();
-      var iImageListIndex := ImageList_ReplaceIcon(ImageListHandle, -1, vhIcon);
-      if vhIcon > 0 then
-        DestroyIcon(vhIcon);}
       var iImageListIndex := vCommandData.GetImageIndex(ImageListHandle);
       TreeNode.ImageIndex := iImageListIndex;
       TreeNode.SelectedIndex := iImageListIndex;
@@ -952,46 +871,9 @@ begin
   end;
 
   TreeNodes.Owner.FullExpand;
-end;
-
-{function TfrmConfig.CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
-begin
-  var vCommandData := TCommandData.Create;
-  TCommandData(TreeNode.Data).Assign(vCommandData);
-
-  if ParentTreeNode = nil then
-    Result := tvItems.Items.AddObject(TreeNode, TreeNode.Text, vCommandData)
-  else
-    Result := tvItems.Items.AddChildObject(ParentTreeNode, TreeNode.Text, vCommandData);
-
-  var vImageIndex: Integer;
-  // 0 for group, -1 for undef element
-  if TreeNode.ImageIndex <= 0 then
-    vImageIndex := TreeNode.ImageIndex
-  else
-    begin
-    var vIcon := TIcon.Create;
-    try
-      TreeImageList.GetIcon(TreeNode.ImageIndex, vIcon);
-      vImageIndex := TreeImageList.AddIcon(vIcon);
-    finally
-      vIcon.Free;
-    end; //try..finaly
-    end;
-  Result.ImageIndex := vImageIndex;
-  Result.SelectedIndex := vImageIndex;
-  // child nodes
-  var vChildTreeNode := TreeNode.GetFirstChild;
-  while vChildTreeNode <> nil do
-    begin
-    CopyTreeNode(vChildTreeNode, Result);
-    vChildTreeNode := vChildTreeNode.getNextSibling;
-    end;
-
-  Result.Expanded := TreeNode.Expanded;
 end;}
 
-procedure TfrmConfig.DisposeTreeViewData;
+{procedure TfrmConfig.DisposeTreeViewData;
 begin
   var tn := tvItems.TopItem;
   while tn <> nil do
@@ -999,25 +881,23 @@ begin
     DisposeTreeNodeData(tn);
     tn := tn.GetNextSibling;
   end;
-end;
+end;}
 
-procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode);
+procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode; const AddToListDeletedImageIndexes: Boolean);
 begin
-  // if (TreeNode = nil) then Exit;
   if TreeNode.Data <> nil then
   begin
-    var P := TCommandData(TreeNode.Data);
-    FreeAndNil(P);
-    TreeNode.Data := nil;
-    frmConfig.ListDeletedImageIndexes.Add(TreeNode.ImageIndex);
-    //TreeImageListRemoveIndexProperly(TreeNode.ImageIndex);
+    FreeAndNil(TCommandData(TreeNode.Data));
+    //TreeNode.Data := nil;
+    if AddToListDeletedImageIndexes then
+      frmConfig.ListDeletedImageIndexes.Add(TreeNode.ImageIndex);
   end;
 
   // child nodes
   TreeNode := TreeNode.GetFirstChild;
   while TreeNode <> nil do
   begin
-    DisposeTreeNodeData(TreeNode);
+    DisposeTreeNodeData(TreeNode, AddToListDeletedImageIndexes);
     TreeNode := TreeNode.GetNextSibling;
   end;
 end;
@@ -1062,4 +942,81 @@ begin
   end;
 end;
 
+procedure TfrmConfig.ReloadData;
+  procedure XMLToTree(TreeNodes: TTreeNodes);
+  var
+    ImageListHandle: HIMAGELIST;
+
+    procedure ProcessNode(Node: IXMLNode; TreeNode: TTreeNode);
+    begin
+      // добавляем узел в дерево
+      TreeNode := TreeNodes.AddChild(TreeNode, GetPropertyFromNodeAttributes(Node,
+        'Caption'));
+
+      var vCommandData := TCommandData.Create;
+      vCommandData.AssignFrom(Node);
+
+      TreeNode.Data := vCommandData;
+
+      // переходим к дочернему узлу
+      var aNode := Node.ChildNodes.First;
+
+      // проходим по всем дочерним узлам
+      while aNode <> nil do
+      begin
+        ProcessNode(aNode, TreeNode);
+        aNode := aNode.NextSibling;
+      end;
+
+        var iImageListIndex := vCommandData.GetImageIndex(ImageListHandle);
+        TreeNode.ImageIndex := iImageListIndex;
+        TreeNode.SelectedIndex := iImageListIndex;
+      //end;
+    end;
+
+  var
+    XMLDoc: IXMLDocument;
+    cNode: IXMLNode;
+    w: word;
+
+  begin
+    ImageListHandle := TreeImageList.Handle; // ImageList.Handle;
+
+    // добавим иконку для папки, если не добавлено (всегда первая)
+    w := 3;
+    ImageList_ReplaceIcon(ImageListHandle, -1,
+      ExtractAssociatedIcon(Application.Handle, PChar('SHELL32.dll'), w));
+
+    if not FileExists(ExtractFilePath(ParamStr(0)) + cItemsFileName) then
+      Exit;
+
+    XMLDoc := TXMLDocument.Create(nil);
+
+    XMLDoc.LoadFromFile(ExtractFilePath(ParamStr(0)) + cItemsFileName);
+
+    cNode := XMLDoc.ChildNodes.FindNode('tree2xml').ChildNodes.First;
+    while cNode <> nil do
+    begin
+      ProcessNode(cNode, nil); // Рекурсия
+      cNode := cNode.NextSibling;
+    end;
+
+    TreeNodes.Owner.FullExpand;
+  end;
+begin
+  XMLToTree(tvItems.Items);
+
+  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);
+
+  if tvItems.Items.Count > 0 then
+  begin
+    CorrectTreeViewItemHeight;
+  end
+  else
+    begin
+    frmCommandConfig.ClearAssigned;
+    end;
+end;
+
 end.
+
