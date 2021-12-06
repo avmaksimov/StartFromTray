@@ -89,7 +89,7 @@ procedure GenDefaultFileLang;
     vComponent: TComponent;
   begin
     for viCompoment := 0 to AFormOrFrame.ComponentCount - 1 do
-    begin
+      begin
       vComponent := AFormOrFrame.Components[viCompoment];
       if not(vComponent is TFrame) then
       begin // now only hardcode
@@ -102,7 +102,7 @@ procedure GenDefaultFileLang;
       else
         WriteComponents(ASectionName + '\' + vComponent.Name,
           vComponent as TFrame)
-    end;
+      end;
   end;
 
 var

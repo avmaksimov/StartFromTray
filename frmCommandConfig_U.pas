@@ -342,34 +342,21 @@ end;
 procedure TfrmCommandConfig.TimerTimer(Sender: TObject);
 const
   vArLangStr: array [boolean] of string = ('IsNotRunning', 'IsRunning');
-var
-  vErrPlace: word;
 begin
-  vErrPlace := 0;
-  try
-    if not Assigned(FAssignedTreeNode) or not Assigned(FAssignedTreeNode.Data)
-    then
-      Exit;
-
-    vErrPlace := 100;
-    var vData := FAssignedTreeNode.Data;
-    vErrPlace := 105;
-    //with TCommandData(FAssignedTreeNode.Data) do
-    with TCommandData(vData) do
+  if not Assigned(FAssignedCommandData) then
     begin
-      vErrPlace := 110;
-      lblIsRunning.Caption := GetLangString('frmConfig\frmCommandConfig',
-        vArLangStr[isRunning]);
-      // IfThen(isRunning, GetLangString('LangStrings', 'ElementIsRunning'], LangStrings['ElementIsNotRunning']);
+    lblIsRunning.Caption := '';
+    Exit;
     end;
+  try
+    lblIsRunning.Caption := GetLangString('frmConfig\frmCommandConfig',
+        vArLangStr[FAssignedCommandData.isRunning]);
   except
     on E: Exception do
     begin
-      ShowMessage('Try..catch! TfrmCommandConfig.TimerTimer: ' + E.Message +
-        #1310 + 'Errplace: ' + vErrPlace.ToString);
-      ShowMessage(FAssignedTreeNode.Text);
+      ShowMessage('Try..catch! TfrmCommandConfig.TimerTimer: ' + E.Message);
     end;
-  end;
+  end; // try..catch
 end;
 
 procedure TfrmCommandConfig.UpdateIcon;
