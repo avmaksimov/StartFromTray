@@ -434,7 +434,9 @@ if IconType in [citDefault, citFromFileExt] then
           end
         else // common document - enough only Ext
           vFileForIcon := vExt;
-        end;
+        end
+      else
+        vFileForIcon := Command;
       end
     else
       begin
