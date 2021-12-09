@@ -6,10 +6,13 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   ComCtrls, ExtCtrls, Menus, StdCtrls, ActnList, registry,
   CommandsClass_U, windows, Messages,   TypInfo, System.Actions,
-  Vcl.ImgList, frmCommandConfig_U, MPPopupMenu,
+  Vcl.ImgList, frmCommandConfig_U, MPPopupMenu, System.IniFiles,
   Winapi.CommCtrl, System.Math, System.ImageList, Vcl.TitleBarCtrls,
   System.Generics.Collections;
 
+const cIniFormIdent  = 'FormConfig'; cIniFormState  = 'State';
+      cIniFormLeft   = 'Left';       cIniFormTop    = 'Top';
+      cIniFormWidth  = 'Width';      cIniFormHeight = 'Height';
 type
 
   { TfrmConfig }
@@ -96,6 +99,7 @@ type
     procedure btnOptionsClick(Sender: TObject);
     procedure miOptionsRunAtStartClick(Sender: TObject);
     procedure miOptionsExtensionsClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     { private declarations }
     gMenuItemBmpWidth, gMenuItemBmpHeight: integer;
@@ -120,12 +124,18 @@ type
       const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
     // it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
     procedure UpdateLblVerLeftAndCaption;
+    // to save form properties when exiting
+    procedure SaveFormProperties;
+    // to show my way and restore when minimized
+    procedure MyFormShow;
     // due to don't terminate the App after close main window
     procedure WMClose(var Message: TMessage); message WM_CLOSE;
+
   protected
     procedure WndProc(var Message: TMessage); override;
   public
     { public declarations }
+    MainIniFile: TIniFile; // from the project
     ListDeletedImageIndexes: TList<Word>;
     procedure miOptionsLangClick(Sender: TObject);
     //procedure TreeImageListRemoveIndexProperly(const AIndex: Integer);
@@ -139,7 +149,7 @@ var
 implementation
 
 uses CommonU, frmExtensions_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
-  Winapi.ShellAPI, System.IniFiles, System.Types, System.UITypes;
+  Winapi.ShellAPI, System.Types, System.UITypes;
 
 {$R *.dfm}
 { TfrmConfig }
@@ -432,6 +442,11 @@ begin
     IfThen(Odd(gMenuItemBmpHeight), 3, 2));
 end;
 
+procedure TfrmConfig.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  SaveFormProperties;
+end;
+
 procedure TfrmConfig.FormConstrainedResize(Sender: TObject; var MinWidth,
   MinHeight, MaxWidth, MaxHeight: Integer);
 begin
@@ -441,6 +456,7 @@ end;
 
 procedure TfrmConfig.FormCreate(Sender: TObject);
 begin
+  MainIniFile := nil; // first init
   MouseButtonSwapped := GetSystemMetrics(SM_SWAPBUTTON) <> 0;
 
   ShowMsgIfDebug('MouseButtonSwapped', BoolToStr(MouseButtonSwapped, True));
@@ -471,19 +487,6 @@ begin
 
   ReloadData;
 
-  {XMLToTree(tvItems.Items);
-
-  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
-
-  if tvItems.Items.Count > 0 then
-  begin
-    CorrectTreeViewItemHeight;
-  end
-  else
-    begin
-    frmCommandConfig.ClearAssigned;
-    end;}
-
   with TRegistry.Create(KEY_READ) do
     try
       RootKey := HKEY_CURRENT_USER;
@@ -503,13 +506,17 @@ end;
 
 procedure TfrmConfig.FormHide(Sender: TObject);
 begin
+  if Application.Terminated then Exit;
+
   Application.Title := TrayIcon.Hint;
+  SaveFormProperties;
 end;
 
 procedure TfrmConfig.FormShow(Sender: TObject);
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
   UpdateLblVerLeftAndCaption;
+
   tvItems.SetFocus;
 end;
 
@@ -583,13 +590,22 @@ begin
     end;
 end;
 
-procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
+procedure TfrmConfig.MyFormShow;
 begin
   Show;
+  var vWindowState := WindowState;
+  ShowWindow(Handle, SW_RESTORE);
+  WindowState := vWindowState;
+end;
+
+procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
+begin
+  MyFormShow; //Show;
 end;
 
 procedure TfrmConfig.ppCMExitClick(Sender: TObject);
 begin
+  //SaveFormProperties;
   Close;
 end;
 
@@ -608,8 +624,9 @@ begin
   end
   else if Button = mbMiddle then
     begin
-    Show;
-    ShowWindow(Handle, SW_RESTORE);
+    //Show;
+    MyFormShow;
+    //ShowWindow(Handle, SW_RESTORE);
     if frmExtensions.Visible then
       begin
       frmExtensions.SetFocus;
@@ -765,7 +782,7 @@ procedure TfrmConfig.UpdateLblVerLeftAndCaption;
             begin
               Result := (dwFileVersionMS shr 16).ToString + '.' +
                 (dwFileVersionMS and $FFFF).ToString + '.' +
-                (dwFileVersionLS shr 16).ToString + '.' +
+                //(dwFileVersionLS shr 16).ToString + '.' +
                 (dwFileVersionLS and $FFFF).ToString;
             end;
           end;
@@ -810,78 +827,6 @@ begin
   end;
   inherited WndProc(Message);
 end;
-
-// запускается при старте и нажатии "Отмена"
-{procedure TfrmConfig.XMLToTree(TreeNodes: TTreeNodes);
-var
-  ImageListHandle: HIMAGELIST;
-
-  procedure ProcessNode(Node: IXMLNode; TreeNode: TTreeNode);
-  begin
-    // добавляем узел в дерево
-    TreeNode := TreeNodes.AddChild(TreeNode, GetPropertyFromNodeAttributes(Node,
-      'Caption'));
-
-    var vCommandData := TCommandData.Create;
-    vCommandData.AssignFrom(Node);
-
-    TreeNode.Data := vCommandData;
-
-    // переходим к дочернему узлу
-    var aNode := Node.ChildNodes.First;
-
-    // проходим по всем дочерним узлам
-    while aNode <> nil do
-    begin
-      ProcessNode(aNode, TreeNode);
-      aNode := aNode.NextSibling;
-    end;
-
-      var iImageListIndex := vCommandData.GetImageIndex(ImageListHandle);
-      TreeNode.ImageIndex := iImageListIndex;
-      TreeNode.SelectedIndex := iImageListIndex;
-    //end;
-  end;
-
-var
-  XMLDoc: IXMLDocument;
-  cNode: IXMLNode;
-  w: word;
-
-begin
-  ImageListHandle := TreeImageList.Handle; // ImageList.Handle;
-
-  // добавим иконку для папки, если не добавлено (всегда первая)
-  w := 3;
-  ImageList_ReplaceIcon(ImageListHandle, -1,
-    ExtractAssociatedIcon(Application.Handle, PChar('SHELL32.dll'), w));
-
-  if not FileExists(ExtractFilePath(ParamStr(0)) + cItemsFileName) then
-    Exit;
-
-  XMLDoc := TXMLDocument.Create(nil);
-
-  XMLDoc.LoadFromFile(ExtractFilePath(ParamStr(0)) + cItemsFileName);
-
-  cNode := XMLDoc.ChildNodes.FindNode('tree2xml').ChildNodes.First;
-  while cNode <> nil do
-  begin
-    ProcessNode(cNode, nil); // Рекурсия
-    cNode := cNode.NextSibling;
-  end;
-
-  TreeNodes.Owner.FullExpand;
-end;}
-
-{procedure TfrmConfig.DisposeTreeViewData;
-begin
-  var tn := tvItems.TopItem;
-  while tn <> nil do
-  begin
-    DisposeTreeNodeData(tn);
-    tn := tn.GetNextSibling;
-  end;
-end;}
 
 procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode; const AddToListDeletedImageIndexes: Boolean);
 begin
@@ -1018,6 +963,20 @@ begin
     begin
     frmCommandConfig.ClearAssigned;
     end;
+end;
+
+procedure TfrmConfig.SaveFormProperties;
+begin
+  if Assigned(MainIniFile) then
+    with MainIniFile do
+      begin
+      if WindowState <> TWindowState.wsMinimized then
+        WriteInteger(cIniFormIdent, cIniFormState, Integer(WindowState));
+      //WriteInteger(cIniFormIdent, cIniFormLeft, Left);
+      //WriteInteger(cIniFormIdent, cIniFormTop, Top);
+      WriteInteger(cIniFormIdent, cIniFormWidth, Width);
+      WriteInteger(cIniFormIdent, cIniFormHeight, Height);
+      end;
 end;
 
 end.

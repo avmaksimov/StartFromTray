@@ -14,6 +14,7 @@ object frmConfig: TfrmConfig
   OldCreateOrder = True
   Position = poScreenCenter
   StyleElements = [seFont, seClient]
+  OnClose = FormClose
   OnConstrainedResize = FormConstrainedResize
   OnCreate = FormCreate
   OnHide = FormHide
@@ -274,6 +275,7 @@ object frmConfig: TfrmConfig
     Top = 117
     object ppCMConfig: TMenuItem
       Caption = 'Options...'
+      Default = True
       OnClick = ppCMConfigClick
     end
     object MenuItem1: TMenuItem
@@ -285,7 +287,7 @@ object frmConfig: TfrmConfig
     end
   end
   object TreeImageList: TImageList
-    BkColor = 15790320
+    ColorDepth = cd32Bit
     Left = 212
     Top = 192
   end

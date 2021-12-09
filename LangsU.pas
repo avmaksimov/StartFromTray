@@ -2,15 +2,15 @@ unit LangsU;
 
 interface
 
-uses Vcl.Forms, System.Classes, System.Generics.Collections, Vcl.Menus;
+uses Vcl.Forms, System.Classes, System.Generics.Collections, Vcl.Menus, System.IniFiles;
 
 procedure GenDefaultFileLang;
 function GetLangString(const ASection, AString: string): string;
 procedure SetLang(const ALangCode: string);
 
 //get Index for AmiLang.Items with gen default LCID
-function LangFillListAndGetCurrent(const AMenu: TPopupMenu; const AmiLang: TMenuItem;
-  const AOnClick: TNotifyEvent): Integer;
+function LangFillListAndGetCurrent(const AMainIniFile: TIniFile; const AMenu: TPopupMenu;
+  const AmiLang: TMenuItem; const AOnClick: TNotifyEvent): Integer;
 // get Index with gen default LCID
 
 function AskForConfirmation(const AForm: TForm;
@@ -20,7 +20,7 @@ procedure ErrorDialog(const AForm: TForm; const ACaption: string);
 
 implementation
 
-uses System.SysUtils, System.IniFiles, System.TypInfo,
+uses System.SysUtils, System.TypInfo,
   System.StrUtils, Vcl.StdCtrls, Vcl.Controls, Vcl.ExtCtrls, Vcl.ActnList,
   Vcl.Dialogs, System.Generics.Defaults, Winapi.Windows, System.IOUtils;
 
@@ -294,8 +294,8 @@ begin
   // end;
 end;
 
-function LangFillListAndGetCurrent(const AMenu: TPopupMenu; const AmiLang: TMenuItem;
-  const AOnClick: TNotifyEvent): Integer;
+function LangFillListAndGetCurrent(const AMainIniFile: TIniFile; const AMenu: TPopupMenu;
+  const AmiLang: TMenuItem; const AOnClick: TNotifyEvent): Integer;
   procedure AddSubMenuItem(const ALangName, ALangCode: string);
   begin
   var vMenuItem := TMenuItem.Create(AMenu);
@@ -312,13 +312,13 @@ begin
   Result := 0; // LCID for user not found
   var vUserDefaultLCID := GetUserDefaultUILanguage(); // GetUserDefaultLCID();
 
-  var vCurrentIniLangCode: string;
-  with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
+  var vCurrentIniLangCode: string := AMainIniFile.ReadString('Main', 'LangCode', '');
+  {with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
     try
       vCurrentIniLangCode := ReadString('Main', 'LangCode', '');
     finally
       Free;
-    end;
+    end;}
 
   AddSubMenuItem('Default - English', 'Default');
 
