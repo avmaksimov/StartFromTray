@@ -25,21 +25,21 @@ object frmConfig: TfrmConfig
   PixelsPerInch = 96
   TextHeight = 13
   object gbItems: TGroupBox
-    Left = 2
+    Left = 6
     Top = 1
     Width = 373
-    Height = 412
+    Height = 404
     Anchors = [akLeft, akTop, akBottom]
     Caption = 'Elements to run'
     TabOrder = 0
     DesignSize = (
       373
-      412)
+      404)
     object tvItems: TTreeView
-      Left = 6
+      Left = 8
       Top = 15
-      Width = 361
-      Height = 390
+      Width = 357
+      Height = 380
       Anchors = [akLeft, akTop, akBottom]
       DoubleBuffered = True
       DragMode = dmAutomatic
@@ -57,35 +57,59 @@ object frmConfig: TfrmConfig
     end
   end
   object gbProperties: TGroupBox
-    Left = 381
+    Left = 386
     Top = 1
-    Width = 408
-    Height = 412
+    Width = 400
+    Height = 404
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'Properties'
     TabOrder = 1
     inline frmCommandConfig: TfrmCommandConfig
       Left = 2
       Top = 15
-      Width = 404
-      Height = 395
+      Width = 396
+      Height = 387
       Align = alClient
       TabOrder = 0
       ExplicitLeft = 2
       ExplicitTop = 15
       ExplicitHeight = 395
+      inherited Bevel1: TBevel
+        Width = 380
+      end
+      inherited edtCaption: TLabeledEdit
+        Width = 380
+      end
+      inherited cbIsVisible: TCheckBox
+        Width = 129
+      end
+      inherited btnEdit: TButton
+        Left = 232
+      end
+      inherited btnRun: TButton
+        Left = 313
+      end
+      inherited edtCommand: TButtonedEdit
+        Width = 380
+      end
+      inherited edtCommandParameters: TLabeledEdit
+        Width = 380
+      end
+      inherited btnChangeIcon: TButton
+        Left = 234
+      end
     end
   end
   object gbButtons: TGroupBox
-    Left = 2
-    Top = 419
+    Left = 6
+    Top = 411
     Width = 373
-    Height = 65
+    Height = 69
     Anchors = [akLeft, akBottom]
     TabOrder = 2
     object btnAddGroup: TButton
       Left = 6
-      Top = 33
+      Top = 37
       Width = 117
       Height = 25
       Action = actAddGroup
@@ -93,7 +117,7 @@ object frmConfig: TfrmConfig
     end
     object btnAddElement: TButton
       Left = 128
-      Top = 33
+      Top = 37
       Width = 117
       Height = 25
       Action = actAddElement
@@ -102,7 +126,7 @@ object frmConfig: TfrmConfig
     end
     object btnDel: TButton
       Left = 250
-      Top = 5
+      Top = 7
       Width = 117
       Height = 25
       Action = actDel
@@ -110,7 +134,7 @@ object frmConfig: TfrmConfig
     end
     object btnCopy: TButton
       Left = 250
-      Top = 33
+      Top = 37
       Width = 117
       Height = 25
       Action = actCopy
@@ -118,7 +142,7 @@ object frmConfig: TfrmConfig
     end
     object btnUp: TButton
       Left = 6
-      Top = 5
+      Top = 7
       Width = 117
       Height = 25
       Action = actItemUp
@@ -126,7 +150,7 @@ object frmConfig: TfrmConfig
     end
     object btnDown: TButton
       Left = 128
-      Top = 5
+      Top = 7
       Width = 117
       Height = 25
       Action = actItemDown
@@ -134,18 +158,18 @@ object frmConfig: TfrmConfig
     end
   end
   object gbMainButtons: TGroupBox
-    Left = 381
-    Top = 419
-    Width = 408
-    Height = 65
+    Left = 386
+    Top = 411
+    Width = 400
+    Height = 69
     Anchors = [akLeft, akRight, akBottom]
     TabOrder = 3
     DesignSize = (
-      408
-      65)
+      400
+      69)
     object lblVer: TLinkLabel
       Left = 10
-      Top = 12
+      Top = 14
       Width = 46
       Height = 17
       Cursor = crHandPoint
@@ -165,8 +189,8 @@ object frmConfig: TfrmConfig
       OnLinkClick = lblVerLinkClick
     end
     object btnApply: TButton
-      Left = 328
-      Top = 31
+      Left = 319
+      Top = 37
       Width = 75
       Height = 25
       Action = actApply
@@ -174,8 +198,8 @@ object frmConfig: TfrmConfig
       TabOrder = 3
     end
     object btnClose: TButton
-      Left = 245
-      Top = 31
+      Left = 236
+      Top = 37
       Width = 75
       Height = 25
       Action = actClose
@@ -184,8 +208,8 @@ object frmConfig: TfrmConfig
       TabOrder = 2
     end
     object btnOK: TButton
-      Left = 162
-      Top = 31
+      Left = 153
+      Top = 37
       Width = 75
       Height = 25
       Action = actOK
@@ -194,7 +218,7 @@ object frmConfig: TfrmConfig
     end
     object btnOptions: TButton
       Left = 10
-      Top = 31
+      Top = 37
       Width = 107
       Height = 25
       Caption = 'Options'
