@@ -73,30 +73,39 @@ object frmConfig: TfrmConfig
       TabOrder = 0
       ExplicitLeft = 2
       ExplicitTop = 15
-      ExplicitHeight = 395
+      ExplicitWidth = 396
+      ExplicitHeight = 387
       inherited Bevel1: TBevel
         Width = 380
+        ExplicitWidth = 380
       end
       inherited edtCaption: TLabeledEdit
         Width = 380
+        ExplicitWidth = 380
       end
       inherited cbIsVisible: TCheckBox
         Width = 129
+        ExplicitWidth = 129
       end
       inherited btnEdit: TButton
         Left = 232
+        ExplicitLeft = 232
       end
       inherited btnRun: TButton
         Left = 313
+        ExplicitLeft = 313
       end
       inherited edtCommand: TButtonedEdit
         Width = 380
+        ExplicitWidth = 380
       end
       inherited edtCommandParameters: TLabeledEdit
         Width = 380
+        ExplicitWidth = 380
       end
       inherited btnChangeIcon: TButton
         Left = 234
+        ExplicitLeft = 234
       end
     end
   end

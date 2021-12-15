@@ -593,9 +593,13 @@ end;
 procedure TfrmConfig.MyFormShow;
 begin
   Show;
-  var vWindowState := WindowState;
-  ShowWindow(Handle, SW_RESTORE);
-  WindowState := vWindowState;
+  if IsIconic(Application.Handle) then
+    begin
+    var vWindowState := WindowState;
+    ShowWindow(Handle, SW_RESTORE);
+    WindowState := vWindowState;
+    end;
+
 end;
 
 procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
