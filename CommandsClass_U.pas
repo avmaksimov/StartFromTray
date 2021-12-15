@@ -23,9 +23,6 @@ type
   TCommandData = class
   private
     FisGroup: boolean;
-    //FName: string;
-    // уникальное имя (используется для автоматизации редактирования скриптов). Генерируется автоматически
-    //FisVisible: boolean; // признак видимости
     Fcommand: String; // команда для выполнения
     FisRunning: boolean; // сейчас команда запущена
 
@@ -153,9 +150,7 @@ begin
   end;
 
   vFilename := ExtractFilePath(ParamStr(0)) + cItemsFileName;
-  // 'StartFromTray_tvItems.xml';
   vFilenameNew := ExtractFilePath(ParamStr(0)) + 'new-' + cItemsFileName;
-  // StartFromTray_tvItems.xml';
 
   XMLDoc.SaveToFile(vFilenameNew);
   if FileExists(vFilename) then
@@ -169,7 +164,6 @@ end; // TreeToXML
 function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
   const sProperty: String): string;
 var
-  // Node: IXMLNode;
   Res: OleVariant;
 begin
   Res := (NodeAttributes.Attributes[sProperty]);
@@ -186,8 +180,6 @@ constructor TCommandData.Create;
 begin
   inherited Create;
 
-  //FName := '';
-  //FisVisible := True; // признак видимости
   FisGroup := false; // признак группы
   Fcommand := ''; // команда для выполнения
   FCommandParameters := ''; // параметр команды для выполнения
@@ -208,72 +200,6 @@ begin
     FWaitForRunningThread.Terminate;
 end;
 
-{function TCommandData.InternalRun(const AHelper: string;
-  const ADefaultOperation: PChar; const RunType: TCommandRunType;
-  const IsRunAsAdmin: Boolean): THandle;
-const
-  strCommandRunType: array [TCommandRunType] of string = ('Normal Run', 'Edit');
-var
-  vOperation, vFilename, vParameters: PChar;
-  SEInfo: TShellExecuteInfo;
-  vGetLastError: Cardinal;
-  sTechErrorMsg: string;
-begin
-  Result := 0;
-
-  CoInitializeEx(nil, COINIT_APARTMENTTHREADED or COINIT_DISABLE_OLE1DDE);
-
-  if AHelper <> '' then
-  begin
-    vOperation := nil;
-    vFilename := PChar('"' + AHelper + '"');
-    vParameters := PChar('"' + Fcommand + '"' + FCommandParameters);
-  end
-  else
-  begin
-    vOperation := ADefaultOperation;
-    vFilename := PChar(Fcommand);
-    vParameters := PChar(FCommandParameters);
-  end;
-
-  if (vOperation = nil) and IsRunAsAdmin then
-    vOperation := PChar('runas');
-
-  FillChar(SEInfo, SizeOf(SEInfo), 0);
-  with SEInfo do
-  begin
-    cbSize := SizeOf(TShellExecuteInfo);
-    lpVerb := vOperation;
-    lpFile := vFilename;
-    lpParameters := vParameters;
-    lpDirectory := PChar(ExtractFilePath(Fcommand));
-    nShow := SW_SHOWNORMAL;
-    if RunType <> crtEdit then
-      fMask := SEE_MASK_NOCLOSEPROCESS;
-  end;
-  if ShellExecuteEx(@SEInfo) then
-    Result := SEInfo.hProcess
-  else if gDebug then
-  begin
-    vGetLastError := GetLastError;
-    if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
-    begin
-      if vOperation = nil then
-        sTechErrorMsg := 'nil'
-      else
-        sTechErrorMsg := vOperation;
-      sTechErrorMsg := sTechErrorMsg + '; ' + vFilename + '; ';
-      if vParameters = nil then
-        sTechErrorMsg := sTechErrorMsg + 'nil'
-      else
-        sTechErrorMsg := sTechErrorMsg + vParameters;
-
-      M_Error('Error with ' + strCommandRunType[RunType] + ': ' +
-        SysErrorMessage(vGetLastError) + LineFeed + 'Error code: ' +
-        IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' + sTechErrorMsg);
-    end;
-  end;
-end;}
 function TCommandData.InternalRun(const AHelper: string;
   const RunType: TCommandRunType): THandle;
 const
@@ -379,7 +305,7 @@ begin
     var vFilterData := Filters_GetFilterByFilename(Fcommand);
     var editHelper: string := '';
     if Assigned(vFilterData) then
-      editHelper := vFilterData.editHelper;
+      editHelper := vFilterData.Edit;
     if editHelper = '' then
       editHelper := GetAssociatedExeForEdit(Fcommand);
     if editHelper <> '' then
@@ -489,7 +415,7 @@ begin
   begin
     vFilterData := Filters_GetFilterByFilename(Fcommand);
     if Assigned(vFilterData) then
-      runHelper := vFilterData.runHelper
+      runHelper := vFilterData.Run
     else
       runHelper := '';
 
@@ -540,13 +466,9 @@ end;
 
 procedure TCommandData.AssignFrom(SrcNode: IXMLNode);
 var
-  //TypeData: PTypeData;
   FPropList: PPropList;
   FProp: PPropInfo;
-  //sDataToLoad: string;
-  //sDataType: TSymbolName;
 begin
-  //TypeData := GetTypeData(ClassInfo);
   var FPropCount := GetTypeData(ClassInfo).PropCount;
   GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
   try
@@ -579,11 +501,6 @@ begin
   finally
     FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
   end;
-
-
-  // patch for loading from XML
-  {if (IconType = citDefault) and (IconFilename <> '') then
-    IconType := citFromFileRes;}
 end;
 
 procedure TCommandData.AssignTo(DestNode: IXMLNode; const ACaption: String);

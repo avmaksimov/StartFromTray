@@ -2,9 +2,10 @@ unit FilterClass_U;
 
 interface
 
-uses Classes;
+uses Classes, IniFiles;
 
 type
+  {$M+}
   { TFilterData }
   TFilterData = class(TObject)
   private
@@ -16,35 +17,28 @@ type
     constructor Create;
 
     procedure Assign(Source: TFilterData);
-
+    procedure AssignTo(const AIniFile: TIniFile; const ACaption: string);
+  published
     property Extensions: string read FExtensions write FExtensions;
-
-    property EditHelper: string read FEditHelper write FEditHelper;
-    property RunHelper: string read FRunHelper write FRunHelper;
+    property Edit: string read FEditHelper write FEditHelper;
+    property Run: string read FRunHelper write FRunHelper;
   end;
+  {$M-}
 
 var
   Filters: TStringList;
 
 procedure Filters_LoadFromFile;
 procedure Filters_SaveToFile;
-// function Filters_CreateFilter: string; // creating filter from Filters (include sFilterAllFiles)
 function Filters_GetFilterByFilename(const AFileName: string): TFilterData;
 // nil if not Founded
 
 implementation
 
-uses IniFiles, SysUtils, Windows, CommonU;
+uses SysUtils, System.TypInfo, Windows, CommonU;
 
 const
   sFiltersFileName = 'Filters.ini';
-
-  // sFiltersAllFiles = 'All files (*.*)|*.*';
-
-  // don't translate it!
-  sFilterProperty_Extensions = 'Extensions';
-  sFilterProperty_EditHelper = 'Edit';
-  sFilterProperty_RunHelper = 'Run';
 
   { TFilterData }
 
@@ -52,8 +46,28 @@ procedure TFilterData.Assign(Source: TFilterData);
 begin
   FExtensions := Source.Extensions;
 
-  FEditHelper := Source.EditHelper;
-  FRunHelper := Source.RunHelper;
+  FEditHelper := Source.Edit;
+  FRunHelper := Source.Run;
+end;
+
+procedure TFilterData.AssignTo(const AIniFile: TIniFile;
+  const ACaption: string);
+begin
+  var TypeData: PTypeData := GetTypeData(ClassInfo);
+  var FPropCount: Integer := TypeData.PropCount;
+
+  var FPropList: PPropList;
+  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  try
+    GetPropInfos(ClassInfo, FPropList);
+    for var i := 0 to FPropCount - 1 do
+    begin
+      var FProp: PPropInfo := FPropList[i];
+      AIniFile.WriteString(ACaption, string(FProp.Name), GetStrProp(Self, FProp));
+    end; // for i .. FPropCount-1
+  finally
+    FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  end;
 end;
 
 constructor TFilterData.Create;
@@ -65,89 +79,64 @@ begin
 end;
 
 procedure Filters_LoadFromFile;
-var
-  Sections: TStringList;
-  i: Integer;
-  FFilterData: TFilterData;
-  sSection: string;
 begin
-  with TIniFile.Create(ExtractFilePath(ParamStr(0)) + sFiltersFileName) do
+  var vIniFile := TIniFile.Create(ExtractFilePath(ParamStr(0)) + sFiltersFileName);
+  with vIniFile do
     try
-      Sections := TStringList.Create;
+      var vPropCount: Integer := PTypeData(GetTypeData(TFilterData.ClassInfo))^.PropCount;
+      var vPropList: PPropList;
+      GetMem(vPropList, SizeOf(PPropInfo) * vPropCount);
+      GetPropInfos(TFilterData.ClassInfo, vPropList);
+
+      var Sections := TStringList.Create;
       ReadSections(Sections);
-      for i := 0 to Sections.Count - 1 do
-      begin
-        sSection := Sections[i];
-        FFilterData := TFilterData.Create;
+      for var vFilterName in Sections do
+        begin
+        var vFilterData := TFilterData.Create;
 
-        FFilterData.Extensions := ReadString(Trim(sSection),
-          sFilterProperty_Extensions, '');
+        for var i := 0 to vPropCount - 1 do
+          begin
+          var vProp := vPropList[i];
+          SetStrProp(vFilterData, vProp, ReadString(vFilterName, string(vProp.Name), ''));
+          end;
 
-        FFilterData.EditHelper := ReadString(Trim(sSection),
-          sFilterProperty_EditHelper, '');
-        FFilterData.RunHelper := ReadString(Trim(sSection),
-          sFilterProperty_RunHelper, '');
-        Filters.AddObject(Trim(sSection), FFilterData);
-      end;
+        Filters.AddObject(vFilterName, vFilterData)
+        end;
+      FreeMem(vPropList);
     finally
       Free;
     end;
 end;
 
 procedure Filters_SaveToFile;
-var
-  i: Integer;
-  s: string;
-  FFilterData: TFilterData;
-var
-  vFilename, vFilenameNew: string;
 begin
-  vFilename := ExtractFilePath(ParamStr(0)) + sFiltersFileName;
-  vFilenameNew := ExtractFilePath(ParamStr(0)) + 'new-' + sFiltersFileName;
-  { if FileExists(s) then
-    If not SysUtils.DeleteFile(s) then
-    begin
-    MessageBox(0, PChar('Can''t delete file "' + s + '" to save Filters'), PChar('Saving Filters'), MB_ICONERROR);
-    Exit;
-    end; }
+  var vFilename := ExtractFilePath(ParamStr(0)) + sFiltersFileName;
+  var vFilenameNew := ExtractFilePath(ParamStr(0)) + 'new-' + sFiltersFileName;
 
-  with TIniFile.Create(vFilenameNew) do
+  var vIniFile := TIniFile.Create(vFilenameNew);
+  with vIniFile do
     try
-      for i := 0 to Filters.Count - 1 do
-      begin
-        s := Filters[i];
-        FFilterData := TFilterData(Filters.Objects[i]);
+      var vPropCount: Integer := PTypeData(GetTypeData(TFilterData.ClassInfo))^.PropCount;
+      var vPropList: PPropList;
+      GetMem(vPropList, SizeOf(PPropInfo) * vPropCount);
+      GetPropInfos(TFilterData.ClassInfo, vPropList);
 
-        WriteString(s, sFilterProperty_Extensions, FFilterData.Extensions);
-
-        WriteString(s, sFilterProperty_EditHelper, FFilterData.EditHelper);
-        WriteString(s, sFilterProperty_RunHelper, FFilterData.RunHelper);
-
-      end;
+      for var i := 0 to Filters.Count - 1 do
+        begin
+        var vFilterName := Filters[i];
+        for var j := 0 to vPropCount - 1 do
+          begin
+          var vProp := vPropList[j];
+          vIniFile.WriteString(vFilterName, string(vProp.Name), GetStrProp(TFilterData(Filters.Objects[i]), vProp));
+          end;
+        end;
     finally
       Free;
     end;
-  if FileExists(vFilename) then
-    if not DeleteFile(PChar(vFilename)) then
+  if (FileExists(vFilename) and not DeleteFile(PChar(vFilename))) or
+    not RenameFile(vFilenameNew, vFilename) then
       RaiseLastOSError;
-  if not RenameFile(vFilenameNew, vFilename) then
-    RaiseLastOSError;
 end;
-
-{ function Filters_CreateFilter: string; // creating filter from Filters (include sFilterAllFiles)
-  var i: Integer; s: string;
-  begin
-  Result := '';
-  for i := 0 to Filters.Count - 1 do
-  begin
-  s := TFilterData(Filters.Objects[i]).FExtensions;
-
-  Result := Result + Filters[i] + ' (' + s + ')|' + s + '|';
-  end;
-
-  s := Result + sFiltersAllFiles;
-  Result := s;
-  end; }
 
 function Filters_GetFilterByFilename(const AFileName: string): TFilterData;
 // nil if not Founded

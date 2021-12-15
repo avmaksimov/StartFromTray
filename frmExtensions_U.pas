@@ -149,8 +149,8 @@ begin
     begin
       edtExtensions.Text := Extensions;
 
-      edtEditHelper.Text := EditHelper;
-      edtRunHelper.Text := RunHelper;
+      edtEditHelper.Text := Edit;
+      edtRunHelper.Text := Run;
     end;
   end
   else
@@ -202,8 +202,8 @@ begin
   begin
     Extensions := vExtensions; //Trim(edtExtensions.Text);
 
-    EditHelper := Trim(edtEditHelper.Text);
-    RunHelper := Trim(edtRunHelper.Text);
+    Edit := Trim(edtEditHelper.Text);
+    Run := Trim(edtRunHelper.Text);
   end;
   Result := True;
 end;
@@ -375,7 +375,7 @@ begin
   begin
     with FAssignedData do
       Result := Result or (edtExtensions.Text <> Extensions) or
-        (edtRunHelper.Text <> RunHelper) or (edtEditHelper.Text <> EditHelper);
+        (edtRunHelper.Text <> Run) or (edtEditHelper.Text <> Edit);
   end;
 end;
 
