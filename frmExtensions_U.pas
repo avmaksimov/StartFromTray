@@ -20,15 +20,19 @@ type
     btnExtensionDown: TButton;
     btnExtensionUp: TButton;
     gbExtensionProperties: TGroupBox;
-    lblRunHelper: TLabel;
-    lblEditHelper: TLabel;
     edtExtensions: TLabeledEdit;
     edtName: TLabeledEdit;
     OpenDialog: TFileOpenDialog;
     ImageList: TImageList;
-    edtEditHelper: TButtonedEdit;
-    edtRunHelper: TButtonedEdit;
     TitleBarPanel: TTitleBarPanel;
+    gbEdit: TGroupBox;
+    edtEditHelper: TButtonedEdit;
+    lblEditHelper: TLabel;
+    edtEditParams: TLabeledEdit;
+    gbRun: TGroupBox;
+    lblRunHelper: TLabel;
+    edtRunHelper: TButtonedEdit;
+    edtRunParams: TLabeledEdit;
     procedure btnExtensionAddClick(Sender: TObject);
     procedure btnExtensionDeleteClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
@@ -131,41 +135,37 @@ begin
   M_SetChildsEnable(gbExtensionProperties, bSelected);
 
   if bSelected then
-  begin
-    //FAssignedListItemIndex := lvFilters.ItemIndex;
-
-    //edtName.Text := lvFilters.Items[FAssignedListItemIndex];
-
+    begin
     FAssignedCaption := lvFilters.Items[FAssignedListItemIndex];
     FAssignedData := TFilterData(lvFilters.Items.Objects
       [FAssignedListItemIndex]);
 
     edtName.Text := FAssignedCaption;
 
-    //if Visible then
-    //  edtName.SetFocus;
-
     with FAssignedData do
-    begin
+      begin
       edtExtensions.Text := Extensions;
 
       edtEditHelper.Text := Edit;
+      edtEditParams.Text := EditParams;
       edtRunHelper.Text := Run;
-    end;
-  end
+      edtRunParams.Text := RunParams;
+      end;
+    end
   else
-  begin
+    begin
     FAssignedCaption := '';
     edtName.Text := '';
 
     edtExtensions.Text := '';
 
     edtEditHelper.Text := '';
+    edtEditParams.Text := '';
     edtRunHelper.Text := '';
+    edtRunParams.Text := '';
 
     FAssignedData := nil;
-    //FAssignedListItemIndex := -1;
-  end;
+    end;
   FIsAssigningListItemIndex := False;
 end;
 
@@ -197,14 +197,16 @@ begin
     Exit(False);
     end;
 
-  lvFilters.Items[FAssignedListItemIndex] := vName; //Trim(edtName.Text);
+  lvFilters.Items[FAssignedListItemIndex] := vName;
   with FAssignedData do
-  begin
-    Extensions := vExtensions; //Trim(edtExtensions.Text);
+    begin
+    Extensions := vExtensions;
 
     Edit := Trim(edtEditHelper.Text);
+    EditParams := Trim(edtEditParams.Text);
     Run := Trim(edtRunHelper.Text);
-  end;
+    RunParams := Trim(edtRunParams.Text);
+    end;
   Result := True;
 end;
 
@@ -375,7 +377,8 @@ begin
   begin
     with FAssignedData do
       Result := Result or (edtExtensions.Text <> Extensions) or
-        (edtRunHelper.Text <> Run) or (edtEditHelper.Text <> Edit);
+        (edtEditHelper.Text <> Edit) or (edtEditParams.Text <> EditParams) or
+        (edtRunHelper.Text <> Run) or (edtRunParams.Text <> RunParams);
   end;
 end;
 

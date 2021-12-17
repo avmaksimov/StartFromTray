@@ -9,10 +9,6 @@ uses
 
 const
   cItemsFileName = 'Items.xml';
-  //cIconHeigh = 19;
-  //cIconWidth = 10;
-
-//function MyExtendFileNameToFull(const AFileName: string): string;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts
@@ -31,37 +27,6 @@ var
 implementation
 
 uses Forms, Types, IniFiles, Vcl.Graphics, System.Masks, System.UITypes;
-
-// If Filename exists than return it else check in Path and result Fullname
-// from Path or return '' if not found
-{function MyExtendFileNameToFull(const AFileName: string): string;
-begin
-  //directory must be absolute path
-  if DirectoryExists(AFileName) and not IsRelativePath(AFileName) then
-    begin
-    Exit(AFileName);
-    end;
-
-  Result := FileSearch(AFileName, GetEnvironmentVariable('PATH'));
-
-  {if FileExists(AFileName) or //directory must be absolute path
-    (DirectoryExists(AFileName) and not IsRelativePath(AFileName)) then
-  begin
-    Result := AFileName;
-    Exit;
-  end;
-
-  var vPaths := SplitString(GetEnvironmentVariable('PATH'), ';');
-  for var i := 0 to High(vPaths) do
-    begin
-    Result := vPaths[i] + '\' + AFileName;
-    if FileExists(Result) then
-      begin
-      Exit;
-      end;
-    end;
-  Result := ''; // else}
-//end;
 
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts

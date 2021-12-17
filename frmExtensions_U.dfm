@@ -3,22 +3,22 @@ object frmExtensions: TfrmExtensions
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Extensions'
-  ClientHeight = 287
-  ClientWidth = 585
+  ClientHeight = 411
+  ClientWidth = 666
   Color = clBtnFace
   CustomTitleBar.Control = TitleBarPanel
   CustomTitleBar.Enabled = True
   CustomTitleBar.Height = 26
-  CustomTitleBar.BackgroundColor = 1788506
+  CustomTitleBar.BackgroundColor = 7158279
   CustomTitleBar.ForegroundColor = clWhite
   CustomTitleBar.InactiveBackgroundColor = clWhite
   CustomTitleBar.InactiveForegroundColor = 10066329
   CustomTitleBar.ButtonForegroundColor = clWhite
-  CustomTitleBar.ButtonBackgroundColor = 1788506
+  CustomTitleBar.ButtonBackgroundColor = 7158279
   CustomTitleBar.ButtonHoverForegroundColor = clWhite
-  CustomTitleBar.ButtonHoverBackgroundColor = 2451068
-  CustomTitleBar.ButtonPressedForegroundColor = 65793
-  CustomTitleBar.ButtonPressedBackgroundColor = 3444653
+  CustomTitleBar.ButtonHoverBackgroundColor = 9851146
+  CustomTitleBar.ButtonPressedForegroundColor = clWhite
+  CustomTitleBar.ButtonPressedBackgroundColor = 13857037
   CustomTitleBar.ButtonInactiveForegroundColor = 10066329
   CustomTitleBar.ButtonInactiveBackgroundColor = clWhite
   Font.Charset = DEFAULT_CHARSET
@@ -39,14 +39,14 @@ object frmExtensions: TfrmExtensions
     Left = 4
     Top = 26
     Width = 233
-    Height = 181
+    Height = 307
     Caption = 'Extensions'
     TabOrder = 0
     object lvFilters: TListBox
       Left = 6
       Top = 14
       Width = 221
-      Height = 159
+      Height = 283
       DoubleBuffered = True
       DragMode = dmAutomatic
       ItemHeight = 13
@@ -59,7 +59,7 @@ object frmExtensions: TfrmExtensions
   end
   object gbFiltersActions: TGroupBox
     Left = 4
-    Top = 211
+    Top = 338
     Width = 233
     Height = 70
     TabOrder = 2
@@ -102,58 +102,51 @@ object frmExtensions: TfrmExtensions
   end
   object gbMainButtons: TGroupBox
     Left = 243
-    Top = 211
-    Width = 336
+    Top = 338
+    Width = 420
     Height = 70
     TabOrder = 3
+    DesignSize = (
+      420
+      70)
     object btnOK: TButton
-      Left = 109
+      Left = 193
       Top = 38
       Width = 105
       Height = 25
+      Anchors = [akTop, akRight]
       Caption = 'OK'
       Default = True
       ModalResult = 1
       TabOrder = 0
       OnClick = btnOKClick
+      ExplicitLeft = 109
     end
     object btnCancel: TButton
-      Left = 224
+      Left = 308
       Top = 38
       Width = 105
       Height = 25
+      Anchors = [akTop, akRight]
       Cancel = True
       Caption = 'Cancel'
       ModalResult = 2
       TabOrder = 1
       OnClick = btnCancelClick
+      ExplicitLeft = 224
     end
   end
   object gbExtensionProperties: TGroupBox
     Left = 243
     Top = 26
-    Width = 336
-    Height = 181
+    Width = 420
+    Height = 307
     Caption = 'Extension'#39's properties '
     TabOrder = 1
-    object lblRunHelper: TLabel
-      Left = 6
-      Top = 136
-      Width = 213
-      Height = 13
-      Caption = 'Run (empty for the default action for open):'
-    end
-    object lblEditHelper: TLabel
-      Left = 6
-      Top = 95
-      Width = 206
-      Height = 13
-      Caption = 'Edit (empty for the default action for edit):'
-    end
     object edtExtensions: TLabeledEdit
       Left = 6
-      Top = 72
-      Width = 323
+      Top = 73
+      Width = 407
       Height = 21
       EditLabel.Width = 166
       EditLabel.Height = 13
@@ -163,7 +156,7 @@ object frmExtensions: TfrmExtensions
     object edtName: TLabeledEdit
       Left = 6
       Top = 33
-      Width = 323
+      Width = 407
       Height = 21
       EditLabel.Width = 133
       EditLabel.Height = 13
@@ -171,34 +164,89 @@ object frmExtensions: TfrmExtensions
       TabOrder = 0
       OnChange = edtNameChange
     end
-    object edtEditHelper: TButtonedEdit
+    object gbEdit: TGroupBox
       Left = 6
-      Top = 110
-      Width = 323
-      Height = 21
-      Images = ImageList
-      RightButton.ImageIndex = 0
-      RightButton.Visible = True
+      Top = 96
+      Width = 407
+      Height = 103
+      Caption = 'Action for Edit'
       TabOrder = 2
-      OnRightButtonClick = edtEdit_or_RunHelperRightButtonClick
+      object lblEditHelper: TLabel
+        Left = 8
+        Top = 16
+        Width = 220
+        Height = 13
+        Caption = 'Executable file (empty for the default action):'
+      end
+      object edtEditHelper: TButtonedEdit
+        Left = 8
+        Top = 31
+        Width = 391
+        Height = 21
+        Images = ImageList
+        RightButton.ImageIndex = 0
+        RightButton.Visible = True
+        TabOrder = 0
+        OnRightButtonClick = edtEdit_or_RunHelperRightButtonClick
+      end
+      object edtEditParams: TLabeledEdit
+        Left = 8
+        Top = 72
+        Width = 391
+        Height = 21
+        EditLabel.Width = 345
+        EditLabel.Height = 13
+        EditLabel.Caption = 
+          'Parameters (the command will added or put :(command) there you n' +
+          'eed'
+        TabOrder = 1
+        OnChange = edtNameChange
+      end
     end
-    object edtRunHelper: TButtonedEdit
-      Tag = 1
+    object gbRun: TGroupBox
       Left = 6
-      Top = 152
-      Width = 323
-      Height = 21
-      Images = ImageList
-      RightButton.ImageIndex = 0
-      RightButton.Visible = True
+      Top = 198
+      Width = 407
+      Height = 103
+      Caption = 'Action for Run'
       TabOrder = 3
-      OnRightButtonClick = edtEdit_or_RunHelperRightButtonClick
+      object lblRunHelper: TLabel
+        Left = 8
+        Top = 16
+        Width = 220
+        Height = 13
+        Caption = 'Executable file (empty for the default action):'
+      end
+      object edtRunHelper: TButtonedEdit
+        Left = 8
+        Top = 31
+        Width = 391
+        Height = 21
+        Images = ImageList
+        RightButton.ImageIndex = 0
+        RightButton.Visible = True
+        TabOrder = 0
+        OnRightButtonClick = edtEdit_or_RunHelperRightButtonClick
+      end
+      object edtRunParams: TLabeledEdit
+        Left = 8
+        Top = 72
+        Width = 391
+        Height = 21
+        EditLabel.Width = 345
+        EditLabel.Height = 13
+        EditLabel.Caption = 
+          'Parameters (the command will added or put :(command) there you n' +
+          'eed'
+        TabOrder = 1
+        OnChange = edtNameChange
+      end
     end
   end
   object TitleBarPanel: TTitleBarPanel
     Left = 0
     Top = 0
-    Width = 585
+    Width = 666
     Height = 25
     CustomButtons = <
       item
@@ -208,8 +256,9 @@ object frmExtensions: TfrmExtensions
         Visible = True
         OnClick = TitleBarPanelCustomButtons0Click
       end>
+    ExplicitWidth = 585
     DesignSize = (
-      585
+      666
       25)
   end
   object OpenDialog: TFileOpenDialog

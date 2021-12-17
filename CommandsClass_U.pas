@@ -41,7 +41,7 @@ type
     // just RunCommand
     {function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
       const RunType: TCommandRunType; const IsRunAsAdmin: Boolean): THandle;}
-    function InternalRun(const AHelper: string; const RunType: TCommandRunType): THandle;
+    function InternalRun(const AHelper: string; const AHelperParams: string; const RunType: TCommandRunType): THandle;
 
   public
     constructor Create; overload;
@@ -200,72 +200,75 @@ begin
     FWaitForRunningThread.Terminate;
 end;
 
-function TCommandData.InternalRun(const AHelper: string;
-  const RunType: TCommandRunType): THandle;
+function TCommandData.InternalRun(const AHelper: string; const AHelperParams: string; const RunType: TCommandRunType): THandle;
 const
   strCommandRunType: array [TCommandRunType] of string = ('Normal Run', 'Edit');
-var
-  vOperation, vFilename, vParameters: PChar;
-  SEInfo: TShellExecuteInfo;
-  vGetLastError: Cardinal;
-  sTechErrorMsg: string;
+
+  cHelperParamForCommand = ':(command)';
 begin
   Result := 0;
 
   //CoInitializeEx(nil, COINIT_APARTMENTTHREADED or COINIT_DISABLE_OLE1DDE);
-
-  if AHelper <> '' then
-  begin
-    //vOperation := nil;
-    vFilename := PChar('"' + AHelper + '"');
-    vParameters := PChar('"' + Fcommand + '"' + FCommandParameters);
-  end
+  var vFilename, vParameters: string;
+  if AHelper = '' then
+    begin
+    vFilename := Fcommand;
+    vParameters := FCommandParameters;
+    end
   else
-  begin
-    //vOperation := ADefaultOperation;
-    vFilename := PChar(Fcommand);
-    vParameters := PChar(FCommandParameters);
-  end;
+    begin
+    vFilename := AHelper; //'"' + AHelper + '"';
+    //var vHelperParams: string := '';
+    if AHelperParams.Contains(cHelperParamForCommand) then
+      vParameters := AHelperParams.Replace(cHelperParamForCommand, Fcommand)
+    else
+      vParameters := AHelperParams + ' "' + Fcommand + '"';
+    vParameters := vParameters + ' ' + FCommandParameters;
+    //vParameters := '"' + Fcommand + '"' + FCommandParameters;
+    end;
 
+  var vOperation: PChar;
   if not IsRunAsAdmin then
     vOperation := nil
   else
     vOperation := PChar('runas');
 
+  var SEInfo: TShellExecuteInfo;
   FillChar(SEInfo, SizeOf(SEInfo), 0);
   with SEInfo do
-  begin
+    begin
     cbSize := SizeOf(TShellExecuteInfo);
     lpVerb := vOperation;
-    lpFile := vFilename;
-    lpParameters := vParameters;
+    lpFile := PChar(vFilename);
+    lpParameters := PChar(vParameters);
     lpDirectory := PChar(ExtractFilePath(Fcommand));
     nShow := SW_SHOWNORMAL;
     if RunType <> crtEdit then
       fMask := SEE_MASK_NOCLOSEPROCESS;
-  end;
+    end;
   if ShellExecuteEx(@SEInfo) then
     Result := SEInfo.hProcess
   else if gDebug then
-  begin
-    vGetLastError := GetLastError;
-    if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
     begin
+    var vGetLastError: Cardinal := GetLastError;
+    if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
+      begin
+      var sTechErrorMsg: string;
       if vOperation = nil then
         sTechErrorMsg := 'nil'
       else
         sTechErrorMsg := vOperation;
       sTechErrorMsg := sTechErrorMsg + '; ' + vFilename + '; ';
-      if vParameters = nil then
-        sTechErrorMsg := sTechErrorMsg + 'nil'
+      if vParameters = '' then
+        sTechErrorMsg := sTechErrorMsg + '<empty string>'
       else
         sTechErrorMsg := sTechErrorMsg + vParameters;
 
       M_Error('Error with ' + strCommandRunType[RunType] + ': ' +
         SysErrorMessage(vGetLastError) + LineFeed + 'Error code: ' +
         IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' + sTechErrorMsg);
+      end;
     end;
-  end;
 end;
 
 procedure TCommandData.Edit;
@@ -304,17 +307,51 @@ begin
   begin
     var vFilterData := Filters_GetFilterByFilename(Fcommand);
     var editHelper: string := '';
+    var editParams: string := '';
     if Assigned(vFilterData) then
+      begin
       editHelper := vFilterData.Edit;
+      editParams := vFilterData.EditParams;
+      end;
+    // if empty edit helper
     if editHelper = '' then
+      begin
       editHelper := GetAssociatedExeForEdit(Fcommand);
+      editParams := '';
+      end;
     if editHelper <> '' then
-      InternalRun(editHelper, crtEdit)
-      {editHelper := '';
-    if (editHelper <> '') or (GetAssociatedExeForEdit(Fcommand) <> '') then
-      InternalRun(editHelper, PChar('edit'), crtEdit, IsRunAsAdmin)}
+      InternalRun(editHelper, editParams, crtEdit)
     else
       OpenFolderAndSelectFile(Fcommand);
+  end;
+end;
+
+procedure TCommandData.Run(const RunType: TCommandRunType);
+begin
+  if (Fcommand <> '') and not FisRunning then
+  begin
+    var vFilterData := Filters_GetFilterByFilename(Fcommand);
+    var runHelper: string;
+    var runParams: string;
+    if Assigned(vFilterData) then
+      begin
+      runHelper := vFilterData.Run;
+      runParams := vFilterData.RunParams;
+      end;
+    // if empty run helper
+    if runHelper = '' then
+      begin
+      runHelper := '';
+      runParams := '';
+      end;
+
+    var ProcessHandle := InternalRun(runHelper, runParams, RunType);
+    if ProcessHandle <> 0 then
+      begin
+      isRunning := True;
+      FWaitForRunningThread := TCmdWaitForRunningThread.Create
+        (ProcessHandle, Self);
+      end;
   end;
 end;
 
@@ -402,31 +439,6 @@ if vHIcon > 0 then
   end
 else
   Result := -1;
-end;
-
-procedure TCommandData.Run(const RunType: TCommandRunType);
-var
-  vFilterData: TFilterData;
-  runHelper: string;
-  // CmdWaitForRunningThread: TCmdWaitForRunningThread;
-  ProcessHandle: THandle;
-begin
-  if (Fcommand <> '') and not FisRunning then
-  begin
-    vFilterData := Filters_GetFilterByFilename(Fcommand);
-    if Assigned(vFilterData) then
-      runHelper := vFilterData.Run
-    else
-      runHelper := '';
-
-    ProcessHandle := InternalRun(runHelper, RunType);
-    if ProcessHandle <> 0 then
-    begin
-      isRunning := True;
-      FWaitForRunningThread := TCmdWaitForRunningThread.Create
-        (ProcessHandle, Self);
-    end;
-  end;
 end;
 
 procedure TCommandData.Assign(Dest: TCommandData);
