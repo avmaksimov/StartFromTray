@@ -28,8 +28,9 @@ const
   cLangFolderName = 'Langs';
 
 var
-  FLangFile: TMemIniFile = nil;
-  FLangPath: string; // Path to Lang folder in app
+  FDefLangFile: TMemIniFile = nil;
+  FLangFile   : TMemIniFile = nil;
+  FLangPath   : string; // Path to Lang folder in app
 
 const
   ExcludesForFormConfig: TArray<string> = ['btnClose', 'lblVer'];
@@ -110,9 +111,8 @@ var
   viForm: Integer;
   vForm: TForm;
 begin
-  vFileName := FLangPath +
-    'Default.ini';
-  System.SysUtils.DeleteFile(vFileName);
+  vFileName := FLangPath + 'Default.ini';
+  //System.SysUtils.DeleteFile(vFileName);
   FLangFile := TMemIniFile.Create(vFileName, System.SysUtils.TEncoding.UTF8);
   with FLangFile do
   begin
@@ -125,9 +125,14 @@ begin
       WriteToLangFile(vForm.Name, '', vForm);
       WriteComponents(vForm.Name, vForm);
     end;
-    DeleteFile(PChar(vFileName));
+    //DeleteFile(PChar(vFileName));
     UpdateFile;
   end; // with
+
+  FDefLangFile := TMemIniFile.Create(TMemoryStream.Create);
+  var vStringList := TStringList.Create;
+  FLangFile.GetStrings(vStringList);
+  FDefLangFile.SetStrings(vStringList);
 end;
 
 function GetLangString(const ASection, AString: string): string;
@@ -137,33 +142,18 @@ end;
 
 procedure SetLang(const ALangCode: string);
 
-  procedure SetComponentPropertyFromIni(const AFormName: String;
-    const AControl: TComponent; const APropertyName, APropertyIdent: string);
-  var
-    vPropertyValue: string;
-  begin
-    vPropertyValue := FLangFile.ReadString(AFormName, APropertyIdent, '');
-    if vPropertyValue <> '' then
-    begin
-      SetStrProp(AControl, APropertyName, vPropertyValue);
-    end;
-
-  end;
-
   procedure ReadFromLangFile(const ASectionName, AIdentPrefix: string;
     const AFormOrFrame: TScrollingWinControl);
   var
     vPropertyName, vPropertyValue: string;
-    vSection: TStringList;
-    i: Integer;
     vComponentName: string;
     vComponent: TComponent;
     DelimetedPropertyName: TArray<string>;
   begin
-    vSection := TStringList.Create;
+    var vSection := TStringList.Create;
     FLangFile.ReadSection(ASectionName, vSection);
-    for i := 0 to vSection.Count - 1 do
-    begin
+    for var i := 0 to vSection.Count - 1 do
+      begin
       vPropertyName := vSection[i];
       if vPropertyName[1] = '@' then
         Continue; // it's not a property
@@ -174,60 +164,78 @@ procedure SetLang(const ALangCode: string);
 
       DelimetedPropertyName := vPropertyName.Split(['.'], 2);
 
-      // viDelimiter := Pos('.', vPropertyName);
-      if Length(DelimetedPropertyName) = 2 { viDelimiter > 0 } then
+      if Length(DelimetedPropertyName) = 2 then
       // there is a point, so it's component with propery
-      begin
+        begin
         vComponentName := DelimetedPropertyName[0];
-        // LeftStr(vPropertyName, viDelimiter - 1);
         vComponent := AFormOrFrame.FindComponent(vComponentName);
         if not Assigned(vComponent) then
           Continue;
         if vComponent is TLabeledEdit then
           vComponent := TLabeledEdit(vComponent).EditLabel;
         vPropertyName := DelimetedPropertyName[1];
-        // Copy(vPropertyName, viDelimiter + 1, Length(vPropertyName))
-      end
+        end
       else // form's or frame's properties
-      begin
+        begin
         vComponent := AFormOrFrame; // vPropertyName is the same
-      end;
+        end;
 
       try
         SetStrProp(vComponent, vPropertyName, vPropertyValue);
       except // nothing
+        end;
       end;
-    end;
   end;
 
 var
   vLangFileName: string;
   viSection: Integer;
   vSections: TStringList;
-  vSectionName, vFormName { , vFrameName } : string;
+  vFormName: string;
   DelimetedSectionName: TArray<string>;
   vForm, vFrame: TComponent;
   vFrameFound: Boolean; // delimiter \ for frame
 begin
-  vLangFileName := { ExtractFilePath(ParamStr(0)) + cLangFolderName + '\' }
-    FLangPath + ALangCode + '.ini';
+  vLangFileName := FLangPath + ALangCode + '.ini';
   if not FileExists(vLangFileName) then
     raise Exception.CreateFmt('Language file "%s" is not found',
       [vLangFileName]);
   FreeAndNil(FLangFile); // prev lang ini
   FLangFile := TMemIniFile.Create(vLangFileName, System.SysUtils.TEncoding.UTF8);
+
   vSections := TStringList.Create;
+
+  // Default strings
+  LangAddDefaultStrings(False);
+  if ALangCode.ToLower <> 'default' then
+    begin
+    FDefLangFile.ReadSections(vSections);
+    for var i := 0 to vSections.Count - 1 do
+      begin
+      var vSectionName := vSections[i];
+      var vSectionKeys := TStringList.Create;
+      FDefLangFile.ReadSection(vSectionName, vSectionKeys);
+      for var j := 0 to vSectionKeys.Count - 1 do
+        begin
+        var vSectionKey := vSectionKeys[j];
+        //if FLangFile.ReadString(vSectionName, vSectionKey, '') = '' then
+        if not FLangFile.ValueExists(vSectionName, vSectionKey) then
+          FLangFile.WriteString(vSectionName, vSectionKey,
+            FDefLangFile.ReadString(vSectionName, vSectionKey, ''));
+        end;
+
+      end;
+    end;
+
+
   with FLangFile do
-  begin
-    // try
-    LangAddDefaultStrings(False); // Default strings
+    begin
     ReadSections(vSections);
     for viSection := 0 to vSections.Count - 1 do
-    begin
-      vSectionName := vSections[viSection];
-      if (vSectionName <> 'LangStrings') and (vSectionName <> 'LangProperties')
-      then
       begin
+      var vSectionName := vSections[viSection];
+      if (vSectionName <> 'LangStrings') and (vSectionName <> 'LangProperties') then
+        begin
         DelimetedSectionName := vSectionName.Split(['\'], 2);
 
         vFrameFound := Length(DelimetedSectionName) = 2;
@@ -240,18 +248,18 @@ begin
         if not vFrameFound then
           ReadFromLangFile(vFormName, '', vForm as TForm)
         else // must be frame
-        begin
+          begin
           vFrame := (vForm as TForm).FindComponent(DelimetedSectionName[1]);
           if not Assigned(vFrame) or not(vFrame is TFrame) then
             Continue;
 
           ReadFromLangFile(vSectionName, '', vFrame as TFrame)
+          end;
         end;
       end;
     if Modified then
       UpdateFile;
     end;
-  end;
   with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
     try
       WriteString('Main', 'LangCode', ALangCode);
@@ -269,8 +277,6 @@ procedure LangAddDefaultStrings(const AForcedWrite: Boolean);
   end;
 
 begin
-  // with FLangFile do
-  // begin
   MyWriteString('LangStrings', '@Cancel', 'Cancel');
   MyWriteString('LangStrings', '@Close', 'Close');
   MyWriteString('LangStrings', '@DeleteConfirm',
@@ -295,7 +301,6 @@ begin
     'Empty name. You have to write one');
   MyWriteString('frmExtensions', '@ErrorEmptyExtensions',
     'Empty extensions. You need at least one.');
-  // end;
 end;
 
 function LangFillListAndGetCurrent(const AMainIniFile: TIniFile; const AMenu: TPopupMenu;
@@ -317,12 +322,6 @@ begin
   var vUserDefaultLCID := GetUserDefaultUILanguage(); // GetUserDefaultLCID();
 
   var vCurrentIniLangCode: string := AMainIniFile.ReadString('Main', 'LangCode', '');
-  {with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
-    try
-      vCurrentIniLangCode := ReadString('Main', 'LangCode', '');
-    finally
-      Free;
-    end;}
 
   AddSubMenuItem('Default - English', 'Default');
 

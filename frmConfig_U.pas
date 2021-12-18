@@ -537,33 +537,6 @@ begin
 end;
 
 procedure TfrmConfig.miOptionsLangClick(Sender: TObject);
-  function _GetBuildInfo: string;
-  var
-    VerInfoSize, VerValueSize, Dummy: DWORD;
-    VerInfo: Pointer;
-    VerValue: PVSFixedFileInfo;
-  begin
-    VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
-    if VerInfoSize > 0 then
-    begin
-        GetMem(VerInfo, VerInfoSize);
-        try
-          if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo) then
-          begin
-            VerQueryValue(VerInfo, '\', Pointer(VerValue), VerValueSize);
-            with VerValue^ do
-            begin
-              Result := (dwFileVersionMS shr 16).ToString + '.' +
-                (dwFileVersionMS and $FFFF).ToString + '.' +
-                (dwFileVersionLS shr 16).ToString + '.' +
-                (dwFileVersionLS and $FFFF).ToString;
-            end;
-          end;
-        finally
-          FreeMem(VerInfo, VerInfoSize);
-        end;
-    end;
-  end;
 begin
   var vMenuItem := TMenuItem(Sender);
 

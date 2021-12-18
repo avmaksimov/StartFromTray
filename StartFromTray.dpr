@@ -41,8 +41,6 @@ begin
     with MainIniFile do
       begin
       WindowState := TWindowState(ReadInteger(cIniFormIdent, cIniFormState, Integer(WindowState)));
-      //Left := ReadInteger(cIniFormIdent, cIniFormLeft, Left);
-      //Top := ReadInteger(cIniFormIdent, cIniFormTop, Top);
       Width := ReadInteger(cIniFormIdent, cIniFormWidth, Width);
       Height := ReadInteger(cIniFormIdent, cIniFormHeight, Height);
       end;
@@ -51,8 +49,7 @@ begin
   if frmConfig.tvItems.Items.Count <= 0 then
     frmConfig.Show;
 
-  with MainIniFile{TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini'))} do
-    //try
+  with MainIniFile do
       begin
       if ReadBool('Main', 'ConfigShow', False) then
         frmConfig.Show;
@@ -60,9 +57,6 @@ begin
       if ReadBool('Main', 'FiltersShow', False) then
         frmExtensions.ShowModal;
       end;
-    {finally
-      Free;
-    end;}
 
   // it has to be before Run, after all initialization
   frmConfig.TrayIcon.Visible := True;
