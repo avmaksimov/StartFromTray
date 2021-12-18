@@ -248,6 +248,8 @@ begin
           ReadFromLangFile(vSectionName, '', vFrame as TFrame)
         end;
       end;
+    if Modified then
+      UpdateFile;
     end;
   end;
   with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
@@ -283,6 +285,8 @@ begin
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
   MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName', 'Empty name. You have to write one');
   MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand', 'Empty command (file to run). You have to write it');
+  MyWriteString('frmExtensions', '@ActionForEdit', 'Action for <b>Edit</b>');
+  MyWriteString('frmExtensions', '@ActionForRun', 'Action for <b>Run</b>');
   MyWriteString('frmExtensions', '@ChooseFileForRun',
     'Choose file for Run action');
   MyWriteString('frmExtensions', '@ChooseFileForEdit',

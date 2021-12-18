@@ -25,14 +25,14 @@ type
     OpenDialog: TFileOpenDialog;
     ImageList: TImageList;
     TitleBarPanel: TTitleBarPanel;
-    gbEdit: TGroupBox;
-    edtEditHelper: TButtonedEdit;
     lblEditHelper: TLabel;
+    edtEditHelper: TButtonedEdit;
     edtEditParams: TLabeledEdit;
-    gbRun: TGroupBox;
-    lblRunHelper: TLabel;
+    pbEdit: TPaintBox;
     edtRunHelper: TButtonedEdit;
+    lblRunHelper: TLabel;
     edtRunParams: TLabeledEdit;
+    pbRun: TPaintBox;
     procedure btnExtensionAddClick(Sender: TObject);
     procedure btnExtensionDeleteClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
@@ -50,6 +50,8 @@ type
       State: TDragState; var Accept: Boolean);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
+    procedure pbEdit_or_RunPaint(Sender: TObject);
+    procedure edtEdit_or_RunHelperChange(Sender: TObject);
   private
     { Private declarations }
     FAssignedCaption: string;
@@ -73,7 +75,7 @@ var
 
 implementation
 
-uses LangsU, CommonU;
+uses System.Math, System.UITypes, VCL.Themes, LangsU, CommonU;
 
 {$R *.dfm}
 
@@ -111,6 +113,107 @@ begin
 
   lvFilters.Clear;
 
+end;
+
+procedure TfrmExtensions.pbEdit_or_RunPaint(Sender: TObject);
+  procedure BevelLine(const ACanvas: TCanvas; const C: TColor; const X1, Y1, X2, Y2: Integer);
+  begin
+    with ACanvas do
+    begin
+      Pen.Color := C;
+      MoveTo(X1, Y1);
+      LineTo(X2, Y2);
+    end;
+  end;
+
+  procedure TextOutAndIncPos(const ACanvas: TCanvas; const AString: string;
+    var APosStr: Integer; const ANewPosStr: Integer;
+    var ALeft: Integer; const ATop: Integer);
+  begin
+  if ANewPosStr > APosStr then
+    begin
+    var s := Copy(AString, APosStr, ANewPosStr - APosStr);
+    with ACanvas do
+      begin
+      TextOut(ALeft, ATop, s);
+      Inc(ALeft, TextWidth(s));
+      APosStr := ANewPosStr;
+      end;
+    end;
+  end;
+
+const cTextLeftIndent = 20; cTextLineIndent = 5;
+  cTextAr: array of string = ['ActionForEdit', 'ActionForRun'];
+begin
+var vPaintBox := Sender as TPaintBox;
+var LStyle: TCustomStyleServices := StyleServices(vPaintBox);
+
+var vCanvas: TCanvas := vPaintBox.Canvas;
+var vColor1: TColor := LStyle.GetSystemColor(clBtnShadow);
+var vColor2: TColor := LStyle.GetSystemColor(clBtnHighlight);
+
+var vLeft: Integer := 0;
+
+var vText: string := GetLangString('frmExtensions', cTextAr[vPaintBox.Tag]);
+
+with vCanvas do
+  begin
+  Pen.Style := psSolid;
+  Pen.Mode  := pmCopy;
+  Pen.Width := 1;
+  Brush.Style := bsSolid;
+
+  vPaintBox.Height := TextHeight(vText);
+  var vTop4Line: Integer := Ceil(vPaintBox.Height{TextHeight(vText)} / 2);
+
+  BevelLine(vCanvas, vColor1, vLeft, vTop4Line, cTextLeftIndent, vTop4Line);
+  BevelLine(vCanvas, vColor2, vLeft, vTop4Line + 1, cTextLeftIndent, vTop4Line + 1);
+
+  Inc(vLeft, cTextLeftIndent + cTextLineIndent);
+
+  var iStrPos: Integer := 1; var vStrLen := vText.Length;
+  var vIsNormalText := True;
+  while iStrPos <= vStrLen do
+    begin
+    var i, vEndPos: Integer;
+    if vIsNormalText then
+      begin
+      i := Pos('<b>', vText, iStrPos);
+      if i >= 1 then
+        begin
+        vEndPos := i;
+        vIsNormalText := False;
+        end
+      else
+        vEndPos := vStrLen + 1;
+      vCanvas.Font.Style := [];
+      TextOutAndIncPos(vCanvas, vText, iStrPos, vEndPos, vLeft, 0);
+      if i >= 1 then
+        Inc(iStrPos, 3);
+      end
+    else // vIsNormalText = False
+      begin
+      i := Pos('</b>', vText, iStrPos);
+      if i >= 1 then
+        begin
+        vEndPos := i;
+        vIsNormalText := True;
+        end
+      else
+        vEndPos := vStrLen + 1;
+      vCanvas.Font.Style := [TFontStyle.fsBold];
+      TextOutAndIncPos(vCanvas, vText, iStrPos, vEndPos, vLeft, 0);
+      if i >= 1 then
+        Inc(iStrPos, 4);
+      end;
+    end;
+
+  Inc(vLeft, cTextLineIndent);
+
+  BevelLine(vCanvas, vColor1, vLeft, vTop4Line, vPaintBox.Width, vTop4Line);
+  BevelLine(vCanvas, vColor2, vLeft, vTop4Line + 1, vPaintBox.Width, vTop4Line + 1);
+
+  end;
 end;
 
 procedure TfrmExtensions.ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
@@ -226,13 +329,11 @@ begin
 end;
 
 procedure TfrmExtensions.btnExtensionUpClick(Sender: TObject);
-var
-  newItemIndex: Integer;
 begin
   with lvFilters do
     if (ItemIndex > 0) then
     begin
-      newItemIndex := ItemIndex - 1;
+      var newItemIndex := ItemIndex - 1;
       Items.Exchange(ItemIndex, newItemIndex);
       ItemIndex := newItemIndex;
       FAssignedListItemIndex := newItemIndex;
@@ -240,13 +341,11 @@ begin
 end;
 
 procedure TfrmExtensions.btnExtensionDownClick(Sender: TObject);
-var
-  newItemIndex: Integer;
 begin
   with lvFilters do
     if (ItemIndex > -1) and (ItemIndex < Count - 1) then
     begin
-      newItemIndex := ItemIndex + 1;
+      var newItemIndex := ItemIndex + 1;
       Items.Exchange(ItemIndex, newItemIndex);
       ItemIndex := newItemIndex;
       FAssignedListItemIndex := newItemIndex;
@@ -270,15 +369,13 @@ begin
 end;
 
 procedure TfrmExtensions.btnExtensionDeleteClick(Sender: TObject);
-var
-  newItemIndex: Integer;
 begin
   with lvFilters do
   begin
     if (ItemIndex <= -1) or not AskForDeletion(Self, Items[ItemIndex]) then
       Exit;
 
-    newItemIndex := ItemIndex;
+    var newItemIndex := ItemIndex;
 
     if ItemIndex = Count - 1 then
       newItemIndex := newItemIndex - 1;
@@ -293,22 +390,28 @@ begin
 end;
 
 procedure TfrmExtensions.btnOKClick(Sender: TObject);
-var
-  i: Integer;
 begin
   SaveAssignedItem;
-  for i := 0 to Filters.Count - 1 do
+  for var i := 0 to Filters.Count - 1 do
     Filters.Objects[i].Free;
 
   Filters.Clear;
 
-  for i := 0 to lvFilters.Items.Count - 1 do
+  for var i := 0 to lvFilters.Items.Count - 1 do
     Filters.AddObject(lvFilters.Items[i],
       TFilterData(lvFilters.Items.Objects[i]));
 
   lvFilters.Clear;
 
   Filters_SaveToFile;
+end;
+
+procedure TfrmExtensions.edtEdit_or_RunHelperChange(Sender: TObject);
+begin
+  var vButtonedEdit := Sender as TButtonedEdit;
+
+  vButtonedEdit.Font.Color := IfThen(FileSearch(vButtonedEdit.Text, GetEnvironmentVariable('PATH')) <> '',
+    TColors.SysWindowText, TColors.Red);
 end;
 
 procedure TfrmExtensions.edtEditRunHelperAfterDialog(Sender: TObject;
