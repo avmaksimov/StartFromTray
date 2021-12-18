@@ -109,6 +109,17 @@ object frmExtensions: TfrmExtensions
     DesignSize = (
       420
       70)
+    object lblHint: TLabel
+      Left = 6
+      Top = 7
+      Width = 407
+      Height = 56
+      AutoSize = False
+      Caption = 
+        'Extensions allow to redefine system default action for Edit or R' +
+        'un. Also they'#39're used in Choosing element'#39's filename dialog.'
+      WordWrap = True
+    end
     object btnOK: TButton
       Left = 193
       Top = 38

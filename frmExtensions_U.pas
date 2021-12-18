@@ -33,6 +33,7 @@ type
     lblRunHelper: TLabel;
     edtRunParams: TLabeledEdit;
     pbRun: TPaintBox;
+    lblHint: TLabel;
     procedure btnExtensionAddClick(Sender: TObject);
     procedure btnExtensionDeleteClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
