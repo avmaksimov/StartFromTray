@@ -13,6 +13,8 @@ const
 // Matches masks (can be divided by ';' and only Extensions without point) to AFileName
 // u can use mask in exts
 function MyMatchesExtensions(const AFileName, AExtensions: string): Boolean;
+// just correct Delphi implementation for WinAPI ExpandEnvironmentStrings
+function MyExpandEnvironmentStrings(const FileName: string): string;
 
 procedure M_Error(const ErrorMessage: string);
 
@@ -44,6 +46,26 @@ begin
     if Result then
       Exit;
   end;
+end;
+
+function MyExpandEnvironmentStrings(const FileName: string): string;
+var
+  Buffer: array[0..MAX_PATH - 1] of Char;
+  Len: Integer;
+begin
+  Len := ExpandEnvironmentStrings(PChar(FileName), Buffer, Length(Buffer));
+  if Len <= Length(Buffer) then
+    SetString(Result, Buffer, Len - 1)
+  else
+    if Len > 0 then
+      begin
+        SetLength(Result, Len);
+        Len := ExpandEnvironmentStrings(PChar(FileName), Buffer, Length(Buffer));
+        if Len <= Length(Result) then
+          SetString(Result, Buffer, Len - 1)
+      end
+    else
+      Result := ''
 end;
 
 procedure ShowMsgIfDebug(const AParam, AValue: string);

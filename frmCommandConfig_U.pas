@@ -96,7 +96,7 @@ type
 implementation
 
 uses LangsU, frmConfig_U, frmChooseExt_U, System.StrUtils, CommonU, System.Masks, System.Math,
-  Winapi.ShlObj;
+  Winapi.ShlObj, System.IOUtils;
 
 {$R *.dfm}
 { TfrmCommandConfig }
@@ -141,21 +141,14 @@ begin
   if FAssigningState then
     Exit;
 
-  if edtCaption.Text = FOldCommandText then
-  begin
-    var s := ExtractFileName(edtCommand.Text);
-    var i := Pos('.', s);
-    if i > 0 then
-      edtCaption.Text := Copy(s, 1, i - 1)
-    else
-      edtCaption.Text := s;
-  end;
+  if edtCaption.Text = TPath.GetFileNameWithoutExtension(FOldCommandText) then
+    edtCaption.Text := TPath.GetFileNameWithoutExtension(edtCommand.Text);
 
   FOldCommandText := edtCommand.Text;
 
-  CheckFileCommandExists;
-
   FAssignedCommandData.Command := edtCommand.Text;
+
+  CheckFileCommandExists;
 
   UpdateIcon;
 

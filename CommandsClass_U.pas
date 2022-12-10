@@ -99,7 +99,7 @@ function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
 
 implementation
 
-uses CommonU, Winapi.CommCtrl;
+uses CommonU, Winapi.CommCtrl, System.Win.Registry;
 
 procedure TreeToXML(ATreeNodes: TTreeNodes);
 var
@@ -246,6 +246,24 @@ begin
     if RunType <> crtEdit then
       fMask := SEE_MASK_NOCLOSEPROCESS;
     end;
+
+   var sTechMsg: string;
+   if gDebug then
+      begin
+      sTechMsg := 'InternalRun: ' +
+          strCommandRunType[RunType] + LineFeed;
+      if vOperation = nil then
+        sTechMsg := sTechMsg + 'nil'
+      else
+        sTechMsg := sTechMsg + vOperation;
+      sTechMsg := sTechMsg + '; ' + vFilename + '; ';
+      if vParameters = '' then
+        sTechMsg := sTechMsg + '<empty string>'
+      else
+        sTechMsg := sTechMsg + vParameters;
+      MessageDlg(sTechMsg, TMsgDlgType.mtInformation, [TMsgDlgBtn.mbOK], 0);
+      end;
+
   if ShellExecuteEx(@SEInfo) then
     Result := SEInfo.hProcess
   else if gDebug then
@@ -253,20 +271,10 @@ begin
     var vGetLastError: Cardinal := GetLastError;
     if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
       begin
-      var sTechErrorMsg: string;
-      if vOperation = nil then
-        sTechErrorMsg := 'nil'
-      else
-        sTechErrorMsg := vOperation;
-      sTechErrorMsg := sTechErrorMsg + '; ' + vFilename + '; ';
-      if vParameters = '' then
-        sTechErrorMsg := sTechErrorMsg + '<empty string>'
-      else
-        sTechErrorMsg := sTechErrorMsg + vParameters;
-
-      M_Error('Error with ' + strCommandRunType[RunType] + ': ' +
+      M_Error('Error with ' + ': ' +
         SysErrorMessage(vGetLastError) + LineFeed + 'Error code: ' +
-        IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' + sTechErrorMsg);
+        IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' +
+          sTechMsg);
       end;
     end;
 end;
@@ -364,8 +372,35 @@ begin
     begin
     Exit(Command);
     end;
-
-  Result := FileSearch(Command, GetEnvironmentVariable('PATH'));
+  Result := '';
+  // todo: extractfilename for Command?
+  if(ExtractFileExt(Command).ToLower = '.exe') then
+    begin
+      var reg: TRegistry := TRegistry.Create(KEY_READ);
+      try
+        var vRootKey: HKEY;
+        for vRootKey in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE] do
+          begin
+            reg.RootKey := vRootKey;
+            var vKeyPath: string := '\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\' + Command;
+            if Reg.OpenKeyReadOnly(vKeyPath) then
+              begin
+                case Reg.GetDataType('') of
+                  rdString:
+                    Result := Reg.ReadString('');
+                  rdExpandString:
+                    Result := MyExpandEnvironmentStrings(Reg.ReadString(''));
+                end;
+              end;
+          if Result <> '' then
+            Exit(Result);
+          end;
+      finally
+        reg.Free;
+      end;
+    end;
+  if Result = '' then
+    Result := FileSearch(Command, GetEnvironmentVariable('PATH'));
 end;
 
 // now AFileName can be not full and be in Path
