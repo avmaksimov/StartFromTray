@@ -35,8 +35,12 @@ begin
 
   with frmConfig do
   begin
-    miOptionsLangClick(miOptionsLang.Items[LangFillListAndGetCurrent(MainIniFile,
-      ppOptionsMenu, miOptionsLang, miOptionsLangClick)]);
+    var LangIndex := LangFillListAndGetCurrent(MainIniFile,
+      ppOptionsMenu, miOptionsLang, miOptionsLangClick);
+    if LangIndex <> 0 then
+      miOptionsLangClick(miOptionsLang.Items[LangIndex]);
+    {miOptionsLangClick(miOptionsLang.Items[LangFillListAndGetCurrent(MainIniFile,
+      ppOptionsMenu, miOptionsLang, miOptionsLangClick)]);}
     if Assigned(MainIniFile) then
     with MainIniFile do
       begin

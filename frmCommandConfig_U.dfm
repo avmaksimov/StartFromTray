@@ -33,7 +33,7 @@ object frmCommandConfig: TfrmCommandConfig
     Caption = 'The command willn'#39't start until the previous copy running'
     WordWrap = True
   end
-  object Bevel1: TBevel
+  object Bevel: TBevel
     Left = 8
     Top = 183
     Width = 388
@@ -92,7 +92,7 @@ object frmCommandConfig: TfrmCommandConfig
   object edtCommand: TButtonedEdit
     Left = 8
     Top = 78
-    Width = 388
+    Width = 361
     Height = 21
     Anchors = [akLeft, akTop, akRight]
     Font.Charset = DEFAULT_CHARSET
@@ -102,9 +102,12 @@ object frmCommandConfig: TfrmCommandConfig
     Font.Style = []
     Images = ImageList
     ParentFont = False
+    ParentShowHint = False
     RightButton.DisabledImageIndex = 1
+    RightButton.Hint = 'Browser file to run'
     RightButton.ImageIndex = 0
     RightButton.Visible = True
+    ShowHint = True
     TabOrder = 4
     OnChange = edtCommandChange
     OnRightButtonClick = edtCommandRightButtonClick
@@ -142,12 +145,25 @@ object frmCommandConfig: TfrmCommandConfig
     TabOrder = 7
     OnClick = cbRunAsAdminClick
   end
+  object btnChooseFolder: TButton
+    Left = 375
+    Top = 78
+    Width = 21
+    Height = 21
+    Hint = 'Browse folder to run'
+    Anchors = [akTop, akRight]
+    ImageIndex = 0
+    Images = frmConfig.TreeImageList
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 8
+    OnClick = btnChooseFolderClick
+  end
   object edtCommandOpenDialog: TFileOpenDialog
     DefaultExtension = 'exe'
     FavoriteLinks = <>
     FileTypes = <>
-    Options = [fdoForceFileSystem, fdoPathMustExist, fdoShareAware, fdoNoTestFileCreate]
-    Title = 'Browse for file to run'
+    Options = [fdoForceFileSystem, fdoPathMustExist, fdoFileMustExist, fdoShareAware, fdoNoTestFileCreate]
     Left = 352
     Top = 342
   end

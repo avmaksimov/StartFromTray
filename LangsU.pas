@@ -50,10 +50,8 @@ procedure GenDefaultFileLang;
     FProp: PPropInfo;
     sDataToSave: string;
   begin
-    if { (AComponent is TFrame) or } (AComponent is TAction) then
+    if (AComponent is TAction) then
       Exit;
-    if AComponent is TLabeledEdit then
-      AComponent := TLabeledEdit(AComponent).EditLabel;
 
     if AIdentPrefix <> '' then
       AIdentPrefix := AIdentPrefix + '.';
@@ -66,9 +64,15 @@ procedure GenDefaultFileLang;
       for i := 0 to FPropCount - 1 do
       begin
         FProp := FPropList[i];
-        if (FProp.PropType^.Kind = tkUString) and (FProp.Name <> 'Name') and
+        if((FProp.PropType^.Kind = tkClass) and (FProp.Name <> 'FocusControl')) then
+          begin
+          var vComponent := TComponent(GetObjectProp(AComponent, FProp));
+          if Assigned(vComponent) then
+            WriteToLangFile(ASectionName, AIdentPrefix + String(FProp.Name), vComponent)
+          end
+        else if (FProp.PropType^.Kind = tkUString) and (FProp.Name <> 'Name') and
           not((AComponent is TFileOpenDialog) and
-          (FProp.Name = 'DefaultExtension')) then
+            (FProp.Name = 'DefaultExtension')) then
         begin
           sDataToSave := GetStrProp(AComponent, FProp);
           if (sDataToSave <> '') and
@@ -112,7 +116,7 @@ var
   vForm: TForm;
 begin
   vFileName := FLangPath + 'Default.ini';
-  //System.SysUtils.DeleteFile(vFileName);
+  System.SysUtils.DeleteFile(vFileName);
   FLangFile := TMemIniFile.Create(vFileName, System.SysUtils.TEncoding.UTF8);
   with FLangFile do
   begin
@@ -125,7 +129,6 @@ begin
       WriteToLangFile(vForm.Name, '', vForm);
       WriteComponents(vForm.Name, vForm);
     end;
-    //DeleteFile(PChar(vFileName));
     UpdateFile;
   end; // with
 
@@ -144,45 +147,42 @@ procedure SetLang(const ALangCode: string);
 
   procedure ReadFromLangFile(const ASectionName, AIdentPrefix: string;
     const AFormOrFrame: TScrollingWinControl);
-  var
-    vPropertyName, vPropertyValue: string;
-    vComponentName: string;
-    vComponent: TComponent;
-    DelimetedPropertyName: TArray<string>;
   begin
     var vSection := TStringList.Create;
     FLangFile.ReadSection(ASectionName, vSection);
-    for var i := 0 to vSection.Count - 1 do
+    for var SectionIndex := 0 to vSection.Count - 1 do
       begin
-      vPropertyName := vSection[i];
+      var vPropertyName: string := vSection[SectionIndex];
       if vPropertyName[1] = '@' then
         Continue; // it's not a property
 
-      vPropertyValue := FLangFile.ReadString(ASectionName, vPropertyName, '');
+      var vPropertyValue: string := FLangFile.ReadString(ASectionName, vPropertyName, '');
       if vPropertyValue = '' then
-        Continue;
+        Continue;  //default string
 
-      DelimetedPropertyName := vPropertyName.Split(['.'], 2);
+      var vComponent: TComponent := AFormOrFrame;
+      var DelimetedPropertyNames: TArray<string> := vPropertyName.Split(['.']);
 
-      if Length(DelimetedPropertyName) = 2 then
-      // there is a point, so it's component with propery
+      for var TextIndex := Low(DelimetedPropertyNames) to High(DelimetedPropertyNames) do
         begin
-        vComponentName := DelimetedPropertyName[0];
-        vComponent := AFormOrFrame.FindComponent(vComponentName);
-        if not Assigned(vComponent) then
-          Continue;
-        if vComponent is TLabeledEdit then
-          vComponent := TLabeledEdit(vComponent).EditLabel;
-        vPropertyName := DelimetedPropertyName[1];
-        end
-      else // form's or frame's properties
-        begin
-        vComponent := AFormOrFrame; // vPropertyName is the same
-        end;
-
-      try
-        SetStrProp(vComponent, vPropertyName, vPropertyValue);
-      except // nothing
+        vPropertyName := DelimetedPropertyNames[TextIndex];
+        if TextIndex <> High(DelimetedPropertyNames) then
+          begin
+          if not ((vComponent is TForm) or (vComponent is TFrame)) then
+            try
+              vComponent := TComponent(GetObjectProp(vComponent, vPropertyName))
+            except
+              on EPropertyError do
+                break;
+            end
+          else
+            vComponent := vComponent.FindComponent(vPropertyName);
+          end
+        else
+          try
+            SetStrProp(vComponent, vPropertyName, vPropertyValue);
+          except // nothing
+            end;
         end;
       end;
   end;
@@ -218,7 +218,6 @@ begin
       for var j := 0 to vSectionKeys.Count - 1 do
         begin
         var vSectionKey := vSectionKeys[j];
-        //if FLangFile.ReadString(vSectionName, vSectionKey, '') = '' then
         if not FLangFile.ValueExists(vSectionName, vSectionKey) then
           FLangFile.WriteString(vSectionName, vSectionKey,
             FDefLangFile.ReadString(vSectionName, vSectionKey, ''));
@@ -226,7 +225,6 @@ begin
 
       end;
     end;
-
 
   with FLangFile do
     begin
@@ -291,6 +289,8 @@ begin
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
   MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName', 'Empty name. You have to write one');
   MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand', 'Empty command (file to run). You have to write it');
+  MyWriteString('frmConfig\frmCommandConfig', '@FileDialogTitle', 'Browsing file to run');
+  MyWriteString('frmConfig\frmCommandConfig', '@FolderDialogTitle', 'Browsing folder to run');
   MyWriteString('frmExtensions', '@ActionForEdit', 'Action for <b>Edit</b>');
   MyWriteString('frmExtensions', '@ActionForRun', 'Action for <b>Run</b>');
   MyWriteString('frmExtensions', '@ChooseFileForRun',

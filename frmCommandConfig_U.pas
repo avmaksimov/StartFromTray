@@ -32,7 +32,8 @@ type
     miDefaultIcon: TMenuItem;
     miChooseFromFileExt: TMenuItem;
     cbRunAsAdmin: TCheckBox;
-    Bevel1: TBevel;
+    Bevel: TBevel;
+    btnChooseFolder: TButton;
     procedure edtCaptionChange(Sender: TObject);
     { procedure edtCommandBeforeDialog(Sender: TObject; var AName: string;
       var AAction: Boolean); }
@@ -47,6 +48,7 @@ type
     procedure miChooseFromFileExtClick(Sender: TObject);
     procedure edtCommandParametersChange(Sender: TObject);
     procedure cbRunAsAdminClick(Sender: TObject);
+    procedure btnChooseFolderClick(Sender: TObject);
   private
     { private declarations }
     FAssignedTreeNode: TTreeNode;
@@ -98,6 +100,8 @@ implementation
 uses LangsU, frmConfig_U, frmChooseExt_U, System.StrUtils, CommonU, System.Masks, System.Math,
   Winapi.ShlObj, System.IOUtils;
 
+const sLangFormFramePath = 'frmConfig\frmCommandConfig';
+
 {$R *.dfm}
 { TfrmCommandConfig }
 
@@ -106,6 +110,17 @@ begin
   //ppMenuChangeIcon.Popup(frmConfig.Left + btnChangeIcon.Left, frmConfig.Top + btnChangeIcon.Top);
   with btnChangeIcon.ClientToScreen(point(0, btnChangeIcon.Height)) do
     btnChangeIcon.PopupMenu.Popup(X, Y);
+end;
+
+procedure TfrmCommandConfig.btnChooseFolderClick(Sender: TObject);
+begin
+  with edtCommandOpenDialog do
+    begin
+      Options := Options + [fdoPickFolders];
+      Title := GetLangString(sLangFormFramePath, 'FolderDialogTitle');
+      if Execute then
+        edtCommand.Text := FileName;
+    end;
 end;
 
 procedure TfrmCommandConfig.btnEditClick(Sender: TObject);
@@ -165,6 +180,7 @@ begin
   var sCommand := Trim(edtCommand.Text);
   with edtCommandOpenDialog do
   begin
+    Options := Options - [fdoPickFolders];
     FileTypes.Clear;
 
     with FileTypes.Add do
@@ -217,6 +233,7 @@ begin
 
     DefaultFolder := ExtractFileDir(sCommand);
     FileName := ExtractFileName(sCommand);
+    Title := GetLangString(sLangFormFramePath, 'FileDialogTitle');
     if Execute then
       edtCommand.Text := FileName;
   end;
