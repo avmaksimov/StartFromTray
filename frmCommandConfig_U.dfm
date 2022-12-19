@@ -55,7 +55,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Caption = 'Name:'
     ParentShowHint = False
     ShowHint = False
-    TabOrder = 1
+    TabOrder = 0
     OnChange = edtCaptionChange
   end
   object cbIsVisible: TCheckBox
@@ -66,7 +66,7 @@ object frmCommandConfig: TfrmCommandConfig
     Height = 19
     Anchors = [akLeft, akTop, akRight]
     Caption = 'Show in Tray menu'
-    TabOrder = 0
+    TabOrder = 8
     Visible = False
   end
   object btnEdit: TButton
@@ -76,7 +76,7 @@ object frmCommandConfig: TfrmCommandConfig
     Height = 19
     Anchors = [akTop, akRight]
     Caption = 'Edit'
-    TabOrder = 2
+    TabOrder = 6
     OnClick = btnEditClick
   end
   object btnRun: TButton
@@ -86,7 +86,7 @@ object frmCommandConfig: TfrmCommandConfig
     Height = 19
     Anchors = [akTop, akRight]
     Caption = 'Run'
-    TabOrder = 3
+    TabOrder = 7
     OnClick = btnRunClick
   end
   object edtCommand: TButtonedEdit
@@ -108,7 +108,7 @@ object frmCommandConfig: TfrmCommandConfig
     RightButton.ImageIndex = 0
     RightButton.Visible = True
     ShowHint = True
-    TabOrder = 4
+    TabOrder = 1
     OnChange = edtCommandChange
     OnRightButtonClick = edtCommandRightButtonClick
   end
@@ -121,7 +121,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Width = 59
     EditLabel.Height = 13
     EditLabel.Caption = 'Parameters:'
-    TabOrder = 5
+    TabOrder = 3
     OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
@@ -133,7 +133,7 @@ object frmCommandConfig: TfrmCommandConfig
     Anchors = [akTop, akRight]
     Caption = 'Change the Icon'
     PopupMenu = ppMenuChangeIcon
-    TabOrder = 6
+    TabOrder = 5
     OnClick = btnChangeIconClick
   end
   object cbRunAsAdmin: TCheckBox
@@ -142,7 +142,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 388
     Height = 17
     Caption = 'Run as administrator'
-    TabOrder = 7
+    TabOrder = 4
     OnClick = cbRunAsAdminClick
   end
   object btnChooseFolder: TButton
@@ -156,7 +156,7 @@ object frmCommandConfig: TfrmCommandConfig
     Images = frmConfig.TreeImageList
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 8
+    TabOrder = 2
     OnClick = btnChooseFolderClick
   end
   object edtCommandOpenDialog: TFileOpenDialog

@@ -35,8 +35,7 @@ type
     Bevel: TBevel;
     btnChooseFolder: TButton;
     procedure edtCaptionChange(Sender: TObject);
-    { procedure edtCommandBeforeDialog(Sender: TObject; var AName: string;
-      var AAction: Boolean); }
+
     procedure btnEditClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
     procedure edtCommandChange(Sender: TObject);
@@ -52,10 +51,8 @@ type
   private
     { private declarations }
     FAssignedTreeNode: TTreeNode;
-    FAssignedCaption: string; // чтобы понять, что название изменилось
+    FAssignedCaption: string; // to understand the caption was changed
     FAssignedCommandData: TCommandData;
-    //FAssignedIconFilename: string;
-    //FAssignedIconFileIndex: Integer;
 
     FAssigningState: boolean;
     //using then editing edtCommand
@@ -84,13 +81,11 @@ type
     // to draw with red and strikeline for TreeNode and edtCommand
     function CheckFileCommandExists: boolean;
 
-    // procedure RefreshCaption;
-
     property AssignedTreeNode: TTreeNode read FAssignedTreeNode;
     // links to Parent form the component and the list
     property TreeImageList: TImageList read FTreeImageList write FTreeImageList;
     property ListDeletedImageIndexes: TList<Word> read FListDeletedImageIndexes write FListDeletedImageIndexes;
-  published
+  //published
     property Caption: string write SetCaption;
     property IsModified: boolean read GetIsModified;
   end;
@@ -107,34 +102,36 @@ const sLangFormFramePath = 'frmConfig\frmCommandConfig';
 
 procedure TfrmCommandConfig.btnChangeIconClick(Sender: TObject);
 begin
-  //ppMenuChangeIcon.Popup(frmConfig.Left + btnChangeIcon.Left, frmConfig.Top + btnChangeIcon.Top);
   with btnChangeIcon.ClientToScreen(point(0, btnChangeIcon.Height)) do
     btnChangeIcon.PopupMenu.Popup(X, Y);
 end;
 
 procedure TfrmCommandConfig.btnChooseFolderClick(Sender: TObject);
 begin
+  var sCommand := Trim(edtCommand.Text);
+  if sCommand[sCommand.Length] = PathDelim then
+    sCommand := sCommand.Remove(sCommand.Length - 1);
   with edtCommandOpenDialog do
     begin
       Options := Options + [fdoPickFolders];
+      DefaultFolder := sCommand;
+      while not SysUtils.DirectoryExists(DefaultFolder) do
+        DefaultFolder := ExtractFileDir(DefaultFolder);
+      Filename := sCommand.Substring(DefaultFolder.Length + 1);
       Title := GetLangString(sLangFormFramePath, 'FolderDialogTitle');
       if Execute then
-        edtCommand.Text := FileName;
+        edtCommand.Text := FileName + '\';
     end;
 end;
 
 procedure TfrmCommandConfig.btnEditClick(Sender: TObject);
 begin
-  {if SaveAssigned then
-    TCommandData(FAssignedTreeNode.Data).Edit;}
   if Assigned(FAssignedCommandData) then
     FAssignedCommandData.Edit;
 end;
 
 procedure TfrmCommandConfig.btnRunClick(Sender: TObject);
 begin
-  {if SaveAssigned then
-    TCommandData(FAssignedTreeNode.Data).Run(crtNormalRun);}
   if Assigned(FAssignedCommandData) then
     FAssignedCommandData.Run(crtNormalRun);
 end;
@@ -166,7 +163,6 @@ begin
   CheckFileCommandExists;
 
   UpdateIcon;
-
 end;
 
 procedure TfrmCommandConfig.edtCommandParametersChange(Sender: TObject);
@@ -208,7 +204,6 @@ begin
               for var j := 1 to High(vExtensionArray) do
                 FileMask := FileMask + '; *.' + vExtensionArray[j].Trim;
               DisplayName := Filters[i] + ' (' + FileMask + ')';
-              // FileMask := vMasks;
             end;
             // found better FileTypeIndex than .exe
             if not bMatchedMaskFound and (MyMatchesExtensions(sCommand, vExtensions))
@@ -230,9 +225,20 @@ begin
 
     if not bMatchedMaskFound then
       FileTypeIndex := FileTypes.Count; // default - all files
-
-    DefaultFolder := ExtractFileDir(sCommand);
-    FileName := ExtractFileName(sCommand);
+    if SysUtils.FileExists(sCommand) {and DirectoryExists(sCommand)} then
+      begin
+      DefaultFolder := ExtractFileDir(sCommand);
+      FileName := ExtractFileName(sCommand);
+      end
+    else
+      begin
+      if sCommand[sCommand.Length] = PathDelim then
+        sCommand := sCommand.Remove(sCommand.Length - 1);
+      DefaultFolder := sCommand;
+      while not SysUtils.DirectoryExists(DefaultFolder) do
+        DefaultFolder := ExtractFileDir(DefaultFolder);
+      Filename := sCommand.Substring(DefaultFolder.Length + 1);
+      end;
     Title := GetLangString(sLangFormFramePath, 'FileDialogTitle');
     if Execute then
       edtCommand.Text := FileName;
