@@ -118,8 +118,7 @@ type
     procedure ReloadData;
 
     procedure ppTrayMenuItemOnClick(Sender: TObject);
-    // procedure XMLToMenu(MenuItems: TMenuItem; const NotifyEvent: TNotifyEvent);
-    //procedure XMLToTree(TreeNodes: TTreeNodes);
+
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
       const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
     // it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
@@ -138,7 +137,6 @@ type
     MainIniFile: TIniFile; // from the project
     ListDeletedImageIndexes: TList<Word>;
     procedure miOptionsLangClick(Sender: TObject);
-    //procedure TreeImageListRemoveIndexProperly(const AIndex: Integer);
   end;
 
 var
@@ -242,34 +240,19 @@ begin
         tn := tn.GetNextSibling;
         end;
 
-      //frmCommandConfig.ClearAssigned;//Assign(nil);
       tvItems.OnChange := nil;
       tvItems.Items.Clear;
       tvItems.OnChange := tvItemsChange;
-      //frmCommandConfig.ClearAssigned;//Assign(nil);
       TreeImageList.Clear;
       IsModified := False;
 
       ReloadData;
-      // перечитать из файла
-      //XMLToTree(tvItems.Items);
-
-      //TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);//, nil);
-
-      // если первый элемент есть, то эмулируем его Change
-      { if tvItems.Items.Count > 1 then
-        tvItemsChange(tvItems, tvItems.Items[0]); }
     end
   end
   else
   begin
     Hide;
   end;
-  { else
-    begin
-    Hide;
-    Application.Title := TrayIcon.Hint; //'Quick run from Tray';
-    end; }
 end;
 
 procedure TfrmConfig.actCloseUpdate(Sender: TObject);
@@ -283,12 +266,10 @@ end;
 procedure TfrmConfig.actDelExecute(Sender: TObject);
 var
   futureSelNode: TTreeNode;
-  //needToUpdateIsGroup: Boolean;
 begin
   if Assigned(tvItems.Selected) and AskForDeletion(Self, tvItems.Selected.Text)
   then
   begin
-    //needToUpdateIsGroup := False;
     try
     tvItems.Items.BeginUpdate;
     DisposeTreeNodeData(tvItems.Selected, True);
@@ -306,9 +287,6 @@ begin
         // тогда пробуем выделить родителя
         if futureSelNode = nil then
           futureSelNode := tvItems.TopItem // пробуем выделить самый верхний
-        //else // если есть родитель, то надо проверить его свойство группы
-         // needToUpdateIsGroup := True;
-        // TCommandData(futureSelNode).isGroup := futureSelNode.HasChildren;
       end;
     end;
     frmCommandConfig.ClearAssigned;//Assign(nil);
@@ -383,9 +361,10 @@ end;
 
 procedure TfrmConfig.actCopyUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := tvItems.Selected <> nil;
-  // gbProperties.Enabled := (tvItems.Selected <> nil);
-  frmCommandConfig.Enabled := (tvItems.Selected <> nil);
+  var vEnabled := tvItems.Selected <> nil;
+
+  (Sender as TAction).Enabled := vEnabled;
+  frmCommandConfig.Enabled := vEnabled;
 end;
 
 procedure TfrmConfig.actItemDownExecute(Sender: TObject);
@@ -471,13 +450,12 @@ begin
   end;
 
   // if not Swapped then tbRightButton else tbLeftButton
-  // ppTrayMenu.TrackButton := TTrackButton(MouseButtonSwapped);
   ppConfigMenu.TrackButton := TTrackButton(MouseButtonSwapped);
 
   TrayIcon.Icon := Application.Icon;
 
-  gMenuItemBmpWidth := GetSystemMetrics(SM_CXSMICON);//SM_CXMENUCHECK);
-  gMenuItemBmpHeight := GetSystemMetrics(SM_CYSMICON);//SM_CYMENUCHECK);
+  gMenuItemBmpWidth := GetSystemMetrics(SM_CXSMICON);
+  gMenuItemBmpHeight := GetSystemMetrics(SM_CYSMICON);
   TreeImageList.Width := gMenuItemBmpWidth;
   TreeImageList.Height := gMenuItemBmpHeight;
 
@@ -601,9 +579,7 @@ begin
   end
   else if Button = mbMiddle then
     begin
-    //Show;
     MyFormShow;
-    //ShowWindow(Handle, SW_RESTORE);
     if frmExtensions.Visible then
       begin
       frmExtensions.SetFocus;
@@ -660,7 +636,6 @@ end;
 procedure TfrmConfig.tvItemsChanging(Sender: TObject; Node: TTreeNode;
   var AllowChange: Boolean);
 begin
-  // AllowChange := (tvItems.Selected <> nil) and not Node.Deleting;
   if (tvItems.Selected <> nil) and not Node.Deleting then
     begin
     if frmCommandConfig.IsModified then
@@ -672,23 +647,22 @@ end;
 procedure TfrmConfig.tvItemsCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
-  //var vNormal: boolean := not Assigned(Node.Data);
   if not Assigned(Node.Data) or TCommandData(Node.Data).isGroup  or
     ((Node = frmCommandConfig.AssignedTreeNode) and
       frmCommandConfig.CheckFileCommandExists) or
     ((Node <> frmCommandConfig.AssignedTreeNode) and
     (TCommandData(Node.Data).ExtendCommandToFullName <> '')) then
-    Sender.Canvas.Font.Style := [] // .Color := TColors.SysWindowText
+    Sender.Canvas.Font.Style := []
   else
   begin
-    Sender.Canvas.Font.Style := [fsStrikeOut]; // .Color := TColors.Red;
+    Sender.Canvas.Font.Style := [fsStrikeOut];
     Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
   end;
 end;
 
 procedure TfrmConfig.tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
 var
-  vMode: TNodeAttachMode; // vOldParentImageIndex: Integer;
+  vMode: TNodeAttachMode;
 begin
   if (Source <> Sender) or (Sender <> tvItems) then
     Exit;
@@ -727,9 +701,7 @@ end;
 procedure TfrmConfig.tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
   State: TDragState; var Accept: Boolean);
 begin
-  //var vNode := tvItems.GetNodeAt(X, Y);
-  Accept := (Sender = Source) and (Sender = tvItems);// and
-    //((vNode = nil) or ((vNode <> nil) and (TCommandData(vNode.Data).isGroup)));
+  Accept := (Sender = Source) and (Sender = tvItems);
 end;
 
 procedure TfrmConfig.tvItemsEdited(Sender: TObject; Node: TTreeNode;
@@ -771,10 +743,8 @@ procedure TfrmConfig.UpdateLblVerLeftAndCaption;
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
 
-  //var vPrevVerWidth := lblVer.Width;
   lblVer.Caption := '<a href="https://github.com/avmaksimov/StartFromTray">' +
     GetLangString(Name, 'Version') + ' ' + _GetBuildInfo + '</a>';
-  //lblVer.Left := (lblVer.Left + vPrevVerWidth) - lblVer.Width;
 end;
 
 procedure TfrmConfig.WMClose(var Message: TMessage);
@@ -783,14 +753,12 @@ begin
 end;
 
 procedure TfrmConfig.WndProc(var Message: TMessage);
-// var vWM_TASKBARCREATED: UINT;
 begin
   if (WM_TASKBARCREATED > 0) and (Message.Msg = WM_TASKBARCREATED) then
   begin
     // возможно надо заново регистрировать (вроде не надо)
     // vWM_TASKBARCREATED := WM_TASKBARCREATED;
     WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
-    // ShowMessage('Debug: Begin. WM_TASKBARCREATED: Old = ' + IntToStr(vWM_TASKBARCREATED) + '; New = ' + IntToStr(WM_TASKBARCREATED));
 
     // Иногда оно True, но реально не отображается, поэтому False не прокатит.
     try
@@ -810,8 +778,7 @@ begin
   if TreeNode.Data <> nil then
   begin
     FreeAndNil(TCommandData(TreeNode.Data));
-    //TreeNode.Data := nil;
-    if AddToListDeletedImageIndexes then
+    if AddToListDeletedImageIndexes and (TreeNode.ImageIndex >= 0) then
       frmConfig.ListDeletedImageIndexes.Add(TreeNode.ImageIndex);
   end;
 
