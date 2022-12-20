@@ -100,6 +100,36 @@ const sLangFormFramePath = 'frmConfig\frmCommandConfig';
 {$R *.dfm}
 { TfrmCommandConfig }
 
+function SetDefFolderAndReturnFilename(const ACommand: string; out ADefaultFolder: string): string;
+begin
+  var vCommand: string := ExpandFileName(ACommand);
+  if vCommand[vCommand.Length] = PathDelim then
+    vCommand := vCommand.Remove(vCommand.Length - 1);
+  ADefaultFolder := ExpandFileName(vCommand);
+  while not SysUtils.DirectoryExists(ADefaultFolder) do
+    begin
+    var vNewDefaultDir: string := ExtractFileDir(ADefaultFolder);
+    if vNewDefaultDir <> ADefaultFolder then
+      ADefaultFolder := vNewDefaultDir
+    else
+      begin
+      ADefaultFolder := '';
+      Result := ACommand;
+      Exit;
+      //break;
+      end;
+    end;
+
+  Result := vCommand.Substring(ADefaultFolder.Length + 1);
+  {if SysUtils.DirectoryExists(ADefaultFolder) then
+    Result := ACommand.Substring(ADefaultFolder.Length + 1)
+  else
+    begin
+    ADefaultFolder := '';
+    Result := ACommand;
+    end;}
+end;
+
 procedure TfrmCommandConfig.btnChangeIconClick(Sender: TObject);
 begin
   with btnChangeIcon.ClientToScreen(point(0, btnChangeIcon.Height)) do
@@ -109,15 +139,19 @@ end;
 procedure TfrmCommandConfig.btnChooseFolderClick(Sender: TObject);
 begin
   var sCommand := Trim(edtCommand.Text);
-  if sCommand[sCommand.Length] = PathDelim then
-    sCommand := sCommand.Remove(sCommand.Length - 1);
+  {if sCommand[sCommand.Length] = PathDelim then
+    sCommand := sCommand.Remove(sCommand.Length - 1);}
   with edtCommandOpenDialog do
     begin
       Options := Options + [fdoPickFolders];
-      DefaultFolder := sCommand;
+
+      var vDefaultFolder: string;
+      Filename := SetDefFolderAndReturnFilename(sCommand, vDefaultFolder);
+      DefaultFolder  := vDefaultFolder;
+      {DefaultFolder := sCommand;
       while not SysUtils.DirectoryExists(DefaultFolder) do
         DefaultFolder := ExtractFileDir(DefaultFolder);
-      Filename := sCommand.Substring(DefaultFolder.Length + 1);
+      Filename := sCommand.Substring(DefaultFolder.Length + 1);}
       Title := GetLangString(sLangFormFramePath, 'FolderDialogTitle');
       if Execute then
         edtCommand.Text := FileName + '\';
@@ -232,12 +266,28 @@ begin
       end
     else
       begin
-      if sCommand[sCommand.Length] = PathDelim then
-        sCommand := sCommand.Remove(sCommand.Length - 1);
-      DefaultFolder := sCommand;
+      {if sCommand[sCommand.Length] = PathDelim then
+        sCommand := sCommand.Remove(sCommand.Length - 1);}
+
+      var vDefaultFolder: string;
+      Filename := SetDefFolderAndReturnFilename(sCommand, vDefaultFolder);
+      DefaultFolder  := vDefaultFolder;
+      {DefaultFolder := sCommand;
       while not SysUtils.DirectoryExists(DefaultFolder) do
-        DefaultFolder := ExtractFileDir(DefaultFolder);
-      Filename := sCommand.Substring(DefaultFolder.Length + 1);
+        begin
+        var vNewDefaultDir: string := ExtractFileDir(DefaultFolder);
+        if vNewDefaultDir <> DefaultFolder then
+          DefaultFolder := vNewDefaultDir
+        else
+          break;
+        end;
+      if SysUtils.DirectoryExists(DefaultFolder) then
+        Filename := sCommand.Substring(DefaultFolder.Length + 1)
+      else
+        begin
+        DefaultFolder := '';
+        Filename := sCommand;
+        end;}
       end;
     Title := GetLangString(sLangFormFramePath, 'FileDialogTitle');
     if Execute then
