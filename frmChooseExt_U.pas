@@ -96,7 +96,6 @@ procedure TfrmChooseExt.FormShow(Sender: TObject);
   begin
   var vLeft: Integer := 0; var vRight: Integer := 0;
   var vLeftCount := Length(ALeft); var vRightCount := ARight.Count;
-  //ARight.Capacity := vRightCount + vLeftCount;
   while (vLeft < vLeftCount) or (vRight < vRightCount) do
     begin
     if vRight >= vRightCount then
@@ -112,7 +111,6 @@ procedure TfrmChooseExt.FormShow(Sender: TObject);
       // insert the current element from the target list
       For var i := vRight to vRightCount - 1 do
         ARight.Delete(vRight);
-        //Inc(vRight); // only for quiting from while
       break;
       end
     else
@@ -140,7 +138,6 @@ procedure TfrmChooseExt.FormShow(Sender: TObject);
         end;
         end;
     end;
-  //ARight.Capacity := ARight.Count;
   ARight.CustomSort(MyStringListSortCompare);
   end;
 begin
@@ -148,15 +145,13 @@ FlbChanging := True;
 edtExt.Text := Extension;
 
 lbExtensions.Items.BeginUpdate;
-//ImageList.Clear;
+
 var reg: TRegistry := TRegistry.Create;
 try
   reg.rootkey := HKEY_CLASSES_ROOT;
   if reg.OpenKey('', False) then
     begin
-    //var keys := TStringList.Create;
     try
-      //reg.GetKeyNames(keys);
       var vReg: TArray<string>;
       var vRegCount := 0;
 
@@ -188,7 +183,6 @@ try
         );
         end;
       reg.CloseKey;
-      //keys.Sort;
       if lbExtensions.Items.Count = 0 then
         begin
         for var i := 0 to vRegCount - 1 do
@@ -198,7 +192,6 @@ try
         end
       else // lbExtensions.Items.Count > 0
         begin
-        //SyncToRight(vReg, TStringList(lbExtensions.Items));
         var vLBStringList := TStringList.Create;
         try
           vLBStringList.Assign(lbExtensions.Items);
@@ -207,19 +200,19 @@ try
         finally
           FreeAndNil(vLBStringList);
           end;
-        //lbExtensions.Sorted := True;
         end;
     finally
-      //lbExtensions.Sorted := True;
       FlbChanging := False;
+      end;
+    try
       edtExt.Text := Extension;
       edtExtChange(edtExt);
+    finally
       lbExtensions.Items.EndUpdate;
-      //keys.Free;
       end;
-     end;
+    end;
   finally
-    reg.Free
+    reg.Free;
     end;
   edtExt.SetFocus;
 end;
@@ -233,14 +226,12 @@ end;
 procedure TfrmChooseExt.lbExtensionsDrawItem(Control: TWinControl;
   Index: Integer; Rect: TRect; State: TOwnerDrawState);
 begin
-//  var vText: string := lbExtensions.Items[Index].Split(lbExtensions.Items.NameValueSeparator);
   lbExtensions.Canvas.FillRect(Rect);
 
   var vArText: TArray<string> := lbExtensions.Items[Index].Split(clbPairDelimiter);
   var vText: string := vArText[0];
   if Length(vArText) = 2 then
     begin
-    //vText := vArText[0];
     var vIcon := TIcon.Create;
     ImageList.GetIcon(vArText[1].ToInteger, vIcon);
     DrawIconEx(lbExtensions.Canvas.Handle, Rect.Left + 1, Rect.Top + 1,
@@ -249,7 +240,6 @@ begin
     end
   else
     begin
-    //vText := vArText[0];
     var vInfo: TSHFileInfo;
     if SHGetFileInfo(PChar('.' + vText), FILE_ATTRIBUTE_NORMAL, vInfo,
       SizeOf(TSHFileInfo), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_USEFILEATTRIBUTES) <> 0 then
