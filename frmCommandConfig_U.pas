@@ -121,13 +121,6 @@ begin
     end;
 
   Result := vCommand.Substring(ADefaultFolder.Length + 1);
-  {if SysUtils.DirectoryExists(ADefaultFolder) then
-    Result := ACommand.Substring(ADefaultFolder.Length + 1)
-  else
-    begin
-    ADefaultFolder := '';
-    Result := ACommand;
-    end;}
 end;
 
 procedure TfrmCommandConfig.btnChangeIconClick(Sender: TObject);
@@ -305,8 +298,6 @@ begin
   if not Result and Assigned(FAssignedTreeNode) and Assigned(FAssignedTreeNode.Data) and
       Assigned(FAssignedCommandData) then
     begin
-    {if (FAssignedTreeNode.Data = nil) or (FAssignedCommandData = nil) then
-      Exit;}
     with TCommandData(FAssignedTreeNode.Data) do
       Result := (FAssignedCommandData.Command <> Command) or
         (FAssignedCommandData.CommandParameters <> CommandParameters) or
@@ -315,12 +306,6 @@ begin
         ((FAssignedCommandData.IconType = citFromFileExt) and (FAssignedCommandData.IconExt <> IconExt)) or
         ((FAssignedCommandData.IconType = citFromFileRes) and (FAssignedCommandData.IconFilename <> IconFileName)
             and (FAssignedCommandData.IconFileIndex <> IconFileIndex));
-    {with TCommandData(FAssignedTreeNode.Data) do
-      Result := Result or (edtCommand.Text <> Command) or
-        (edtCommandParameters.Text <> CommandParameters) or
-        (cbRunAsAdmin.Checked <> IsRunAsAdmin) or
-        (FAssignedCommandData.IconFilename <> IconFilename) or
-        (FAssignedCommandData.IconFileIndex <> IconFileIndex);}
     end;
 end;
 
@@ -329,6 +314,17 @@ begin
 with frmChooseExt do
   begin
   Extension := FAssignedCommandData.IconExt;
+  if Extension.IsEmpty then
+    begin
+    var vPars: TArray<string> := string(edtCommandParameters.Text).Split([' ', #9], '"');
+    for var vPar: string in vPars do
+      begin
+      var vExt: string := ExtractFileExt(vPar);
+      if not vExt.IsEmpty then
+        StartWithExtensions.Add(vExt.Substring(1));
+        //Extension := Extension + vExt.Substring(1) + ','
+      end;
+    end;
   if ShowModal = mrOk then
     begin
     FAssignedCommandData.IconType := citFromFileExt;
@@ -347,8 +343,10 @@ begin
   var vFileName: string := FAssignedCommandData.IconFilename;
   if vFileName = '' then
     begin
-    var vExt := ExtractFileExt(FAssignedCommandData.Command).ToLower;
-    if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+    //var vExt := ExtractFileExt(FAssignedCommandData.Command).ToLower;
+    //if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
+    if MatchStr(ExtractFileExt(FAssignedCommandData.Command).ToLower,
+        ['.exe', '.dll', '.ico']) then
       begin
       vFileName := FAssignedCommandData.Command;
       end;
@@ -376,8 +374,6 @@ end;
 procedure TfrmCommandConfig.miDefaultIconClick(Sender: TObject);
 begin
   FAssignedCommandData.IconType := citDefault;
-  //FAssignedCommandData.IconFilename := '';
-  //FAssignedCommandData.IconFileIndex := -1;
   UpdateIcon;
   miDefaultIcon.Checked := True;
 end;
@@ -427,11 +423,6 @@ end;
 
 procedure TfrmCommandConfig.UpdateIcon;
 begin
-  {var vNewHIcon := FAssignedCommandData.ExtractHIcon);
-  var vImageIndex := ImageList_ReplaceIcon(TreeImageList.Handle,
-      -1, vNewHIcon); //FAssignedTreeNode.ImageIndex
-  if vNewHIcon > 0 then
-    DestroyIcon(vNewHIcon);}
   var vImageIndex := FAssignedCommandData.GetImageIndex(TreeImageList.Handle);
   if FAssignedTreeNode.ImageIndex > 0 then // if the icon was before but not now
     ListDeletedImageIndexes.Add(FAssignedTreeNode.ImageIndex);
@@ -454,7 +445,6 @@ try
   FAssignedCaption := '';
   if Assigned(FAssignedCommandData) then
     FreeAndNil(FAssignedCommandData);
-  //FAssignedCommandData := nil;
 
   edtCaption.Text := '';
   edtCommand.Text := '';  FOldCommandText := '';
@@ -493,13 +483,6 @@ begin
 
       FAssignedCaption := FAssignedTreeNode.Text;
       edtCaption.Text := FAssignedCaption;
-      //if Self.Parent.Parent.Visible then
-       // edtCaption.SetFocus;
-
-      //var CommandData := TCommandData(FAssignedTreeNode.Data);
-
-      {if FAssignedTreeNode.Data = nil then // в случае Отмены
-        Exit;}
 
       FAssignedCommandData := TCommandData.Create;
       TCommandData(FAssignedTreeNode.Data).Assign(FAssignedCommandData);
@@ -518,7 +501,6 @@ begin
           else
             miDefaultIcon.Checked := True;
         end; //end;
-        //cbIsVisible.Checked := isVisible;
       end;
       CheckFileCommandExists;
       for var i := 0 to ControlCount - 1 do
@@ -530,7 +512,6 @@ begin
     end
     else // nil (initialization)
       raise Exception.Create('TfrmCommandConfig.Assign(nil)');
-      //ClearAssigned;
   finally
     FAssigningState := False;
   end;
@@ -553,19 +534,8 @@ begin
   //with TCommandData(FAssignedTreeNode.Data) do
   with FAssignedCommandData do
   begin
-    {if isGroup then
+    if not isGroup then
       begin
-      if (vExceptionStr <> '') then
-        begin
-        ErrorDialog((Self.Owner) as TForm, vExceptionStr);
-        Exit(False);
-        end;
-      end
-    else}
-    if not isGroup then      
-      begin
-      //var vCommand := Command; //Trim(edtCommand.Text);
-      //if (vCommand = '') then
       if (Command = '') then
         begin
         if vExceptionStr <> '' then

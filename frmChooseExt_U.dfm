@@ -14,6 +14,7 @@ object frmChooseExt: TfrmChooseExt
   OldCreateOrder = False
   Position = poMainFormCenter
   OnClose = FormClose
+  OnDestroy = FormDestroy
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13

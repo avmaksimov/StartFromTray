@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
-  System.ImageList, Vcl.ImgList;
+  System.ImageList, Vcl.ImgList, System.Generics.Collections;
 
 type
   TfrmChooseExt = class(TForm)
@@ -24,12 +24,15 @@ type
       Rect: TRect; State: TOwnerDrawState);
     procedure edtExtChange(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
     { Private declarations }
     FlbChanging: Boolean;
+    function FindExtInList(const Ext: string): integer; inline;
   public
     { Public declarations }
     Extension: string;
+    StartWithExtensions: TList<string>;
 
     constructor Create(AOwner: TComponent); override;
   end;
@@ -39,8 +42,7 @@ var
 
 implementation
 
-uses System.Win.Registry, WinAPI.CommCtrl, WinAPI.ShellAPI, System.Generics.Collections,
-System.Generics.Defaults;
+uses System.Win.Registry, WinAPI.CommCtrl, WinAPI.ShellAPI, System.Generics.Defaults;
 
 {$R *.dfm}
 
@@ -70,6 +72,7 @@ constructor TfrmChooseExt.Create(AOwner: TComponent);
 begin
   inherited;
   Extension := '';
+  StartWithExtensions :=  TList<string>.Create;
   lbExtensions.Items.NameValueSeparator := clbPairDelimiter;
 end;
 
@@ -77,7 +80,8 @@ procedure TfrmChooseExt.edtExtChange(Sender: TObject);
 begin
 if FlbChanging or (Length(edtExt.Text) <= 0) then
   Exit;
-var vNewIndex := SendMessageW(lbExtensions.Handle, LB_FINDSTRING, -1, NativeInt(PChar(edtExt.Text)));
+var vNewIndex := FindExtInList(edtExt.Text);
+//SendMessageW(lbExtensions.Handle, LB_FINDSTRING, -1, NativeInt(PChar(edtExt.Text)));
 if lbExtensions.ItemIndex <> vNewIndex then
   begin
   lbExtensions.ItemIndex := vNewIndex;
@@ -85,9 +89,20 @@ if lbExtensions.ItemIndex <> vNewIndex then
   end;
 end;
 
+function TfrmChooseExt.FindExtInList(const Ext: string): integer;
+begin
+  Result := SendMessageW(lbExtensions.Handle, LB_FINDSTRING, -1, NativeInt(PChar(Ext)));
+end;
+
 procedure TfrmChooseExt.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-Extension := edtExt.Text;
+  Extension := edtExt.Text;
+  StartWithExtensions.Clear;
+end;
+
+procedure TfrmChooseExt.FormDestroy(Sender: TObject);
+begin
+  FreeAndNil(StartWithExtensions);
 end;
 
 procedure TfrmChooseExt.FormShow(Sender: TObject);
@@ -205,6 +220,13 @@ try
       FlbChanging := False;
       end;
     try
+      // if list is not empty Extension is not Empty and vise versa
+      for var s: string in StartWithExtensions do
+        if FindExtInList(s) > -1 then
+          begin
+          Extension := s;
+          break;
+          end;
       edtExt.Text := Extension;
       edtExtChange(edtExt);
     finally
