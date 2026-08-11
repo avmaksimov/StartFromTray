@@ -1,32 +1,60 @@
 # StartFromTray
 
-## Overview
-This amazing app was written for easy running the most used programs from the system tray. Especially it can be useful for situation when you don’t have a link in Start, and for any documents, that you have to open. In addition, it may be used for running your scripts.
+**English** | [Русский](README.ru.md)
 
-### Features
-1. Ease of creating a custom tree of elements with groups. You can also undo and not save all changes.
-2. Ability to start the action by default with the left mouse button, and the editor with the right mouse button on the element in the tray. Very useful for scripts!
-3. You can also open an element in the program for settings with the middle button.
-4. The ability to assign an icon from a resource file (.exe, .dll, .ico) or a file extension icon to a group or element (which is more important). This is especially useful if you're running a script that, after doing something, launches an executable file or document. By default, groups have a regular folder icon, and items have a folder icon (if the command points to a folder), a resource icon (.exe, .dll, .ico), or a file command extension.
-5. Ability to run commands and edit under the administrator.
-6. If no action is found for the team to edit, the folder will open and the file will be highlighted.
-7. Override the default actions in the system to edit and run through Extensions. It also allows you to add file filtering when selecting commands.
-8. Ability to assign an opening to a specific folder.
-9. Use native or any other language and fluid interface. No installation required.
-10. Highlighting a non-existent file (for a .exe file, it is searched in the Path as well as in the registry, similar to how Windows does).
+StartFromTray is a portable Windows tray launcher for applications, documents, folders, and scripts.
 
+It keeps your frequently used commands in a customizable hierarchical menu available from the system tray. Each menu item supports three actions: run it, edit its target, or quickly open its settings.
 
-## Описание
-Эта замечательная программа написана для облегчения запуска из трея наиболее часто используемых программ, особенно для тех, для которых нет ярлыка, а также для любых других документов, которые приходится когда-либо открывать. Также она может быть полезна для запуска каких-либо скриптов.
+## Mouse controls
 
-### Возможности
-1. Лёгкость в создании произвольного дерева элементов с группами. Также можно отменить и не сохранять все изменения.
-2. Возможность запуска действия по умолчанию левой, а редактора - правой кнопкой мыши по элементу в трее. Очень полезно для скриптов!
-3. Также вы можете открыть элемент в программе для настроек средней кнопкой.
-4. Возможность назначения группе или элементу (что важнее) иконки из файла ресурсов (.exe, .dll, .ico) или иконке расширения файла. Это особенно полезно если вы запускаете скрипт, который после каких-либо действий запускает исполняемый файл или документ. По умолчанию для групп служит обычная иконка папки, а для элементов - иконка папки (если команда указывает на папку), иконка ресурса (.exe, .dll, .ico) или расширение команды файла.
-5. Возможность запускать команды и редактирование под администратором.
-6. Если для команды не найдено действие для редактирования, то откроется папка и выделится этот файл.
-7. Переопределение действий в системе по умолчанию для редактирования и запуска через Расширения. Также это позволяет вам добавить фильтрацию файлов при выборе команд.
-8. Возможность назначить открытие определённой папке.
-9. Использование родного или любого другого языка и резинового интерфейса. Отсутствие необходимости в установке.
-10. Подсветка несуществующего файла (для .exe-файла ищется в Path, а также в реестре, аналогично, как это делает Windows).
+| Mouse button | Action                                                               |
+| ------------ | -------------------------------------------------------------------- |
+| Left         | Run or open the selected item                                        |
+| Right        | Edit the target using a configured editor or the Windows edit action |
+| Middle       | Open the selected item in the StartFromTray configuration window     |
+
+This is especially useful for scripts: you can run a script with the left mouse button and open it in an editor with the right mouse button.
+
+## Features
+
+* Organize commands into a hierarchical menu with nested groups.
+* Launch applications, documents, folders, scripts, and other Windows shell targets.
+* Specify command-line parameters for each item.
+* Run commands or editors with administrator privileges.
+* Copy, rename, reorder, and move items using the configuration tree.
+* Apply changes immediately or discard all unsaved changes.
+* Assign icons automatically or select them from `.exe`, `.dll`, and `.ico` files.
+* Use an icon associated with a chosen file extension.
+* Start StartFromTray automatically with Windows.
+* See whether a process launched by an item is still running.
+* Avoid launching the same item again while its process is still running.
+* Mark commands whose target files cannot be found.
+* Find executable files through the Windows `App Paths` registry entries and the `PATH` environment variable.
+
+## Custom Run and Edit actions
+
+StartFromTray lets you define separate **Run** and **Edit** applications for selected file extensions.
+
+For example, you can:
+
+* run `.ps1` files with PowerShell and edit them in Visual Studio Code;
+* run a script with custom parameters;
+* use different editors for different file types;
+* add custom file-type filters to the file selection dialog.
+
+Run and Edit applications can have their own command-line parameters. The `:(command)` placeholder can be used to specify the exact position of the selected file in the parameter string.
+
+If no custom Edit action is configured, StartFromTray uses the Windows file association. If no editor is associated with the file, StartFromTray opens File Explorer and selects the file.
+
+## Portable operation
+
+StartFromTray does not require installation. Its menu, extension rules, language files, and application settings are stored in files next to the executable.
+
+Keep the application in a folder where your Windows account has write access. The entire folder can then be copied to another location or backed up.
+
+## Language support
+
+The interface supports external language files stored in the `Langs` directory. New translations can be added without recompiling the application.
+
+StartFromTray is a native Windows application written in Delphi using VCL.
