@@ -58,3 +58,7 @@ Keep the application in a folder where your Windows account has write access. Th
 The interface supports external language files stored in the `Langs` directory. New translations can be added without recompiling the application.
 
 StartFromTray is a native Windows application written in Delphi using VCL.
+
+## License
+
+StartFromTray is available under the [Mozilla Public License 2.0](LICENSE).
