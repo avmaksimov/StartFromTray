@@ -116,8 +116,9 @@ object frmExtensions: TfrmExtensions
       Height = 56
       AutoSize = False
       Caption = 
-        'Extensions allow to redefine system default action for Edit or R' +
-        'un. Also they'#39're used in Choosing element'#39's filename dialog.'
+        'Extensions can override the default Windows actions for Run and ' +
+        'Edit. They are also used as filters when selecting a file for an' +
+        ' item.'
       WordWrap = True
     end
     object btnOK: TButton
@@ -150,14 +151,14 @@ object frmExtensions: TfrmExtensions
     Top = 26
     Width = 420
     Height = 297
-    Caption = 'Extension'#39's properties '
+    Caption = 'Extension properties'
     TabOrder = 1
     object lblEditHelper: TLabel
       Left = 6
       Top = 115
       Width = 220
       Height = 13
-      Caption = 'Executable file (empty for the default action):'
+      Caption = 'Program (leave empty to use the default action):'
     end
     object pbEdit: TPaintBox
       Left = 6
@@ -171,7 +172,7 @@ object frmExtensions: TfrmExtensions
       Top = 213
       Width = 220
       Height = 13
-      Caption = 'Executable file (empty for the default action):'
+      Caption = 'Program (leave empty to use the default action):'
     end
     object pbRun: TPaintBox
       Tag = 1
@@ -188,7 +189,7 @@ object frmExtensions: TfrmExtensions
       Height = 21
       EditLabel.Width = 166
       EditLabel.Height = 13
-      EditLabel.Caption = 'Delimeted extensions (through '#39';'#39'):'
+      EditLabel.Caption = 'File extensions separated by semicolons (;):'
       TabOrder = 1
     end
     object edtName: TLabeledEdit
@@ -198,7 +199,7 @@ object frmExtensions: TfrmExtensions
       Height = 21
       EditLabel.Width = 133
       EditLabel.Height = 13
-      EditLabel.Caption = 'Name (without extensions):'
+      EditLabel.Caption = 'Name:'
       TabOrder = 0
       OnChange = edtNameChange
     end
@@ -222,8 +223,7 @@ object frmExtensions: TfrmExtensions
       EditLabel.Width = 349
       EditLabel.Height = 13
       EditLabel.Caption = 
-        'Parameters (the command will added or put :(command) there you n' +
-        'eed:'
+        'Parameters (the file is appended or replaces :(command)):'
       TabOrder = 3
       OnChange = edtNameChange
     end
@@ -247,8 +247,7 @@ object frmExtensions: TfrmExtensions
       EditLabel.Width = 349
       EditLabel.Height = 13
       EditLabel.Caption = 
-        'Parameters (the command will added or put :(command) there you n' +
-        'eed:'
+        'Parameters (the file is appended or replaces :(command)):'
       TabOrder = 5
       OnChange = edtNameChange
     end
@@ -276,7 +275,7 @@ object frmExtensions: TfrmExtensions
     FavoriteLinks = <>
     FileTypes = <>
     Options = [fdoNoValidate, fdoFileMustExist, fdoShareAware]
-    Title = 'Browse'
+    Title = 'Select a program'
     Left = 128
     Top = 72
   end

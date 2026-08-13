@@ -278,29 +278,29 @@ begin
   MyWriteString('LangStrings', '@Cancel', 'Cancel');
   MyWriteString('LangStrings', '@Close', 'Close');
   MyWriteString('LangStrings', '@DeleteConfirm',
-    'Are you sure to delete "%s"?');
+    'Are you sure you want to delete "%s"?');
   MyWriteString('LangStrings', '@CancelConfirm',
-    'Are you sure to cancel changes?');
-  MyWriteString('LangStrings', '@FileDialogExecutableFile', 'Executable file');
-  MyWriteString('LangStrings', '@FileDialogAnyFile', 'Any file');
+    'Discard unsaved changes?');
+  MyWriteString('LangStrings', '@FileDialogExecutableFile', 'Executable files');
+  MyWriteString('LangStrings', '@FileDialogAnyFile', 'All files');
   MyWriteString('frmConfig', '@Version', 'Version:');
   MyWriteString('frmConfig', '@VersionHint', 'Open the StartFromTray project website');
   MyWriteString('frmConfig\frmCommandConfig', '@IsRunning', 'Running');
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
-  MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName', 'Empty name. You have to write one');
-  MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand', 'Empty command (file to run). You have to write it');
-  MyWriteString('frmConfig\frmCommandConfig', '@FileDialogTitle', 'Browsing file to run');
-  MyWriteString('frmConfig\frmCommandConfig', '@FolderDialogTitle', 'Browsing folder to run');
-  MyWriteString('frmExtensions', '@ActionForEdit', 'Action for <b>Edit</b>');
-  MyWriteString('frmExtensions', '@ActionForRun', 'Action for <b>Run</b>');
+  MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName', 'Enter a name.');
+  MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand', 'Specify a command or file to run.');
+  MyWriteString('frmConfig\frmCommandConfig', '@FileDialogTitle', 'Select a file to run');
+  MyWriteString('frmConfig\frmCommandConfig', '@FolderDialogTitle', 'Select a folder to run');
+  MyWriteString('frmExtensions', '@ActionForEdit', '<b>Edit</b> action');
+  MyWriteString('frmExtensions', '@ActionForRun', '<b>Run</b> action');
   MyWriteString('frmExtensions', '@ChooseFileForRun',
-    'Choose file for Run action');
+    'Select a program for the Run action');
   MyWriteString('frmExtensions', '@ChooseFileForEdit',
-    'Choose file for Edit action');
+    'Select a program for the Edit action');
   MyWriteString('frmExtensions', '@ErrorEmptyName',
-    'Empty name. You have to write one');
+    'Enter a name.');
   MyWriteString('frmExtensions', '@ErrorEmptyExtensions',
-    'Empty extensions. You need at least one.');
+    'Enter at least one file extension.');
 end;
 
 function LangFillListAndGetCurrent(const AMainIniFile: TIniFile; const AMenu: TPopupMenu;

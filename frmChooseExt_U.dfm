@@ -2,7 +2,7 @@ object frmChooseExt: TfrmChooseExt
   Left = 0
   Top = 0
   BorderStyle = bsDialog
-  Caption = 'Choose extension'
+  Caption = 'Select an extension'
   ClientHeight = 396
   ClientWidth = 287
   Color = clBtnFace

@@ -12,7 +12,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 59
     Width = 52
     Height = 13
-    Caption = 'File to run:'
+    Caption = 'Command or file:'
     Color = clBtnFace
     FocusControl = edtCommand
     ParentColor = False
@@ -30,7 +30,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 374
     Height = 13
     AutoSize = False
-    Caption = 'The command willn'#39't start until the previous copy running'
+    Caption = 'Cannot start again while the previous instance is running.'
     WordWrap = True
   end
   object Bevel: TBevel
@@ -104,7 +104,7 @@ object frmCommandConfig: TfrmCommandConfig
     ParentFont = False
     ParentShowHint = False
     RightButton.DisabledImageIndex = 1
-    RightButton.Hint = 'Browser file to run'
+    RightButton.Hint = 'Browse for a file to run'
     RightButton.ImageIndex = 0
     RightButton.Visible = True
     ShowHint = True
@@ -131,7 +131,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 154
     Height = 19
     Anchors = [akTop, akRight]
-    Caption = 'Change the Icon'
+    Caption = 'Change icon'
     PopupMenu = ppMenuChangeIcon
     TabOrder = 5
     OnClick = btnChangeIconClick
@@ -150,7 +150,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 78
     Width = 21
     Height = 21
-    Hint = 'Browse folder to run'
+    Hint = 'Browse for a folder to run'
     Anchors = [akTop, akRight]
     ImageIndex = 0
     Images = frmConfig.TreeImageList
@@ -347,12 +347,12 @@ object frmCommandConfig: TfrmCommandConfig
       OnClick = miDefaultIconClick
     end
     object miChooseFromFileRes: TMenuItem
-      Caption = 'Choose from file with icons...'
+      Caption = 'Choose an icon from a file...'
       RadioItem = True
       OnClick = miChooseFromFileResClick
     end
     object miChooseFromFileExt: TMenuItem
-      Caption = 'Choose from file ext...'
+      Caption = 'Choose an icon by file extension...'
       RadioItem = True
       OnClick = miChooseFromFileExtClick
     end

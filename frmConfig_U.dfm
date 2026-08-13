@@ -2,7 +2,7 @@ object frmConfig: TfrmConfig
   AlignWithMargins = True
   Left = 322
   Top = 137
-  Caption = 'Run options'
+  Caption = 'StartFromTray settings'
   ClientHeight = 486
   ClientWidth = 792
   Color = clBtnFace
@@ -30,7 +30,7 @@ object frmConfig: TfrmConfig
     Width = 373
     Height = 404
     Anchors = [akLeft, akTop, akBottom]
-    Caption = 'Elements to run'
+    Caption = 'Menu items'
     TabOrder = 0
     DesignSize = (
       373
@@ -233,14 +233,14 @@ object frmConfig: TfrmConfig
     object actOK: TAction
       Category = 'Main'
       Caption = 'OK'
-      Hint = 'Save and close options'
+      Hint = 'Save changes and close'
       OnExecute = actOKExecute
       OnUpdate = actApplyUpdate
     end
     object actClose: TAction
       Category = 'Main'
       Caption = 'Close'
-      Hint = 'Cancel and close options'
+      Hint = 'Discard changes and close'
       OnExecute = actCloseExecute
       OnUpdate = actCloseUpdate
     end
@@ -265,7 +265,7 @@ object frmConfig: TfrmConfig
     end
   end
   object TrayIcon: TTrayIcon
-    Hint = 'Quick run from Tray'
+    Hint = 'Quick launch from the system tray'
     PopupMenu = ppConfigMenu
     OnMouseUp = TrayIconMouseUp
     Left = 228
@@ -275,7 +275,7 @@ object frmConfig: TfrmConfig
     Left = 148
     Top = 117
     object ppCMConfig: TMenuItem
-      Caption = 'Options...'
+      Caption = 'Settings...'
       Default = True
       OnClick = ppCMConfigClick
     end
@@ -303,7 +303,7 @@ object frmConfig: TfrmConfig
     end
     object miOptionsRunAtStart: TMenuItem
       AutoCheck = True
-      Caption = 'Run at Windows start'
+      Caption = 'Start with Windows'
       OnClick = miOptionsRunAtStartClick
     end
     object N2: TMenuItem
@@ -317,7 +317,7 @@ object frmConfig: TfrmConfig
       Caption = '-'
     end
     object miOptionsExitProgram: TMenuItem
-      Caption = 'Exit the program'
+      Caption = 'Exit StartFromTray'
       OnClick = miOptionsExitProgramClick
     end
   end
