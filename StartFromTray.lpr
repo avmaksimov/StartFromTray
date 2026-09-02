@@ -16,9 +16,8 @@ var
 
 begin
   RequireDerivedFormResource := True;
-  Application.Scaled := True;
+  Application.Scaled:=True;
   Application.Initialize;
-  Application.Title := 'StartFromTray';
   Application.CreateForm(TfrmConfig, frmConfig);
   Application.CreateForm(TfrmExtensions, frmExtensions);
   Application.CreateForm(TfrmChooseExt, frmChooseExt);

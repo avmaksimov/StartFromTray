@@ -121,9 +121,9 @@ object frmConfig: TfrmConfig
     TabOrder = 3
     object lblVer: TLabel
       Cursor = crHandPoint
-      Left = 16
+      Left = 12
       Height = 15
-      Top = 3
+      Top = 5
       Width = 41
       Caption = 'Version:'
       Font.Color = clBlue

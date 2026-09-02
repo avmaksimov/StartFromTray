@@ -7,7 +7,22 @@
       <SessionStorage Value="InProjectDir"/>
       <Title Value="StartFromTray"/>
       <Scaled Value="True"/>
+      <UseXPManifest Value="True"/>
+      <XPManifest>
+        <DpiAware Value="True/PM_V2"/>
+        <LongPathAware Value="True"/>
+        <TextName Value="io.github.avmaksimov.StartFromTray"/>
+        <TextDesc Value="Launch files, folders and commands from the system tray."/>
+      </XPManifest>
+      <Icon Value="0"/>
     </General>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <AutoIncrementBuild Value="True"/>
+      <MajorVersionNr Value="1"/>
+      <MinorVersionNr Value="3"/>
+      <BuildNr Value="241"/>
+    </VersionInfo>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
       <Item Name="Release">
@@ -94,6 +109,7 @@
       <Filename Value="StartFromTray"/>
     </Target>
     <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
