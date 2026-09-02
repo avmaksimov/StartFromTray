@@ -1,0 +1,10 @@
+<tree2xml name="tvItems">
+  <item Caption="Документы" isGroup="1">
+    <item Caption="Лицензирование ПО в офисе" Command="D:\MegaSync\Work\Documents\Лицензирование ПО в офисе.ods"/>
+    <item Caption="Реквизиты БР" Command="M:\# Общая информация\Реквизиты БР.docx"/>
+  </item>
+  <item Caption="Разработка" isGroup="1">
+    <item Caption="WebFunctions.pas" Command="C:\Scripts\OpenSVNFile.au3" CommandParameters="&quot;Develop\branches\r2408\Server Local\WebFunctions_u.pas&quot;"/>
+    <item Caption="GenNewActivationKey" Command="D:\Development\Develop\Trunk\GenNewActivationKey\bin\GenNewActivationKey.exe"/>
+  </item>
+</tree2xml>

@@ -1,0 +1,201 @@
+object frmCommandConfig: TfrmCommandConfig
+  Left = 0
+  Height = 455
+  Top = 0
+  Width = 404
+  ClientHeight = 455
+  ClientWidth = 404
+  LCLVersion = '4.8.0.0'
+  TabOrder = 0
+  object lblCommand: TLabel
+    Left = 8
+    Height = 15
+    Top = 59
+    Width = 93
+    Caption = 'Command or file:'
+    FocusControl = edtCommand
+  end
+  object lblIsRunning: TLabel
+    Left = 126
+    Height = 15
+    Top = 59
+    Width = 66
+    Caption = 'lblIsRunning'
+  end
+  object lblRunInfo: TLabel
+    Left = 15
+    Height = 30
+    Top = 156
+    Width = 374
+    AutoSize = False
+    Caption = 'Cannot start again while the previous instance is running.'
+    WordWrap = True
+  end
+  object Bevel: TBevel
+    Left = 8
+    Height = 5
+    Top = 183
+    Width = 388
+    Anchors = [akTop, akLeft, akRight]
+    Shape = bsTopLine
+  end
+  object edtCaption: TLabeledEdit
+    Tag = 1
+    Left = 8
+    Height = 23
+    Top = 24
+    Width = 388
+    Anchors = [akTop, akLeft, akRight]
+    EditLabel.Tag = 1
+    EditLabel.Height = 15
+    EditLabel.Width = 388
+    EditLabel.Caption = 'Name:'
+    TabOrder = 0
+    OnChange = edtCaptionChange
+  end
+  object cbIsVisible: TCheckBox
+    Tag = 1
+    Left = 15
+    Height = 19
+    Top = 263
+    Width = 120
+    Caption = 'Show in Tray menu'
+    TabOrder = 2
+    Visible = False
+  end
+  object btnEdit: TButton
+    Left = 240
+    Height = 22
+    Top = 55
+    Width = 75
+    Anchors = [akTop, akRight]
+    Caption = 'Edit'
+    TabOrder = 6
+    OnClick = btnEditClick
+  end
+  object btnRun: TButton
+    Left = 321
+    Height = 22
+    Top = 55
+    Width = 75
+    Anchors = [akTop, akRight]
+    Caption = 'Run'
+    TabOrder = 7
+    OnClick = btnRunClick
+  end
+  object edtCommand: TEdit
+    Left = 8
+    Height = 23
+    Top = 78
+    Width = 340
+    Anchors = [akTop, akLeft, akRight]
+    TabOrder = 1
+    OnChange = edtCommandChange
+  end
+  object btnChooseFile: TSpeedButton
+    Left = 350
+    Height = 23
+    Hint = 'Browse for a file to run'
+    Top = 78
+    Width = 22
+    Anchors = [akTop, akRight]
+    Images = ImageList
+    ImageIndex = 0
+    ShowCaption = False
+    ShowHint = True
+    ParentShowHint = False
+    OnClick = btnChooseFileClick
+  end
+  object edtCommandParameters: TLabeledEdit
+    Left = 8
+    Height = 23
+    Top = 124
+    Width = 388
+    Anchors = [akTop, akLeft, akRight]
+    EditLabel.Height = 15
+    EditLabel.Width = 388
+    EditLabel.Caption = 'Parameters:'
+    TabOrder = 3
+    OnChange = edtCommandParametersChange
+  end
+  object btnChangeIcon: TButton
+    Tag = 1
+    Left = 242
+    Height = 22
+    Top = 2
+    Width = 154
+    Anchors = [akTop, akRight]
+    Caption = 'Change icon'
+    PopupMenu = ppMenuChangeIcon
+    TabOrder = 5
+    OnClick = btnChangeIconClick
+  end
+  object cbRunAsAdmin: TCheckBox
+    Left = 8
+    Height = 19
+    Top = 194
+    Width = 127
+    Caption = 'Run as administrator'
+    TabOrder = 4
+    OnClick = cbRunAsAdminClick
+  end
+  object btnChooseFolder: TSpeedButton
+    Left = 374
+    Height = 23
+    Hint = 'Browse for a folder to run'
+    Top = 78
+    Width = 22
+    Anchors = [akTop, akRight]
+    Images = ImageList
+    ImageIndex = 1
+    ShowCaption = False
+    ShowHint = True
+    ParentShowHint = False
+    OnClick = btnChooseFolderClick
+  end
+  object edtCommandOpenDialog: TOpenDialog
+    DefaultExt = '.exe'
+    Options = [ofPathMustExist, ofFileMustExist, ofEnableSizing]
+    Left = 352
+    Top = 342
+  end
+  object Timer: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = TimerTimer
+    Left = 264
+    Top = 342
+  end
+  object ImageList: TImageList
+    Height = 15
+    Width = 19
+    Left = 304
+    Top = 342
+  end
+  object ppMenuChangeIcon: TPopupMenu
+    Left = 224
+    Top = 342
+    object miDefaultIcon: TMenuItem
+      AutoCheck = True
+      Caption = 'Default icon'
+      Checked = True
+      GroupIndex = 1
+      RadioItem = True
+      OnClick = miDefaultIconClick
+    end
+    object miChooseFromFileRes: TMenuItem
+      AutoCheck = True
+      Caption = 'Choose from file resources...'
+      GroupIndex = 1
+      RadioItem = True
+      OnClick = miChooseFromFileResClick
+    end
+    object miChooseFromFileExt: TMenuItem
+      AutoCheck = True
+      Caption = 'Choose by file extension...'
+      GroupIndex = 1
+      RadioItem = True
+      OnClick = miChooseFromFileExtClick
+    end
+  end
+end

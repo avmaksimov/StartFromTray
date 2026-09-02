@@ -1,0 +1,248 @@
+object frmExtensions: TfrmExtensions
+  Left = 0
+  Height = 423
+  Top = 0
+  Width = 668
+  BorderIcons = [biSystemMenu, biMinimize]
+  BorderStyle = bsDialog
+  Caption = 'Extensions'
+  ClientHeight = 423
+  ClientWidth = 668
+  Position = poOwnerFormCenter
+  LCLVersion = '4.8.0.0'
+  OnClose = FormClose
+  OnShow = FormShow
+  object gbExtensions: TGroupBox
+    Left = 4
+    Height = 335
+    Top = 0
+    Width = 233
+    Caption = 'Extensions'
+    ClientHeight = 315
+    ClientWidth = 229
+    TabOrder = 0
+    object lvFilters: TListBox
+      Left = 6
+      Height = 309
+      Top = -1
+      Width = 217
+      DragMode = dmAutomatic
+      ItemHeight = 18
+      TabOrder = 0
+      OnClick = lvFiltersClick
+      OnDragDrop = lvFiltersDragDrop
+      OnDragOver = lvFiltersDragOver
+    end
+  end
+  object gbFiltersActions: TGroupBox
+    Left = 4
+    Height = 85
+    Top = 335
+    Width = 233
+    ClientHeight = 65
+    ClientWidth = 229
+    TabOrder = 2
+    object btnExtensionAdd: TButton
+      Left = 6
+      Height = 25
+      Top = 31
+      Width = 105
+      Caption = 'Add'
+      TabOrder = 2
+      OnClick = btnExtensionAddClick
+    end
+    object btnExtensionDelete: TButton
+      Left = 122
+      Height = 25
+      Top = 31
+      Width = 105
+      Caption = 'Delete'
+      TabOrder = 3
+      OnClick = btnExtensionDeleteClick
+    end
+    object btnExtensionDown: TButton
+      Left = 122
+      Height = 25
+      Top = 0
+      Width = 105
+      Caption = 'Down'
+      TabOrder = 1
+      OnClick = btnExtensionDownClick
+    end
+    object btnExtensionUp: TButton
+      Left = 6
+      Height = 25
+      Top = 0
+      Width = 105
+      Caption = 'Up'
+      TabOrder = 0
+      OnClick = btnExtensionUpClick
+    end
+  end
+  object gbMainButtons: TGroupBox
+    Left = 244
+    Height = 85
+    Top = 335
+    Width = 420
+    ClientHeight = 65
+    ClientWidth = 416
+    TabOrder = 3
+    object lblHint: TLabel
+      Left = 4
+      Height = 56
+      Top = -5
+      Width = 413
+      AutoSize = False
+      Caption = 'Extensions can override the default Windows actions for Run and Edit. They are also used as filters when selecting a file for an item.'
+      WordWrap = True
+    end
+    object btnOK: TButton
+      Left = 189
+      Height = 25
+      Top = 31
+      Width = 105
+      Anchors = [akTop, akRight]
+      Caption = 'OK'
+      TabOrder = 0
+      OnClick = btnOKClick
+    end
+    object btnCancel: TButton
+      Left = 304
+      Height = 25
+      Top = 31
+      Width = 105
+      Anchors = [akTop, akRight]
+      Cancel = True
+      Caption = 'Cancel'
+      TabOrder = 1
+      OnClick = btnCancelClick
+    end
+  end
+  object gbExtensionProperties: TGroupBox
+    Left = 244
+    Height = 335
+    Top = 0
+    Width = 420
+    Caption = 'Extension properties'
+    ClientHeight = 315
+    ClientWidth = 416
+    TabOrder = 1
+    object lblEditHelper: TLabel
+      Left = 6
+      Height = 15
+      Top = 110
+      Width = 255
+      Caption = 'Program (leave empty to use the default action):'
+    end
+    object pbEdit: TPaintBox
+      Left = 6
+      Height = 15
+      Top = 91
+      Width = 407
+      OnPaint = pbEdit_or_RunPaint
+    end
+    object lblRunHelper: TLabel
+      Left = 6
+      Height = 15
+      Top = 221
+      Width = 255
+      Caption = 'Program (leave empty to use the default action):'
+    end
+    object pbRun: TPaintBox
+      Tag = 1
+      Left = 6
+      Height = 15
+      Top = 203
+      Width = 407
+      OnPaint = pbEdit_or_RunPaint
+    end
+    object edtExtensions: TLabeledEdit
+      Left = 6
+      Height = 23
+      Top = 61
+      Width = 407
+      EditLabel.Height = 15
+      EditLabel.Width = 407
+      EditLabel.Caption = 'File extensions separated by semicolons (;):'
+      TabOrder = 1
+    end
+    object edtName: TLabeledEdit
+      Left = 6
+      Height = 23
+      Top = 17
+      Width = 407
+      EditLabel.Height = 15
+      EditLabel.Width = 407
+      EditLabel.Caption = 'Name:'
+      TabOrder = 0
+      OnChange = edtNameChange
+    end
+    object edtEditHelper: TEditButton
+      Left = 6
+      Height = 23
+      Top = 127
+      Width = 407
+      ButtonWidth = 23
+      Images = ImageList
+      ImageIndex = 0
+      MaxLength = 0
+      NumGlyphs = 1
+      PasswordChar = #0
+      TabOrder = 2
+      OnButtonClick = edtEdit_or_RunHelperRightButtonClick
+      OnChange = edtEdit_or_RunHelperChange
+    end
+    object edtEditParams: TLabeledEdit
+      Left = 6
+      Height = 23
+      Top = 173
+      Width = 407
+      EditLabel.Height = 15
+      EditLabel.Width = 407
+      EditLabel.Caption = 'Parameters (the file is appended or replaces :(command)):'
+      TabOrder = 3
+      OnChange = edtNameChange
+    end
+    object edtRunHelper: TEditButton
+      Tag = 1
+      Left = 6
+      Height = 23
+      Top = 239
+      Width = 407
+      ButtonWidth = 23
+      Images = ImageList
+      ImageIndex = 0
+      MaxLength = 0
+      NumGlyphs = 1
+      PasswordChar = #0
+      TabOrder = 4
+      OnButtonClick = edtEdit_or_RunHelperRightButtonClick
+      OnChange = edtEdit_or_RunHelperChange
+    end
+    object edtRunParams: TLabeledEdit
+      Left = 6
+      Height = 23
+      Top = 284
+      Width = 407
+      EditLabel.Height = 15
+      EditLabel.Width = 407
+      EditLabel.Caption = 'Parameters (the file is appended or replaces :(command)):'
+      TabOrder = 5
+      OnChange = edtNameChange
+    end
+  end
+  object OpenDialog: TOpenDialog
+    Title = 'Select a program'
+    DefaultExt = '.exe'
+    Filter = 'Executable files|*.exe|All files|*.*'
+    Options = [ofFileMustExist, ofEnableSizing]
+    Left = 128
+    Top = 72
+  end
+  object ImageList: TImageList
+    Height = 15
+    Width = 19
+    Left = 120
+    Top = 16
+  end
+end

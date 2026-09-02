@@ -1,12 +1,14 @@
 unit FilterClass_U;
 
+{$mode delphi}{$H+}
+
 interface
 
-uses Classes, IniFiles;
+uses
+  Classes, IniFiles;
 
 type
   {$M+}
-  { TFilterData }
   TFilterData = class(TObject)
   private
     FRun: string;
@@ -14,10 +16,8 @@ type
     FExtensions: string;
     FRunParams: string;
     FEditParams: string;
-
   public
     constructor Create;
-
     procedure Assign(Source: TFilterData);
   published
     property Extensions: string read FExtensions write FExtensions;
@@ -34,117 +34,137 @@ var
 procedure Filters_LoadFromFile;
 procedure Filters_SaveToFile;
 function Filters_GetFilterByFilename(const AFileName: string): TFilterData;
-// nil if not Founded
 
 implementation
 
-uses SysUtils, System.TypInfo, Windows, CommonU;
+uses
+  SysUtils, TypInfo, CommonU;
 
 const
   sFiltersFileName = 'Filters.ini';
 
-var FPropList: PPropList; FPropCount: Integer;
-
-  { TFilterData }
+var
+  FPropList: PPropList;
+  FPropCount: Integer;
 
 procedure TFilterData.Assign(Source: TFilterData);
+var
+  I: Integer;
+  PropInfo: PPropInfo;
 begin
-  for var i := 0 to FPropCount - 1 do
-    begin
-    var vProp := FPropList[i];
-    SetStrProp(Self, vProp, GetStrProp(Source, vProp));
-    end;
+  for I := 0 to FPropCount - 1 do
+  begin
+    PropInfo := FPropList^[I];
+    SetStrProp(Self, PropInfo, GetStrProp(Source, PropInfo));
+  end;
 end;
 
 constructor TFilterData.Create;
+var
+  I: Integer;
 begin
-  for var i := 0 to FPropCount - 1 do
-    begin
-    SetStrProp(Self, FPropList[i], '');
-    end;
+  inherited Create;
+  for I := 0 to FPropCount - 1 do
+    SetStrProp(Self, FPropList^[I], '');
 end;
 
 procedure Filters_LoadFromFile;
+var
+  IniFile: TIniFile;
+  Sections: TStringList;
+  FilterName: string;
+  FilterData: TFilterData;
+  PropInfo: PPropInfo;
+  I, J: Integer;
 begin
-  var vIniFile := TIniFile.Create(ExtractFilePath(ParamStr(0)) + sFiltersFileName);
-  with vIniFile do
-    try
-      var Sections := TStringList.Create;
-      ReadSections(Sections);
-      for var vFilterName in Sections do
-        begin
-        var vFilterData := TFilterData.Create;
+  for I := Filters.Count - 1 downto 0 do
+    Filters.Objects[I].Free;
+  Filters.Clear;
 
-        for var i := 0 to FPropCount - 1 do
-          begin
-          var vProp := FPropList[i];
-          SetStrProp(vFilterData, vProp, ReadString(vFilterName, string(vProp.Name), ''));
-          end;
-
-        Filters.AddObject(vFilterName, vFilterData)
-        end;
-    finally
-      Free;
+  IniFile := TIniFile.Create(ExtractFilePath(ParamStr(0)) + sFiltersFileName);
+  Sections := TStringList.Create;
+  try
+    IniFile.ReadSections(Sections);
+    for I := 0 to Sections.Count - 1 do
+    begin
+      FilterName := Sections[I];
+      FilterData := TFilterData.Create;
+      for J := 0 to FPropCount - 1 do
+      begin
+        PropInfo := FPropList^[J];
+        SetStrProp(FilterData, PropInfo,
+          IniFile.ReadString(FilterName, string(PropInfo^.Name), ''));
+      end;
+      Filters.AddObject(FilterName, FilterData);
     end;
+  finally
+    Sections.Free;
+    IniFile.Free;
+  end;
 end;
 
 procedure Filters_SaveToFile;
+var
+  FileName, NewFileName, FilterName: string;
+  IniFile: TIniFile;
+  PropInfo: PPropInfo;
+  I, J: Integer;
 begin
-  var vFilename := ExtractFilePath(ParamStr(0)) + sFiltersFileName;
-  var vFilenameNew := ExtractFilePath(ParamStr(0)) + 'new-' + sFiltersFileName;
+  FileName := ExtractFilePath(ParamStr(0)) + sFiltersFileName;
+  NewFileName := ExtractFilePath(ParamStr(0)) + 'new-' + sFiltersFileName;
 
-  var vIniFile := TIniFile.Create(vFilenameNew);
-  with vIniFile do
-    try
-      for var i := 0 to Filters.Count - 1 do
-        begin
-        var vFilterName := Filters[i];
-        for var j := 0 to FPropCount - 1 do
-          begin
-          var vProp := FPropList[j];
-          vIniFile.WriteString(vFilterName, string(vProp.Name), GetStrProp(TFilterData(Filters.Objects[i]), vProp));
-          end;
-        end;
-    finally
-      Free;
+  if FileExists(NewFileName) and (not DeleteFile(NewFileName)) then
+    RaiseLastOSError;
+
+  IniFile := TIniFile.Create(NewFileName);
+  try
+    for I := 0 to Filters.Count - 1 do
+    begin
+      FilterName := Filters[I];
+      for J := 0 to FPropCount - 1 do
+      begin
+        PropInfo := FPropList^[J];
+        IniFile.WriteString(FilterName, string(PropInfo^.Name),
+          GetStrProp(TFilterData(Filters.Objects[I]), PropInfo));
+      end;
     end;
-  if (FileExists(vFilename) and not DeleteFile(PChar(vFilename))) or
-    not RenameFile(vFilenameNew, vFilename) then
-      RaiseLastOSError;
+  finally
+    IniFile.Free;
+  end;
+
+  if (FileExists(FileName) and (not DeleteFile(FileName))) or
+    (not RenameFile(NewFileName, FileName)) then
+    RaiseLastOSError;
 end;
 
 function Filters_GetFilterByFilename(const AFileName: string): TFilterData;
-// nil if not Founded
 var
-  i: Integer;
-  vFilterData: TFilterData;
+  I: Integer;
+  FilterData: TFilterData;
 begin
   Result := nil;
-
-  for i := 0 to Filters.Count - 1 do
+  for I := 0 to Filters.Count - 1 do
   begin
-    vFilterData := TFilterData(Filters.Objects[i]);
-
-    if MyMatchesExtensions(AFileName, vFilterData.Extensions) then
-    begin
-      Result := vFilterData;
-      Break;
-    end;
+    FilterData := TFilterData(Filters.Objects[I]);
+    if MyMatchesExtensions(AFileName, FilterData.Extensions) then
+      Exit(FilterData);
   end;
 end;
 
 initialization
-
-FPropCount := PTypeData(GetTypeData(TFilterData.ClassInfo))^.PropCount;
-GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
-GetPropInfos(TFilterData.ClassInfo, FPropList);
-
-Filters := TStringList.Create;
-Filters_LoadFromFile;
+  FPropCount := GetTypeData(TFilterData.ClassInfo)^.PropCount;
+  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  GetPropInfos(TFilterData.ClassInfo, FPropList);
+  Filters := TStringList.Create;
+  Filters_LoadFromFile;
 
 finalization
-
-//Filters.Free;
-//FreeMem(FPropList);
+  while Filters.Count > 0 do
+  begin
+    Filters.Objects[Filters.Count - 1].Free;
+    Filters.Delete(Filters.Count - 1);
+  end;
+  Filters.Free;
+  FreeMem(FPropList);
 
 end.

@@ -1,26 +1,24 @@
-﻿unit frmCommandConfig_U;
+unit frmCommandConfig_U;
+
+{$mode delphi}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, StdCtrls, ExtCtrls,
-  CommandsClass_U, ComCtrls, Mask, Windows, DateUtils, Types,
-  FilterClass_U, Dialogs, Vcl.ImgList, Vcl.FileCtrl, System.UITypes,
-  Winapi.ShellAPI, Winapi.CommCtrl, System.ImageList, Vcl.Buttons, Vcl.Menus,
-  System.Generics.Collections;
+  Classes, SysUtils, Types, Forms, Controls, StdCtrls, ExtCtrls, ComCtrls,
+  Dialogs, ImgList, Menus, Buttons, Generics.Collections, CommandsClass_U;
 
+{$PUSH}
+{$WARN 5024 OFF}
 type
-
-  { TfrmCommandConfig }
-
   TfrmCommandConfig = class(TFrame)
     cbIsVisible: TCheckBox;
     edtCaption: TLabeledEdit;
     lblCommand: TLabel;
     btnEdit: TButton;
     btnRun: TButton;
-    edtCommand: TButtonedEdit;
-    edtCommandOpenDialog: TFileOpenDialog;
+    edtCommand: TEdit;
+    edtCommandOpenDialog: TOpenDialog;
     lblIsRunning: TLabel;
     Timer: TTimer;
     lblRunInfo: TLabel;
@@ -33,13 +31,13 @@ type
     miChooseFromFileExt: TMenuItem;
     cbRunAsAdmin: TCheckBox;
     Bevel: TBevel;
-    btnChooseFolder: TButton;
+    btnChooseFile: TSpeedButton;
+    btnChooseFolder: TSpeedButton;
     procedure edtCaptionChange(Sender: TObject);
-
     procedure btnEditClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
     procedure edtCommandChange(Sender: TObject);
-    procedure edtCommandRightButtonClick(Sender: TObject);
+    procedure btnChooseFileClick(Sender: TObject);
     procedure TimerTimer(Sender: TObject);
     procedure miDefaultIconClick(Sender: TObject);
     procedure miChooseFromFileResClick(Sender: TObject);
@@ -49,106 +47,112 @@ type
     procedure cbRunAsAdminClick(Sender: TObject);
     procedure btnChooseFolderClick(Sender: TObject);
   private
-    { private declarations }
     FAssignedTreeNode: TTreeNode;
-    FAssignedCaption: string; // to understand the caption was changed
+    FAssignedCaption: string;
     FAssignedCommandData: TCommandData;
-
-    FAssigningState: boolean;
-    //using then editing edtCommand
+    FAssigningState: Boolean;
     FOldCommandText: string;
-
-    // links to Parent form the component and the list
     FTreeImageList: TImageList;
     FListDeletedImageIndexes: TList<Word>;
-
-    function GetIsModified: boolean;
+    function GetIsModified: Boolean;
     procedure SetCaption(const AValue: string);
     procedure UpdateIcon;
   protected
-    procedure SetEnabled(Value: boolean); override;
+    procedure SetEnabled(Value: Boolean); override;
   public
-    { public declarations }
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
-
     procedure SetFocus; override;
-
     procedure ClearAssigned;
     function SaveAssigned: Boolean;
-
-    // to draw with red and strikeline for TreeNode and edtCommand
-    function CheckFileCommandExists: boolean;
-
+    function CheckFileCommandExists: Boolean;
     property AssignedTreeNode: TTreeNode read FAssignedTreeNode;
-    // links to Parent form the component and the list
     property TreeImageList: TImageList read FTreeImageList write FTreeImageList;
-    property ListDeletedImageIndexes: TList<Word> read FListDeletedImageIndexes write FListDeletedImageIndexes;
-  //published
+    property ListDeletedImageIndexes: TList<Word>
+      read FListDeletedImageIndexes write FListDeletedImageIndexes;
     property Caption: string write SetCaption;
-    property IsModified: boolean read GetIsModified;
+    property IsModified: Boolean read GetIsModified;
   end;
 
 implementation
 
-uses LangsU, frmConfig_U, frmChooseExt_U, System.StrUtils, CommonU, System.Masks, System.Math,
-  Winapi.ShlObj, System.IOUtils;
+uses
+  Windows, Masks, Graphics,
+  LangsU, frmChooseExt_U, CommonU, FilterClass_U;
 
-const sLangFormFramePath = 'frmConfig\frmCommandConfig';
+function PickIconDlgCompat(AOwnerWnd: HWND; AIconPath: PWideChar;
+  AIconPathLength: UINT; var AIconIndex: Integer): Integer; stdcall;
+  external 'shell32.dll' name 'PickIconDlg';
 
-{$R *.dfm}
-{ TfrmCommandConfig }
+const
+  sLangFormFramePath = 'frmConfig\frmCommandConfig';
 
-function SetDefFolderAndReturnFilename(const ACommand: string; out ADefaultFolder: string): string;
+{$R *.lfm}
+
+function FileNameWithoutExtension(const FileName: string): string;
 begin
-  var vCommand: string := ExpandFileName(ACommand);
-  if vCommand[vCommand.Length] = PathDelim then
-    vCommand := vCommand.Remove(vCommand.Length - 1);
-  ADefaultFolder := ExpandFileName(vCommand);
-  while not SysUtils.DirectoryExists(ADefaultFolder) do
-    begin
-    var vNewDefaultDir: string := ExtractFileDir(ADefaultFolder);
-    if vNewDefaultDir <> ADefaultFolder then
-      ADefaultFolder := vNewDefaultDir
-    else
-      begin
-      ADefaultFolder := '';
-      Result := ACommand;
-      Exit;
-      //break;
-      end;
-    end;
+  Result := ChangeFileExt(ExtractFileName(FileName), '');
+end;
 
-  Result := vCommand.Substring(ADefaultFolder.Length + 1);
+function SetDefFolderAndReturnFilename(const ACommand: string;
+  out ADefaultFolder: string): string;
+var
+  Command, NewDefaultDir: string;
+begin
+  if Trim(ACommand) = '' then
+  begin
+    ADefaultFolder := '';
+    Exit('');
+  end;
+
+  Command := ExpandFileName(ACommand);
+  Command := ExcludeTrailingPathDelimiter(Command);
+  ADefaultFolder := Command;
+  while (ADefaultFolder <> '') and (not DirectoryExists(ADefaultFolder)) do
+  begin
+    NewDefaultDir := ExtractFileDir(ADefaultFolder);
+    if NewDefaultDir <> ADefaultFolder then
+      ADefaultFolder := NewDefaultDir
+    else
+    begin
+      ADefaultFolder := '';
+      Exit(ACommand);
+    end;
+  end;
+
+  if ADefaultFolder = '' then
+    Result := ACommand
+  else
+    Result := Copy(Command, Length(ADefaultFolder) + 2, MaxInt);
 end;
 
 procedure TfrmCommandConfig.btnChangeIconClick(Sender: TObject);
+var
+  PopupPoint: TPoint;
 begin
-  with btnChangeIcon.ClientToScreen(point(0, btnChangeIcon.Height)) do
-    btnChangeIcon.PopupMenu.Popup(X, Y);
+  if Assigned(FAssignedCommandData) then
+    case FAssignedCommandData.IconType of
+        citFromFileRes: miChooseFromFileRes.Checked := True;
+        citFromFileExt: miChooseFromFileExt.Checked := True;
+        else miDefaultIcon.Checked := True;
+      end;
+
+  PopupPoint := btnChangeIcon.ClientToScreen(
+    Types.Point(0, btnChangeIcon.Height));
+  btnChangeIcon.PopupMenu.Popup(PopupPoint.X, PopupPoint.Y);
 end;
 
 procedure TfrmCommandConfig.btnChooseFolderClick(Sender: TObject);
+var
+  SelectedFolder: string;
 begin
-  var sCommand := Trim(edtCommand.Text);
-  {if sCommand[sCommand.Length] = PathDelim then
-    sCommand := sCommand.Remove(sCommand.Length - 1);}
-  with edtCommandOpenDialog do
-    begin
-      Options := Options + [fdoPickFolders];
-
-      var vDefaultFolder: string;
-      Filename := SetDefFolderAndReturnFilename(sCommand, vDefaultFolder);
-      DefaultFolder  := vDefaultFolder;
-      {DefaultFolder := sCommand;
-      while not SysUtils.DirectoryExists(DefaultFolder) do
-        DefaultFolder := ExtractFileDir(DefaultFolder);
-      Filename := sCommand.Substring(DefaultFolder.Length + 1);}
-      Title := GetLangString(sLangFormFramePath, 'FolderDialogTitle');
-      if Execute then
-        edtCommand.Text := FileName + '\';
-    end;
+  SelectedFolder := Trim(edtCommand.Text);
+  if not DirectoryExists(SelectedFolder) then
+    SelectedFolder := ExtractFileDir(SelectedFolder);
+  if SelectDirectory(GetLangString(sLangFormFramePath,
+    'FolderDialogTitle'), '', SelectedFolder) then
+    edtCommand.Text := IncludeTrailingPathDelimiter(SelectedFolder);
 end;
 
 procedure TfrmCommandConfig.btnEditClick(Sender: TObject);
@@ -165,214 +169,208 @@ end;
 
 procedure TfrmCommandConfig.cbRunAsAdminClick(Sender: TObject);
 begin
-  if not FAssigningState and Assigned(FAssignedCommandData) then
+  if (not FAssigningState) and Assigned(FAssignedCommandData) then
     FAssignedCommandData.IsRunAsAdmin := cbRunAsAdmin.Checked;
 end;
 
 procedure TfrmCommandConfig.edtCaptionChange(Sender: TObject);
 begin
-  if not FAssigningState and Assigned(FAssignedCommandData) then
+  if (not FAssigningState) and Assigned(FAssignedCommandData) and
+    Assigned(FAssignedTreeNode) then
     FAssignedTreeNode.Text := edtCaption.Text;
 end;
 
 procedure TfrmCommandConfig.edtCommandChange(Sender: TObject);
 begin
-  if FAssigningState then
+  if FAssigningState or (not Assigned(FAssignedCommandData)) then
     Exit;
 
-  if edtCaption.Text = TPath.GetFileNameWithoutExtension(FOldCommandText) then
-    edtCaption.Text := TPath.GetFileNameWithoutExtension(edtCommand.Text);
-
+  if edtCaption.Text = FileNameWithoutExtension(FOldCommandText) then
+    edtCaption.Text := FileNameWithoutExtension(edtCommand.Text);
   FOldCommandText := edtCommand.Text;
-
   FAssignedCommandData.Command := edtCommand.Text;
-
   CheckFileCommandExists;
-
   UpdateIcon;
 end;
 
 procedure TfrmCommandConfig.edtCommandParametersChange(Sender: TObject);
 begin
-  if not FAssigningState and Assigned(FAssignedCommandData) then
+  if (not FAssigningState) and Assigned(FAssignedCommandData) then
     FAssignedCommandData.CommandParameters := edtCommandParameters.Text;
 end;
 
-procedure TfrmCommandConfig.edtCommandRightButtonClick(Sender: TObject);
+procedure TfrmCommandConfig.btnChooseFileClick(Sender: TObject);
+var
+  Command, DefaultFolder, Extensions, Mask, Extension: string;
+  I, J: Integer;
+  MatchedMaskFound: Boolean;
+  ExtensionList: TStringList;
 begin
-  var sCommand := Trim(edtCommand.Text);
-  with edtCommandOpenDialog do
-  begin
-    Options := Options - [fdoPickFolders];
-    FileTypes.Clear;
-
-    with FileTypes.Add do
+  Command := Trim(edtCommand.Text);
+  edtCommandOpenDialog.Filter := GetLangString('LangStrings',
+    'FileDialogExecutableFile') + '|*.exe';
+  edtCommandOpenDialog.FilterIndex := 1;
+  MatchedMaskFound := MatchesMask(Command, '*.exe');
+  ExtensionList := TStringList.Create;
+  try
+    for I := 0 to Filters.Count - 1 do
     begin
-      DisplayName := GetLangString('LangStrings', 'FileDialogExecutableFile');
-      FileMask := '*.exe';
-    end;
+      Extensions := Trim(TFilterData(Filters.Objects[I]).Extensions);
+      if Extensions = '' then
+        Continue;
 
-    var bMatchedMaskFound := MatchesMask(sCommand, '*.exe');
-
-    if bMatchedMaskFound then
-      FileTypeIndex := 1
-    else
-    begin
-      // find FileType
-      for var i := 0 to Filters.Count - 1 do
+      ExtensionList.Clear;
+      ExtensionList.StrictDelimiter := True;
+      ExtensionList.Delimiter := ';';
+      ExtensionList.DelimitedText := Extensions;
+      Mask := '';
+      for J := 0 to ExtensionList.Count - 1 do
       begin
-        var vExtensions := (TFilterData(Filters.Objects[i]).Extensions).Trim;
-        if vExtensions <> '' then
-          begin
-            with FileTypes.Add do
-            begin
-              var vExtensionArray := vExtensions.Split([';']);
-              FileMask := '*.' + vExtensionArray[0].Trim;
-              for var j := 1 to High(vExtensionArray) do
-                FileMask := FileMask + '; *.' + vExtensionArray[j].Trim;
-              DisplayName := Filters[i] + ' (' + FileMask + ')';
-            end;
-            // found better FileTypeIndex than .exe
-            if not bMatchedMaskFound and (MyMatchesExtensions(sCommand, vExtensions))
-            then
-            begin
-              FileTypeIndex := i + 2; // numbering from 1 plus '*' before
-              bMatchedMaskFound := True;
-            end;
-          end;
+        Extension := Trim(ExtensionList[J]);
+        if Extension = '' then
+          Continue;
+        if Mask <> '' then
+          Mask := Mask + ';';
+        Mask := Mask + '*.' + Extension;
+      end;
+      if Mask = '' then
+        Continue;
+
+      edtCommandOpenDialog.Filter := edtCommandOpenDialog.Filter + '|' +
+        Filters[I] + ' (' + Mask + ')|' + Mask;
+      if (not MatchedMaskFound) and
+        MyMatchesExtensions(Command, Extensions) then
+      begin
+        edtCommandOpenDialog.FilterIndex := I + 2;
+        MatchedMaskFound := True;
       end;
     end;
 
-    with FileTypes.Add do
+    edtCommandOpenDialog.Filter := edtCommandOpenDialog.Filter + '|' +
+      GetLangString('LangStrings', 'FileDialogAnyFile') + '|*.*';
+    if not MatchedMaskFound then
+      edtCommandOpenDialog.FilterIndex :=
+        (Length(edtCommandOpenDialog.Filter) -
+        Length(StringReplace(edtCommandOpenDialog.Filter, '|', '',
+          [rfReplaceAll]))) div 2 + 1;
+
+    if FileExists(Command) then
     begin
-      DisplayName := GetLangString('LangStrings', 'FileDialogAnyFile');
-      // 'Any file';
-      FileMask := '*';
-    end;
-
-    if not bMatchedMaskFound then
-      FileTypeIndex := FileTypes.Count; // default - all files
-    if SysUtils.FileExists(sCommand) {and DirectoryExists(sCommand)} then
-      begin
-      DefaultFolder := ExtractFileDir(sCommand);
-      FileName := ExtractFileName(sCommand);
-      end
+      edtCommandOpenDialog.InitialDir := ExtractFileDir(Command);
+      edtCommandOpenDialog.FileName := ExtractFileName(Command);
+    end
     else
-      begin
-      {if sCommand[sCommand.Length] = PathDelim then
-        sCommand := sCommand.Remove(sCommand.Length - 1);}
-
-      var vDefaultFolder: string;
-      Filename := SetDefFolderAndReturnFilename(sCommand, vDefaultFolder);
-      DefaultFolder  := vDefaultFolder;
-      {DefaultFolder := sCommand;
-      while not SysUtils.DirectoryExists(DefaultFolder) do
-        begin
-        var vNewDefaultDir: string := ExtractFileDir(DefaultFolder);
-        if vNewDefaultDir <> DefaultFolder then
-          DefaultFolder := vNewDefaultDir
-        else
-          break;
-        end;
-      if SysUtils.DirectoryExists(DefaultFolder) then
-        Filename := sCommand.Substring(DefaultFolder.Length + 1)
-      else
-        begin
-        DefaultFolder := '';
-        Filename := sCommand;
-        end;}
-      end;
-    Title := GetLangString(sLangFormFramePath, 'FileDialogTitle');
-    if Execute then
-      edtCommand.Text := FileName;
+    begin
+      edtCommandOpenDialog.FileName :=
+        SetDefFolderAndReturnFilename(Command, DefaultFolder);
+      edtCommandOpenDialog.InitialDir := DefaultFolder;
+    end;
+    edtCommandOpenDialog.Title := GetLangString(sLangFormFramePath,
+      'FileDialogTitle');
+    if edtCommandOpenDialog.Execute then
+      edtCommand.Text := edtCommandOpenDialog.FileName;
+  finally
+    ExtensionList.Free;
   end;
 end;
 
-function TfrmCommandConfig.GetIsModified: boolean;
+function TfrmCommandConfig.GetIsModified: Boolean;
 begin
   if not Enabled then
-    Exit(False); // если заблокировано, то нет смысла
+    Exit(False);
 
   Result := edtCaption.Text <> FAssignedCaption;
-
-  if not Result and Assigned(FAssignedTreeNode) and Assigned(FAssignedTreeNode.Data) and
-      Assigned(FAssignedCommandData) then
-    begin
+  if (not Result) and Assigned(FAssignedTreeNode) and
+    Assigned(FAssignedTreeNode.Data) and Assigned(FAssignedCommandData) then
     with TCommandData(FAssignedTreeNode.Data) do
       Result := (FAssignedCommandData.Command <> Command) or
         (FAssignedCommandData.CommandParameters <> CommandParameters) or
         (FAssignedCommandData.IsRunAsAdmin <> IsRunAsAdmin) or
         (FAssignedCommandData.IconType <> IconType) or
-        ((FAssignedCommandData.IconType = citFromFileExt) and (FAssignedCommandData.IconExt <> IconExt)) or
-        ((FAssignedCommandData.IconType = citFromFileRes) and (FAssignedCommandData.IconFilename <> IconFileName)
-            and (FAssignedCommandData.IconFileIndex <> IconFileIndex));
-    end;
+        ((FAssignedCommandData.IconType = citFromFileExt) and
+          (FAssignedCommandData.IconExt <> IconExt)) or
+        ((FAssignedCommandData.IconType = citFromFileRes) and
+          ((FAssignedCommandData.IconFilename <> IconFileName) or
+           (FAssignedCommandData.IconFileIndex <> IconFileIndex)));
 end;
 
 procedure TfrmCommandConfig.miChooseFromFileExtClick(Sender: TObject);
+var
+  Parameters, Extension: string;
+  Parts: TStringList;
+  I: Integer;
 begin
-with frmChooseExt do
+  if not Assigned(FAssignedCommandData) then
+    Exit;
+
+  frmChooseExt.Extension := FAssignedCommandData.IconExt;
+  if frmChooseExt.Extension = '' then
   begin
-  Extension := FAssignedCommandData.IconExt;
-  if Extension.IsEmpty then
-    begin
-    var vPars: TArray<string> := string(edtCommandParameters.Text).Split([' ', #9], '"');
-    for var vPar: string in vPars do
+    Parts := TStringList.Create;
+    try
+      Parameters := edtCommandParameters.Text;
+      ExtractStrings([' ', #9], ['"'], PChar(Parameters), Parts);
+      for I := 0 to Parts.Count - 1 do
       begin
-      var vExt: string := ExtractFileExt(vPar);
-      if not vExt.IsEmpty then
-        StartWithExtensions.Add(vExt.Substring(1));
-        //Extension := Extension + vExt.Substring(1) + ','
+        Extension := ExtractFileExt(Parts[I]);
+        if Length(Extension) > 1 then
+          frmChooseExt.StartWithExtensions.Add(Copy(Extension, 2, MaxInt));
       end;
+    finally
+      Parts.Free;
     end;
-  if ShowModal = mrOk then
-    begin
+  end;
+
+  if frmChooseExt.ShowModal = mrOK then
+  begin
     FAssignedCommandData.IconType := citFromFileExt;
-    FAssignedCommandData.IconExt := Extension;
+    FAssignedCommandData.IconExt := frmChooseExt.Extension;
     UpdateIcon;
     miChooseFromFileExt.Checked := True;
-    end;
   end;
 end;
 
 procedure TfrmCommandConfig.miChooseFromFileResClick(Sender: TObject);
+var
+  FileName, Extension: string;
+  IconIndex, CharIndex: Integer;
+  FileNameBuffer: array[0..MAX_PATH] of WideChar;
+  WideFileName: UnicodeString;
 begin
-  if not Assigned(FAssignedTreeNode) or not Assigned(FAssignedTreeNode.Data) then
+  if not Assigned(FAssignedTreeNode) or
+    not Assigned(FAssignedTreeNode.Data) then
     Exit;
 
-  var vFileName: string := FAssignedCommandData.IconFilename;
-  if vFileName = '' then
-    begin
-    //var vExt := ExtractFileExt(FAssignedCommandData.Command).ToLower;
-    //if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
-    if MatchStr(ExtractFileExt(FAssignedCommandData.Command).ToLower,
-        ['.exe', '.dll', '.ico']) then
-      begin
-      vFileName := FAssignedCommandData.Command;
-      end;
-    end;
-
-  var vIconIndex: Integer := FAssignedCommandData.IconFileIndex;
-
-  var pFileName: PChar := AllocMem(MAX_PATH);
-  try
-    StringToWideChar(PChar(vFileName), pFileName, Max_Path);
-    if PickIconDlg(Handle, pFileName, MAX_PATH, vIconIndex) = 1 then
-      begin
-      FAssignedCommandData.IconType := citFromFileRes;
-      FAssignedCommandData.IconFilename := WideCharToString(pFileName);
-      FAssignedCommandData.IconFileIndex := vIconIndex;
-
-      UpdateIcon;
-      miChooseFromFileRes.Checked := True;
-      end
-  finally
-    FreeMem(pFileName, MAX_PATH);
-    end;
+  FileName := FAssignedCommandData.IconFilename;
+  if FileName = '' then
+  begin
+    Extension := LowerCase(ExtractFileExt(FAssignedCommandData.Command));
+    if (Extension = '.exe') or (Extension = '.dll') or
+      (Extension = '.ico') then
+      FileName := FAssignedCommandData.Command;
+  end;
+  IconIndex := FAssignedCommandData.IconFileIndex;
+  WideFileName := Copy(UTF8Decode(FileName), 1, High(FileNameBuffer));
+  for CharIndex := 1 to Length(WideFileName) do
+    FileNameBuffer[CharIndex - 1] := WideFileName[CharIndex];
+  FileNameBuffer[Length(WideFileName)] := #0;
+  if PickIconDlgCompat(HWND(Handle), PWideChar(@FileNameBuffer[0]),
+    Length(FileNameBuffer),
+    IconIndex) = 1 then
+  begin
+    FAssignedCommandData.IconType := citFromFileRes;
+    FAssignedCommandData.IconFilename :=
+      UTF8Encode(UnicodeString(PWideChar(@FileNameBuffer[0])));
+    FAssignedCommandData.IconFileIndex := IconIndex;
+    UpdateIcon;
+    miChooseFromFileRes.Checked := True;
+  end;
 end;
 
 procedure TfrmCommandConfig.miDefaultIconClick(Sender: TObject);
 begin
+  if not Assigned(FAssignedCommandData) then
+    Exit;
   FAssignedCommandData.IconType := citDefault;
   UpdateIcon;
   miDefaultIcon.Checked := True;
@@ -384,176 +382,162 @@ begin
     edtCaption.Text := AValue;
 end;
 
-procedure TfrmCommandConfig.SetEnabled(Value: boolean);
+procedure TfrmCommandConfig.SetEnabled(Value: Boolean);
 begin
   if Enabled = Value then
     Exit;
-
-  inherited;
-
+  inherited SetEnabled(Value);
   M_SetChildsEnable(Self, Value);
-
 end;
 
 procedure TfrmCommandConfig.SetFocus;
 begin
-  inherited;
   edtCaption.SetFocus;
 end;
 
 procedure TfrmCommandConfig.TimerTimer(Sender: TObject);
 const
-  vArLangStr: array [boolean] of string = ('IsNotRunning', 'IsRunning');
+  LangKeys: array[Boolean] of string = ('IsNotRunning', 'IsRunning');
 begin
   if not Assigned(FAssignedCommandData) then
-    begin
+  begin
     lblIsRunning.Caption := '';
     Exit;
-    end;
-  try
-    lblIsRunning.Caption := GetLangString('frmConfig\frmCommandConfig',
-        vArLangStr[FAssignedCommandData.isRunning]);
-  except
-    on E: Exception do
-    begin
-      ShowMessage('Try..catch! TfrmCommandConfig.TimerTimer: ' + E.Message);
-    end;
-  end; // try..catch
+  end;
+  lblIsRunning.Caption := GetLangString(sLangFormFramePath,
+    LangKeys[FAssignedCommandData.isRunning]);
 end;
 
 procedure TfrmCommandConfig.UpdateIcon;
+var
+  ImageIndex: Integer;
 begin
-  var vImageIndex := FAssignedCommandData.GetImageIndex(TreeImageList.Handle);
-  if FAssignedTreeNode.ImageIndex > 0 then // if the icon was before but not now
+  if not Assigned(FAssignedCommandData) or
+    not Assigned(FAssignedTreeNode) or not Assigned(TreeImageList) then
+    Exit;
+  ImageIndex := FAssignedCommandData.GetImageIndex(TreeImageList);
+  if (FAssignedTreeNode.ImageIndex > 0) and
+    Assigned(ListDeletedImageIndexes) then
     ListDeletedImageIndexes.Add(FAssignedTreeNode.ImageIndex);
-  FAssignedTreeNode.ImageIndex := vImageIndex;
-  FAssignedTreeNode.SelectedIndex := vImageIndex;
-  FAssignedTreeNode.Owner.Owner.Repaint; //tvItems.Repaint
+  FAssignedTreeNode.ImageIndex := ImageIndex;
+  FAssignedTreeNode.SelectedIndex := ImageIndex;
+  FAssignedTreeNode.TreeView.Invalidate;
 end;
 
-function TfrmCommandConfig.CheckFileCommandExists: boolean;
+function TfrmCommandConfig.CheckFileCommandExists: Boolean;
 begin
-  Result := (FAssignedCommandData.ExtendCommandToFullName <> '');
-  edtCommand.Font.Color := IfThen(Result, TColors.SysWindowText, TColors.Red);
+  Result := Assigned(FAssignedCommandData) and
+    (FAssignedCommandData.ExtendCommandToFullName <> '');
+  if Result then
+    edtCommand.Font.Color := clWindowText
+  else
+    edtCommand.Font.Color := clRed;
 end;
 
 procedure TfrmCommandConfig.ClearAssigned;
 begin
-FAssigningState := True;
-try
-  FAssignedTreeNode := nil;
-  FAssignedCaption := '';
-  if Assigned(FAssignedCommandData) then
+  FAssigningState := True;
+  try
+    FAssignedTreeNode := nil;
+    FAssignedCaption := '';
     FreeAndNil(FAssignedCommandData);
-
-  edtCaption.Text := '';
-  edtCommand.Text := '';  FOldCommandText := '';
-  lblIsRunning.Caption := '';
-  edtCommandParameters.Text := '';
-  cbRunAsAdmin.Checked := False;
-finally
-  FAssigningState := False;
+    edtCaption.Text := '';
+    edtCommand.Text := '';
+    FOldCommandText := '';
+    lblIsRunning.Caption := '';
+    edtCommandParameters.Text := '';
+    cbRunAsAdmin.Checked := False;
+  finally
+    FAssigningState := False;
   end;
 end;
 
 constructor TfrmCommandConfig.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
+  CommonU.BuildBrowseButtonImages(ImageList);
+  FAssignedCommandData := nil;
   ClearAssigned;
 end;
 
 destructor TfrmCommandConfig.Destroy;
 begin
-  FAssignedTreeNode := nil; // иначе пытается сам удалить (а может и не надо)
+  FAssignedTreeNode := nil;
+  FreeAndNil(FAssignedCommandData);
   inherited Destroy;
 end;
 
 procedure TfrmCommandConfig.Assign(Source: TPersistent);
+var
+  IsCommand: Boolean;
+  I: Integer;
 begin
+  if not (Source is TTreeNode) then
+    raise Exception.Create('TfrmCommandConfig.Assign expects TTreeNode');
+
   FAssigningState := True;
   try
-    if Source <> nil then
-    begin
-      FAssignedTreeNode := Source as TTreeNode;
+    FAssignedTreeNode := TTreeNode(Source);
+    if not Assigned(FAssignedTreeNode.Data) then
+      raise Exception.Create('not Assigned(FAssignedTreeNode.Data)');
+    Enabled := True;
+    FAssignedCaption := FAssignedTreeNode.Text;
+    edtCaption.Text := FAssignedCaption;
+    FreeAndNil(FAssignedCommandData);
+    FAssignedCommandData := TCommandData.Create;
+    TCommandData(FAssignedTreeNode.Data).Assign(FAssignedCommandData);
+    IsCommand := not FAssignedCommandData.isGroup;
 
-      if not Assigned(FAssignedTreeNode.Data) then
-        raise Exception.Create('not Assigned(FAssignedTreeNode.Data)');
-
-      Enabled := True;
-
-      FAssignedCaption := FAssignedTreeNode.Text;
-      edtCaption.Text := FAssignedCaption;
-
-      FAssignedCommandData := TCommandData.Create;
-      TCommandData(FAssignedTreeNode.Data).Assign(FAssignedCommandData);
-
-      var vIsCommand := not FAssignedCommandData.isGroup; //FAssignedTreeNode.HasChildren;
-
-      with FAssignedCommandData do
-      begin
-        edtCommand.Text := Command;
-        FOldCommandText := Command;
-        edtCommandParameters.Text := CommandParameters;
-        cbRunAsAdmin.Checked := IsRunAsAdmin;
-        case IconType of
-          citFromFileRes: miChooseFromFileRes.Checked := True;
-          citFromFileExt: miChooseFromFileExt.Checked := True;
-          else
-            miDefaultIcon.Checked := True;
-        end; //end;
-      end;
-      CheckFileCommandExists;
-      for var i := 0 to ControlCount - 1 do
-        with Controls[i] do
-          if Tag <> 1 then
-            Visible := vIsCommand;
-
-      Timer.Enabled := True;
-    end
-    else // nil (initialization)
-      raise Exception.Create('TfrmCommandConfig.Assign(nil)');
+    edtCommand.Text := FAssignedCommandData.Command;
+    FOldCommandText := FAssignedCommandData.Command;
+    edtCommandParameters.Text := FAssignedCommandData.CommandParameters;
+    cbRunAsAdmin.Checked := FAssignedCommandData.IsRunAsAdmin;
+    case FAssignedCommandData.IconType of
+      citFromFileRes: miChooseFromFileRes.Checked := True;
+      citFromFileExt: miChooseFromFileExt.Checked := True;
+      else miDefaultIcon.Checked := True;
+    end;
+    CheckFileCommandExists;
+    for I := 0 to ControlCount - 1 do
+      if Controls[I].Tag <> 1 then
+        Controls[I].Visible := IsCommand;
+    Timer.Enabled := True;
   finally
     FAssigningState := False;
   end;
 end;
 
 function TfrmCommandConfig.SaveAssigned: Boolean;
-//var
-  //CommandData: TCommandData;
+var
+  ExceptionText, NewCaption: string;
 begin
-  // nothing to save or already saved
-  if (FAssignedTreeNode = nil) or (FAssignedCommandData = nil) then //or not IsModified then
+  if (FAssignedTreeNode = nil) or (FAssignedCommandData = nil) then
     Exit(True);
 
-  var vExceptionStr := '';
-
-  var vCaption := Trim(edtCaption.Text);
-  if (vCaption = '') then
-      vExceptionStr := GetLangString('frmConfig\frmCommandConfig', 'ErrorEmptyName');
-
-  //with TCommandData(FAssignedTreeNode.Data) do
-  with FAssignedCommandData do
+  ExceptionText := '';
+  NewCaption := Trim(edtCaption.Text);
+  if NewCaption = '' then
+    ExceptionText := GetLangString(sLangFormFramePath, 'ErrorEmptyName');
+  if (not FAssignedCommandData.isGroup) and
+    (FAssignedCommandData.Command = '') then
   begin
-    if not isGroup then
-      begin
-      if (Command = '') then
-        begin
-        if vExceptionStr <> '' then
-          vExceptionStr := vExceptionStr + #13#10#13#10;
-        vExceptionStr := vExceptionStr + GetLangString('frmConfig\frmCommandConfig', 'ErrorCommand');
-        end;
-      end;
-    if (vExceptionStr <> '') then
-      begin
-      ErrorDialog((Self.Owner) as TForm, vExceptionStr);
-      Exit(False);
-      end;
-
-    FAssignedCommandData.Assign(TCommandData(FAssignedTreeNode.Data));
+    if ExceptionText <> '' then
+      ExceptionText := ExceptionText + LineEnding + LineEnding;
+    ExceptionText := ExceptionText +
+      GetLangString(sLangFormFramePath, 'ErrorCommand');
   end;
-  FAssignedTreeNode.Text := vCaption;
-  FAssignedCaption := vCaption;
+  if ExceptionText <> '' then
+  begin
+    ErrorDialog(Owner as TForm, ExceptionText);
+    Exit(False);
+  end;
+
+  FAssignedCommandData.Assign(TCommandData(FAssignedTreeNode.Data));
+  FAssignedTreeNode.Text := NewCaption;
+  FAssignedCaption := NewCaption;
   Result := True;
 end;
+
+{$POP}
 
 end.

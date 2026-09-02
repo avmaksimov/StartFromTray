@@ -1,57 +1,51 @@
 object frmChooseExt: TfrmChooseExt
   Left = 0
+  Height = 413
   Top = 0
+  Width = 294
   BorderStyle = bsDialog
   Caption = 'Select an extension'
-  ClientHeight = 396
-  ClientWidth = 287
-  Color = clBtnFace
-  Font.Charset = DEFAULT_CHARSET
-  Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'Tahoma'
-  Font.Style = []
-  OldCreateOrder = False
+  ClientHeight = 413
+  ClientWidth = 294
   Position = poMainFormCenter
+  LCLVersion = '4.8.0.0'
   OnClose = FormClose
   OnDestroy = FormDestroy
   OnShow = FormShow
-  PixelsPerInch = 96
-  TextHeight = 13
   object gbExtensions: TGroupBox
     Left = 4
-    Top = 4
-    Width = 279
-    Height = 345
+    Height = 361
+    Top = 0
+    Width = 283
+    ClientHeight = 341
+    ClientWidth = 279
     TabOrder = 0
     object lblExtensions: TLabel
       Left = 10
-      Top = 52
-      Width = 102
-      Height = 13
+      Height = 15
+      Top = 43
+      Width = 109
       Caption = 'Available extensions:'
       FocusControl = lbExtensions
     end
     object edtExt: TLabeledEdit
       Left = 8
-      Top = 23
+      Height = 23
+      Top = 14
       Width = 264
-      Height = 21
-      EditLabel.Width = 51
-      EditLabel.Height = 13
+      EditLabel.Height = 15
+      EditLabel.Width = 264
       EditLabel.Caption = 'Extension:'
       TabOrder = 0
       OnChange = edtExtChange
     end
     object lbExtensions: TListBox
       Left = 8
-      Top = 66
-      Width = 264
       Height = 271
-      Style = lbOwnerDrawFixed
-      DoubleBuffered = False
+      Top = 62
+      Width = 264
       ItemHeight = 18
-      ParentDoubleBuffered = False
+      Style = lbOwnerDrawFixed
       TabOrder = 1
       OnClick = lbExtensionsClick
       OnDrawItem = lbExtensionsDrawItem
@@ -59,15 +53,17 @@ object frmChooseExt: TfrmChooseExt
   end
   object gbButtons: TGroupBox
     Left = 4
-    Top = 353
-    Width = 279
-    Height = 39
+    Height = 47
+    Top = 361
+    Width = 283
+    ClientHeight = 27
+    ClientWidth = 279
     TabOrder = 1
     object btnOK: TButton
       Left = 56
-      Top = 8
-      Width = 105
       Height = 25
+      Top = -4
+      Width = 105
       Caption = 'OK'
       Default = True
       ModalResult = 1
@@ -76,9 +72,9 @@ object frmChooseExt: TfrmChooseExt
     end
     object btnCancel: TButton
       Left = 167
-      Top = 8
-      Width = 105
       Height = 25
+      Top = -4
+      Width = 105
       Cancel = True
       Caption = 'Cancel'
       ModalResult = 2

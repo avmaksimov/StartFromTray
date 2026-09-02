@@ -1,17 +1,20 @@
 unit LangsU;
 
+{$mode delphi}{$H+}
+
 interface
 
-uses Vcl.Forms, System.Classes, System.Generics.Collections, Vcl.Menus, System.IniFiles;
+uses
+  Forms, Classes, Menus, IniFiles;
 
 procedure GenDefaultFileLang;
 function GetLangString(const ASection, AString: string): string;
-procedure SetLang(const ALangCode: string);
+procedure SetLang(const ALangCode: string;
+  const AMainIniFile: TIniFile);
 
-//get Index for AmiLang.Items with gen default LCID
-function LangFillListAndGetCurrent(const AMainIniFile: TIniFile; const AMenu: TPopupMenu;
-  const AmiLang: TMenuItem; const AOnClick: TNotifyEvent): Integer;
-// get Index with gen default LCID
+function LangFillListAndGetCurrent(const AMainIniFile: TIniFile;
+  const AMenu: TPopupMenu; const AmiLang: TMenuItem;
+  const AOnClick: TNotifyEvent): Integer;
 
 function AskForConfirmation(const AForm: TForm;
   const AConfirmation: string): Boolean;
@@ -20,257 +23,364 @@ procedure ErrorDialog(const AForm: TForm; const ACaption: string);
 
 implementation
 
-uses System.SysUtils, System.TypInfo,
-  System.StrUtils, Vcl.StdCtrls, Vcl.Controls, Vcl.ExtCtrls, Vcl.ActnList,
-  Vcl.Dialogs, System.Generics.Defaults, Winapi.Windows, System.IOUtils;
+uses
+  SysUtils, TypInfo, Controls, ExtCtrls, ActnList, Dialogs,
+  ImgList, Windows;
 
 const
   cLangFolderName = 'Langs';
+  ExcludesForFormConfig: array[0..1] of string = ('btnClose', 'lblVer');
+  ExcludesForFrameCommandConfig: array[0..7] of string =
+    ('gbRunAtTime', 'lblisRun_FolderChanged', 'lblNextRun', 'cbRunAt',
+     'cbIsRepeatRun', 'cbisRun_isWhenFolderChange', 'cbIsVisible',
+     'lblIsRunning');
 
-var
-  FDefLangFile: TMemIniFile = nil;
-  FLangFile   : TMemIniFile = nil;
-  FLangPath   : string; // Path to Lang folder in app
+function M_GetUserDefaultUILanguage: LANGID; stdcall;
+  external 'kernel32.dll' name 'GetUserDefaultUILanguage';
 
 const
-  ExcludesForFormConfig: TArray<string> = ['btnClose', 'lblVer'];
-  ExcludesForFrameCommandConfig: TArray<string> = ['gbRunAtTime',
-    'lblisRun_FolderChanged', 'lblNextRun', 'cbRunAt', 'cbIsRepeatRun',
-    'cbisRun_isWhenFolderChange', 'cbIsVisible', 'lblIsRunning'];
+  cMUILanguageID = $00000004;
+
+function M_SetProcessPreferredUILanguages(Flags: DWORD;
+  Languages: PWideChar; var LanguageCount: ULONG): BOOL; stdcall;
+  external 'kernel32.dll' name 'SetProcessPreferredUILanguages';
+
+var
+  FDefLangFile: TMemIniFile;
+  FLangFile: TMemIniFile;
+  FLangPath: string;
 
 procedure LangAddDefaultStrings(const AForcedWrite: Boolean); forward;
 
+function IsStringKind(AKind: TTypeKind): Boolean;
+begin
+  Result := AKind in [tkSString, tkLString, tkAString, tkWString, tkUString];
+end;
+
+function NameInArray(const AName: string; const ANames: array of string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := Low(ANames) to High(ANames) do
+    if SameText(AName, ANames[I]) then
+      Exit(True);
+end;
+
 procedure GenDefaultFileLang;
+
   procedure WriteToLangFile(const ASectionName: string; AIdentPrefix: string;
-    AComponent: TComponent);
+    AObject: TObject);
   var
-    i, FPropCount: Integer;
-    TypeData: PTypeData;
-    FPropList: PPropList;
-    FProp: PPropInfo;
-    sDataToSave: string;
+    I, PropCount: Integer;
+    PropList: PPropList;
+    PropInfo: PPropInfo;
+    DataToSave: string;
+    ChildObject: TObject;
   begin
-    if (AComponent is TAction) then
+    if (not Assigned(AObject)) or (AObject is TAction) then
       Exit;
 
     if AIdentPrefix <> '' then
       AIdentPrefix := AIdentPrefix + '.';
 
-    TypeData := GetTypeData(AComponent.ClassInfo);
-    FPropCount := TypeData.PropCount;
-    GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+    PropCount := GetTypeData(AObject.ClassInfo)^.PropCount;
+    GetMem(PropList, SizeOf(PPropInfo) * PropCount);
     try
-      GetPropInfos(AComponent.ClassInfo, FPropList);
-      for i := 0 to FPropCount - 1 do
+      GetPropInfos(AObject.ClassInfo, PropList);
+      for I := 0 to PropCount - 1 do
       begin
-        FProp := FPropList[i];
-        if((FProp.PropType^.Kind = tkClass) and (FProp.Name <> 'FocusControl')) then
-          begin
-          var vComponent := TComponent(GetObjectProp(AComponent, FProp));
-          if Assigned(vComponent) then
-            WriteToLangFile(ASectionName, AIdentPrefix + String(FProp.Name), vComponent)
-          end
-        else if (FProp.PropType^.Kind = tkUString) and (FProp.Name <> 'Name') and
-          not((AComponent is TFileOpenDialog) and
-            (FProp.Name = 'DefaultExtension')) then
+        PropInfo := PropList^[I];
+        if (PropInfo^.PropType^.Kind = tkClass) and
+          (string(PropInfo^.Name) <> 'FocusControl') then
         begin
-          sDataToSave := GetStrProp(AComponent, FProp);
-          if (sDataToSave <> '') and
-            not((AComponent is TMenuItem) and (FProp.Name = 'Caption') and
-            (sDataToSave = '-')) then
+          ChildObject := GetObjectProp(AObject, PropInfo);
+          if Assigned(ChildObject) and (ChildObject <> AObject) and
+            (ChildObject is TPersistent) and
+            not (ChildObject is TWinControl) and
+            not (ChildObject is TCustomImageList) then
+            WriteToLangFile(ASectionName,
+              AIdentPrefix + string(PropInfo^.Name), ChildObject);
+        end
+        else if IsStringKind(PropInfo^.PropType^.Kind) and
+          (string(PropInfo^.Name) <> 'Name') and
+          not ((AObject is TOpenDialog) and
+            (string(PropInfo^.Name) = 'DefaultExt')) and
+          not ((AObject is TForm) and
+            (string(PropInfo^.Name) = 'LCLVersion')) then
+        begin
+          DataToSave := GetStrProp(AObject, PropInfo);
+          if (DataToSave <> '') and
+            not ((AObject is TMenuItem) and
+              (string(PropInfo^.Name) = 'Caption') and
+              (DataToSave = '-')) then
             FLangFile.WriteString(ASectionName,
-              AIdentPrefix + String(FProp.Name), sDataToSave);
+              AIdentPrefix + string(PropInfo^.Name), DataToSave);
         end;
-      end; // for i .. FPropCount-1
+      end;
     finally
-      FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+      FreeMem(PropList);
     end;
   end;
 
   procedure WriteComponents(const ASectionName: string;
     AFormOrFrame: TScrollingWinControl);
   var
-    viCompoment: Integer;
-    vComponent: TComponent;
+    I: Integer;
+    Component: TComponent;
   begin
-    for viCompoment := 0 to AFormOrFrame.ComponentCount - 1 do
+    for I := 0 to AFormOrFrame.ComponentCount - 1 do
+    begin
+      Component := AFormOrFrame.Components[I];
+      if not (Component is TFrame) then
       begin
-      vComponent := AFormOrFrame.Components[viCompoment];
-      if not(vComponent is TFrame) then
-      begin // now only hardcode
-        if not(((AFormOrFrame.Name = 'frmCommandConfig') and
-            MatchStr(vComponent.Name, ExcludesForFrameCommandConfig)) or
-          ((AFormOrFrame.Name = 'frmConfig') and MatchStr(vComponent.Name, ExcludesForFormConfig)))
-        then
-          WriteToLangFile(ASectionName, vComponent.Name, vComponent);
+        if not (((AFormOrFrame.Name = 'frmCommandConfig') and
+            NameInArray(Component.Name, ExcludesForFrameCommandConfig)) or
+          ((AFormOrFrame.Name = 'frmConfig') and
+            NameInArray(Component.Name, ExcludesForFormConfig))) then
+          WriteToLangFile(ASectionName, Component.Name, Component);
       end
       else
-        WriteComponents(ASectionName + '\' + vComponent.Name,
-          vComponent as TFrame)
-      end;
+        WriteComponents(ASectionName + '\' + Component.Name,
+          TFrame(Component));
+    end;
   end;
 
 var
-  vFileName: string;
-  viForm: Integer;
-  vForm: TForm;
+  FileName: string;
+  I: Integer;
+  Form: TForm;
 begin
-  vFileName := FLangPath + 'Default.ini';
-  System.SysUtils.DeleteFile(vFileName);
-  FLangFile := TMemIniFile.Create(vFileName, System.SysUtils.TEncoding.UTF8);
-  with FLangFile do
-  begin
-    WriteString('LangProperties', '@LCID', '1033');
-    WriteString('LangProperties', '@Name', 'English - United States');
-    LangAddDefaultStrings(True);
-    for viForm := 0 to Screen.FormCount - 1 do
-    begin
-      vForm := Screen.Forms[viForm];
-      WriteToLangFile(vForm.Name, '', vForm);
-      WriteComponents(vForm.Name, vForm);
-    end;
-    UpdateFile;
-  end; // with
+  if not DirectoryExists(FLangPath) then
+    ForceDirectories(FLangPath);
 
-  FDefLangFile := TMemIniFile.Create(TMemoryStream.Create);
-  var vStringList := TStringList.Create;
-  FLangFile.GetStrings(vStringList);
-  FDefLangFile.SetStrings(vStringList);
+  FileName := FLangPath + 'Default.ini';
+  SysUtils.DeleteFile(FileName);
+  FreeAndNil(FLangFile);
+  FLangFile := TMemIniFile.Create(FileName);
+  FLangFile.WriteString('LangProperties', '@LCID', '1033');
+  FLangFile.WriteString('LangProperties', '@Name',
+    'English - United States');
+  LangAddDefaultStrings(True);
+  for I := 0 to Screen.FormCount - 1 do
+  begin
+    Form := Screen.Forms[I];
+    WriteToLangFile(Form.Name, '', Form);
+    WriteComponents(Form.Name, Form);
+  end;
+  FLangFile.UpdateFile;
+
+  FreeAndNil(FDefLangFile);
+  FDefLangFile := TMemIniFile.Create(FileName);
 end;
 
 function GetLangString(const ASection, AString: string): string;
 begin
-  Result := FLangFile.ReadString(ASection, '@' + AString, '');
+  if Assigned(FLangFile) then
+    Result := FLangFile.ReadString(ASection, '@' + AString, '')
+  else
+    Result := '';
 end;
 
-procedure SetLang(const ALangCode: string);
+procedure SetLang(const ALangCode: string;
+  const AMainIniFile: TIniFile);
 
-  procedure ReadFromLangFile(const ASectionName, AIdentPrefix: string;
-    const AFormOrFrame: TScrollingWinControl);
+  procedure ReadFromLangFile(const ASectionName: string;
+    AFormOrFrame: TScrollingWinControl);
+  var
+    Section, PropertyParts: TStringList;
+    I, PartIndex: Integer;
+    PropertyPath, PropertyName, PropertyValue: string;
+    CurrentObject: TObject;
   begin
-    var vSection := TStringList.Create;
-    FLangFile.ReadSection(ASectionName, vSection);
-    for var SectionIndex := 0 to vSection.Count - 1 do
+    Section := TStringList.Create;
+    PropertyParts := TStringList.Create;
+    try
+      FLangFile.ReadSection(ASectionName, Section);
+      for I := 0 to Section.Count - 1 do
       begin
-      var vPropertyName: string := vSection[SectionIndex];
-      if vPropertyName[1] = '@' then
-        Continue; // it's not a property
+        PropertyPath := Section[I];
+        if (PropertyPath = '') or (PropertyPath[1] = '@') then
+          Continue;
 
-      var vPropertyValue: string := FLangFile.ReadString(ASectionName, vPropertyName, '');
-      if vPropertyValue = '' then
-        Continue;  //default string
+        PropertyValue := FLangFile.ReadString(ASectionName,
+          PropertyPath, '');
+        if PropertyValue = '' then
+          Continue;
 
-      var vComponent: TComponent := AFormOrFrame;
-      var DelimetedPropertyNames: TArray<string> := vPropertyName.Split(['.']);
+        PropertyParts.Clear;
+        PropertyParts.StrictDelimiter := True;
+        PropertyParts.Delimiter := '.';
+        PropertyParts.DelimitedText := PropertyPath;
+        CurrentObject := AFormOrFrame;
 
-      for var TextIndex := Low(DelimetedPropertyNames) to High(DelimetedPropertyNames) do
+        for PartIndex := 0 to PropertyParts.Count - 1 do
         begin
-        vPropertyName := DelimetedPropertyNames[TextIndex];
-        if TextIndex <> High(DelimetedPropertyNames) then
+          PropertyName := PropertyParts[PartIndex];
+          if PartIndex < PropertyParts.Count - 1 then
           begin
-          if not ((vComponent is TForm) or (vComponent is TFrame)) then
             try
-              vComponent := TComponent(GetObjectProp(vComponent, vPropertyName))
+              if CurrentObject is TScrollingWinControl then
+                CurrentObject := TScrollingWinControl(CurrentObject).
+                  FindComponent(PropertyName)
+              else
+                CurrentObject := GetObjectProp(CurrentObject, PropertyName);
             except
               on EPropertyError do
-                break;
-            end
-          else
-            vComponent := vComponent.FindComponent(vPropertyName);
+                CurrentObject := nil;
+            end;
+            if not Assigned(CurrentObject) then
+              Break;
           end
-        else
-          try
-            SetStrProp(vComponent, vPropertyName, vPropertyValue);
-          except // nothing
+          else
+            try
+              SetStrProp(CurrentObject, PropertyName, PropertyValue);
+            except
+              on EPropertyError do ;
             end;
         end;
       end;
+    finally
+      PropertyParts.Free;
+      Section.Free;
+    end;
   end;
 
 var
-  vLangFileName: string;
-  viSection: Integer;
-  vSections: TStringList;
-  vFormName: string;
-  DelimetedSectionName: TArray<string>;
-  vForm, vFrame: TComponent;
-  vFrameFound: Boolean; // delimiter \ for frame
+  LangFileName, SectionName, FormName, FrameName: string;
+  Sections, SectionKeys: TStringList;
+  I, J, SeparatorPos: Integer;
+  FormComponent, FrameComponent: TComponent;
+
+  SelectedLCID: LCID;
+  LanguageList: UnicodeString;
+  LanguageCount: ULONG;
+
+  LastError: DWORD;
 begin
-  vLangFileName := FLangPath + ALangCode + '.ini';
-  if not FileExists(vLangFileName) then
+  LangFileName := FLangPath + ALangCode + '.ini';
+  if not FileExists(LangFileName) then
     raise Exception.CreateFmt('Language file "%s" is not found',
-      [vLangFileName]);
-  FreeAndNil(FLangFile); // prev lang ini
-  FLangFile := TMemIniFile.Create(vLangFileName, System.SysUtils.TEncoding.UTF8);
+      [LangFileName]);
 
-  vSections := TStringList.Create;
+  FreeAndNil(FLangFile);
+  FLangFile := TMemIniFile.Create(LangFileName);
 
-  // Default strings
-  LangAddDefaultStrings(False);
-  if ALangCode.ToLower <> 'default' then
+  SelectedLCID :=
+    LCID(FLangFile.ReadInteger('LangProperties', '@LCID', 0));
+
+  if SelectedLCID = 0 then
+    raise Exception.CreateFmt(
+      'The language file "%s" does not contain a valid LCID.',
+      [LangFileName]
+    );
+
+  LanguageList :=
+    UnicodeString(IntToHex(LANGIDFROMLCID(SelectedLCID), 4)) +
+    WideChar(#0);
+
+  LanguageCount := 0;
+
+  if not M_SetProcessPreferredUILanguages(
+     $00000004, // MUI_LANGUAGE_ID
+     PWideChar(LanguageList),
+     LanguageCount
+     ) then
+  begin
+    LastError := GetLastError;
+
+    ErrorDialog(
+      Application.MainForm,
+      Format(
+        'Windows could not apply the UI language with LCID %d.%s%s',
+        [
+          SelectedLCID,
+          LineEnding,
+          SysErrorMessage(LastError)
+        ]
+      )
+    );
+  end
+  else if LanguageCount = 0 then
+  begin
+    ErrorDialog(
+      Application.MainForm,
+      Format(
+        'Windows could not apply the UI language with LCID %d.',
+        [SelectedLCID]
+      )
+    );
+  end;
+
+  Sections := TStringList.Create;
+  SectionKeys := TStringList.Create;
+  try
+    LangAddDefaultStrings(False);
+    if not SameText(ALangCode, 'default') then
     begin
-    FDefLangFile.ReadSections(vSections);
-    for var i := 0 to vSections.Count - 1 do
+      FDefLangFile.ReadSections(Sections);
+      for I := 0 to Sections.Count - 1 do
       begin
-      var vSectionName := vSections[i];
-      var vSectionKeys := TStringList.Create;
-      FDefLangFile.ReadSection(vSectionName, vSectionKeys);
-      for var j := 0 to vSectionKeys.Count - 1 do
-        begin
-        var vSectionKey := vSectionKeys[j];
-        if not FLangFile.ValueExists(vSectionName, vSectionKey) then
-          FLangFile.WriteString(vSectionName, vSectionKey,
-            FDefLangFile.ReadString(vSectionName, vSectionKey, ''));
-        end;
-
+        SectionName := Sections[I];
+        SectionKeys.Clear;
+        FDefLangFile.ReadSection(SectionName, SectionKeys);
+        for J := 0 to SectionKeys.Count - 1 do
+          if not FLangFile.ValueExists(SectionName, SectionKeys[J]) then
+            FLangFile.WriteString(SectionName, SectionKeys[J],
+              FDefLangFile.ReadString(SectionName, SectionKeys[J], ''));
       end;
     end;
 
-  with FLangFile do
+    Sections.Clear;
+    FLangFile.ReadSections(Sections);
+    for I := 0 to Sections.Count - 1 do
     begin
-    ReadSections(vSections);
-    for viSection := 0 to vSections.Count - 1 do
+      SectionName := Sections[I];
+      if (SectionName = 'LangStrings') or
+        (SectionName = 'LangProperties') then
+        Continue;
+
+      SeparatorPos := Pos('\', SectionName);
+      if SeparatorPos = 0 then
       begin
-      var vSectionName := vSections[viSection];
-      if (vSectionName <> 'LangStrings') and (vSectionName <> 'LangProperties') then
-        begin
-        DelimetedSectionName := vSectionName.Split(['\'], 2);
-
-        vFrameFound := Length(DelimetedSectionName) = 2;
-        vFormName := DelimetedSectionName[0];
-
-        vForm := Application.FindComponent(vFormName);
-        if not Assigned(vForm) then
-          Continue;
-
-        if not vFrameFound then
-          ReadFromLangFile(vFormName, '', vForm as TForm)
-        else // must be frame
-          begin
-          vFrame := (vForm as TForm).FindComponent(DelimetedSectionName[1]);
-          if not Assigned(vFrame) or not(vFrame is TFrame) then
-            Continue;
-
-          ReadFromLangFile(vSectionName, '', vFrame as TFrame)
-          end;
-        end;
+        FormName := SectionName;
+        FrameName := '';
+      end
+      else
+      begin
+        FormName := Copy(SectionName, 1, SeparatorPos - 1);
+        FrameName := Copy(SectionName, SeparatorPos + 1, MaxInt);
       end;
-    if Modified then
-      UpdateFile;
+
+      FormComponent := Application.FindComponent(FormName);
+      if not (FormComponent is TForm) then
+        Continue;
+
+      if FrameName = '' then
+        ReadFromLangFile(SectionName, TForm(FormComponent))
+      else
+      begin
+        FrameComponent := TForm(FormComponent).FindComponent(FrameName);
+        if FrameComponent is TFrame then
+          ReadFromLangFile(SectionName, TFrame(FrameComponent));
+      end;
     end;
-  with TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini')) do
-    try
-      WriteString('Main', 'LangCode', ALangCode);
-    finally
-      Free;
-    end;
+
+    FLangFile.UpdateFile;
+  finally
+    SectionKeys.Free;
+    Sections.Free;
+  end;
+
+  if Assigned(AMainIniFile) then
+    AMainIniFile.WriteString('Main', 'LangCode', ALangCode);
 end;
 
-// Add default strings. AForcedWrite - without check (for the first time in the app)
 procedure LangAddDefaultStrings(const AForcedWrite: Boolean);
+
   procedure MyWriteString(const ASection, AIdent, AValue: string);
   begin
-    if AForcedWrite or not FLangFile.ValueExists(ASection, AIdent) then
+    if AForcedWrite or (not FLangFile.ValueExists(ASection, AIdent)) then
       FLangFile.WriteString(ASection, AIdent, AValue);
   end;
 
@@ -281,101 +391,120 @@ begin
     'Are you sure you want to delete "%s"?');
   MyWriteString('LangStrings', '@CancelConfirm',
     'Discard unsaved changes?');
-  MyWriteString('LangStrings', '@FileDialogExecutableFile', 'Executable files');
+  MyWriteString('LangStrings', '@FileDialogExecutableFile',
+    'Executable files');
   MyWriteString('LangStrings', '@FileDialogAnyFile', 'All files');
   MyWriteString('frmConfig', '@Version', 'Version:');
-  MyWriteString('frmConfig', '@VersionHint', 'Open the StartFromTray project website');
+  MyWriteString('frmConfig', '@VersionHint',
+    'Open the StartFromTray project website');
   MyWriteString('frmConfig\frmCommandConfig', '@IsRunning', 'Running');
   MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
-  MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName', 'Enter a name.');
-  MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand', 'Specify a command or file to run.');
-  MyWriteString('frmConfig\frmCommandConfig', '@FileDialogTitle', 'Select a file to run');
-  MyWriteString('frmConfig\frmCommandConfig', '@FolderDialogTitle', 'Select a folder to run');
+  MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName',
+    'Enter a name.');
+  MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand',
+    'Specify a command or file to run.');
+  MyWriteString('frmConfig\frmCommandConfig', '@FileDialogTitle',
+    'Select a file to run');
+  MyWriteString('frmConfig\frmCommandConfig', '@FolderDialogTitle',
+    'Select a folder to run');
   MyWriteString('frmExtensions', '@ActionForEdit', '<b>Edit</b> action');
   MyWriteString('frmExtensions', '@ActionForRun', '<b>Run</b> action');
   MyWriteString('frmExtensions', '@ChooseFileForRun',
     'Select a program for the Run action');
   MyWriteString('frmExtensions', '@ChooseFileForEdit',
     'Select a program for the Edit action');
-  MyWriteString('frmExtensions', '@ErrorEmptyName',
-    'Enter a name.');
+  MyWriteString('frmExtensions', '@ErrorEmptyName', 'Enter a name.');
   MyWriteString('frmExtensions', '@ErrorEmptyExtensions',
     'Enter at least one file extension.');
 end;
 
-function LangFillListAndGetCurrent(const AMainIniFile: TIniFile; const AMenu: TPopupMenu;
-  const AmiLang: TMenuItem; const AOnClick: TNotifyEvent): Integer;
-  procedure AddSubMenuItem(const ALangName, ALangCode: string);
-  begin
-  var vMenuItem := TMenuItem.Create(AMenu);
-  with vMenuItem do
-    begin
-    Caption := ALangName;
-    Tag := Integer(StrNew(PChar(ALangCode)));
-    RadioItem := True;
-    OnClick := AOnClick;
-    end;
-  AmiLang.Add(vMenuItem);
-  end;
-begin
-  Result := 0; // LCID for user not found
-  var vUserDefaultLCID := GetUserDefaultUILanguage(); // GetUserDefaultLCID();
+function LangFillListAndGetCurrent(const AMainIniFile: TIniFile;
+  const AMenu: TPopupMenu; const AmiLang: TMenuItem;
+  const AOnClick: TNotifyEvent): Integer;
 
-  var vCurrentIniLangCode: string := AMainIniFile.ReadString('Main', 'LangCode', '');
+  procedure AddSubMenuItem(const ALangName, ALangCode: string);
+  var
+    MenuItem: TMenuItem;
+  begin
+    MenuItem := TMenuItem.Create(AMenu);
+    MenuItem.Caption := ALangName;
+    MenuItem.Tag := PtrInt(StrNew(PChar(ALangCode)));
+    MenuItem.RadioItem := True;
+    MenuItem.OnClick := AOnClick;
+    AmiLang.Add(MenuItem);
+  end;
+
+var
+  UserDefaultLCID: LANGID;
+  CurrentIniLangCode, LangCode, LangCaption: string;
+  CurrentItemIndexForIniLang, CurrentItemIndexForLCID: Integer;
+  SearchRec: TSearchRec;
+  CurrentItemIndex: Integer;
+  LangIni: TMemIniFile;
+begin
+  Result := 0;
+  UserDefaultLCID := M_GetUserDefaultUILanguage;
+  CurrentIniLangCode := AMainIniFile.ReadString('Main', 'LangCode', '');
 
   AddSubMenuItem('Default - English', 'Default');
-
-  var vCurrentItemIndexForIniLang: Integer;
-  if vCurrentIniLangCode = 'Default' then
-    vCurrentItemIndexForIniLang := 0
+  if SameText(CurrentIniLangCode, 'Default') then
+    CurrentItemIndexForIniLang := 0
   else
-    vCurrentItemIndexForIniLang := -1;
+    CurrentItemIndexForIniLang := -1;
 
-  var vCurrentItemIndexForLCID: Integer;
-  if StrToUIntDef(GetLangString('LangProperties', 'LCID'), 0) = vUserDefaultLCID
-  then
-    vCurrentItemIndexForLCID := 0
+  if StrToUIntDef(GetLangString('LangProperties', 'LCID'), 0) =
+    UserDefaultLCID then
+    CurrentItemIndexForLCID := 0
   else
-    vCurrentItemIndexForLCID := -1;
+    CurrentItemIndexForLCID := -1;
 
-  var vSR: TSearchRec; var vCurrentItemIndex: Integer := 1;
-  if FindFirst(FLangPath + '???.ini', faNormal, vSR) = 0 then
-  begin
-    repeat
-      var sLangCode := TPath.GetFileNameWithoutExtension(vSR.Name);
-      with TMemIniFile.Create(FLangPath + vSR.Name, System.SysUtils.TEncoding.UTF8) do
+  CurrentItemIndex := 1;
+  if SysUtils.FindFirst(FLangPath + '???.ini', faAnyFile,
+    SearchRec) = 0 then
+    try
+      repeat
+        LangCode := ChangeFileExt(SearchRec.Name, '');
+        LangIni := TMemIniFile.Create(FLangPath + SearchRec.Name);
         try
-          var sLangCaption := ReadString('LangProperties', '@Name', '');
-          if sLangCaption <> '' then
+          LangCaption := LangIni.ReadString('LangProperties', '@Name', '');
+          if LangCaption <> '' then
           begin
-            if (vCurrentItemIndexForLCID = -1) and
-              (LCID(ReadInteger('LangProperties', '@LCID', 0)) = vUserDefaultLCID) then
-              vCurrentItemIndexForLCID := vCurrentItemIndex;
-            if (vCurrentItemIndexForIniLang = -1) and
-              (sLangCode = vCurrentIniLangCode) then
-              vCurrentItemIndexForIniLang := vCurrentItemIndex;
-            AddSubMenuItem(sLangCaption, sLangCode);
+            if (CurrentItemIndexForLCID = -1) and
+              (LANGID(LangIni.ReadInteger('LangProperties', '@LCID', 0)) =
+                UserDefaultLCID) then
+              CurrentItemIndexForLCID := CurrentItemIndex;
+            if (CurrentItemIndexForIniLang = -1) and
+              SameText(LangCode, CurrentIniLangCode) then
+              CurrentItemIndexForIniLang := CurrentItemIndex;
+            AddSubMenuItem(LangCaption, LangCode);
           end;
         finally
-          Free;
+          LangIni.Free;
         end;
-      vCurrentItemIndex := vCurrentItemIndex + 1;
-    until (FindNext(vSR) <> 0);
-    System.SysUtils.FindClose(vSR);
-  end;
-  // choose the best match
-  if vCurrentItemIndexForIniLang >= 0 then
-    Result := vCurrentItemIndexForIniLang
-  else if vCurrentItemIndexForLCID >= 0 then
-    Result := vCurrentItemIndexForLCID;
+        Inc(CurrentItemIndex);
+      until SysUtils.FindNext(SearchRec) <> 0;
+    finally
+      SysUtils.FindClose(SearchRec);
+    end;
+
+  if CurrentIniLangCode = '' then
+    Result := 0
+  else if CurrentItemIndexForIniLang >= 0 then
+    Result := CurrentItemIndexForIniLang
+  else if CurrentItemIndexForLCID >= 0 then
+    Result := CurrentItemIndexForLCID;
 end;
 
 function AskForConfirmation(const AForm: TForm;
   const AConfirmation: string): Boolean;
+var
+  WideConfirmation, WideCaption: UnicodeString;
 begin
-  Result := MessageBoxEx(AForm.Handle, PChar(AConfirmation),
-    PChar(AForm.Caption), MB_ICONWARNING or MB_YESNO or MB_DEFBUTTON2,
-    StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = mrYes;
+  WideConfirmation := UTF8Decode(AConfirmation);
+  WideCaption := UTF8Decode(AForm.Caption);
+  Result := MessageBoxExW(AForm.Handle, PWideChar(WideConfirmation),
+    PWideChar(WideCaption), MB_ICONWARNING or MB_YESNO or MB_DEFBUTTON2,
+    StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = IDYES;
 end;
 
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;
@@ -385,13 +514,23 @@ begin
 end;
 
 procedure ErrorDialog(const AForm: TForm; const ACaption: string);
+var
+  WideText, WideCaption: UnicodeString;
 begin
-  MessageBoxEx(AForm.Handle, PChar(ACaption),
-    PChar(AForm.Caption), MB_ICONERROR, StrToIntDef(GetLangString('LangProperties', 'LCID'), 0))
+  WideText := UTF8Decode(ACaption);
+  WideCaption := UTF8Decode(AForm.Caption);
+  MessageBoxExW(AForm.Handle, PWideChar(WideText), PWideChar(WideCaption),
+    MB_ICONERROR, StrToIntDef(GetLangString('LangProperties', 'LCID'), 0));
 end;
 
 initialization
+  FDefLangFile := nil;
+  FLangFile := nil;
+  FLangPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)) +
+    cLangFolderName);
 
-FLangPath := ExtractFilePath(ParamStr(0)) + cLangFolderName + '\';
+finalization
+  FDefLangFile.Free;
+  FLangFile.Free;
 
 end.

@@ -1,53 +1,40 @@
 object frmConfig: TfrmConfig
-  AlignWithMargins = True
   Left = 322
+  Height = 507
   Top = 137
+  Width = 792
   Caption = 'StartFromTray settings'
-  ClientHeight = 486
+  ClientHeight = 507
   ClientWidth = 792
-  Color = clBtnFace
-  Font.Charset = DEFAULT_CHARSET
-  Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'Tahoma'
-  Font.Style = []
-  OldCreateOrder = True
   Position = poScreenCenter
-  StyleElements = [seFont, seClient]
+  LCLVersion = '4.8.0.0'
   OnClose = FormClose
   OnConstrainedResize = FormConstrainedResize
   OnCreate = FormCreate
   OnHide = FormHide
   OnShow = FormShow
-  DesignSize = (
-    792
-    486)
-  PixelsPerInch = 96
-  TextHeight = 13
   object gbItems: TGroupBox
     Left = 6
+    Height = 425
     Top = 1
     Width = 373
-    Height = 404
-    Anchors = [akLeft, akTop, akBottom]
+    Anchors = [akTop, akLeft, akBottom]
     Caption = 'Menu items'
+    ClientHeight = 405
+    ClientWidth = 369
     TabOrder = 0
-    DesignSize = (
-      373
-      404)
     object tvItems: TTreeView
       Left = 8
-      Top = 15
+      Height = 396
+      Top = 0
       Width = 357
-      Height = 380
-      Anchors = [akLeft, akTop, akBottom]
-      DoubleBuffered = True
+      Anchors = [akTop, akLeft, akBottom]
       DragMode = dmAutomatic
       HideSelection = False
       Images = TreeImageList
       Indent = 19
-      ParentDoubleBuffered = False
       TabOrder = 0
+      Options = [tvoAutoItemHeight, tvoKeepCollapsedNodes, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
       OnChange = tvItemsChange
       OnChanging = tvItemsChanging
       OnCustomDrawItem = tvItemsCustomDrawItem
@@ -58,149 +45,129 @@ object frmConfig: TfrmConfig
   end
   object gbProperties: TGroupBox
     Left = 386
+    Height = 425
     Top = 1
     Width = 400
-    Height = 404
-    Anchors = [akLeft, akTop, akRight, akBottom]
+    Anchors = [akTop, akLeft, akRight, akBottom]
     Caption = 'Properties'
     TabOrder = 1
-    inline frmCommandConfig: TfrmCommandConfig
-      Left = 2
-      Top = 15
-      Width = 396
-      Height = 387
-      Align = alClient
-      TabOrder = 0
-      ExplicitLeft = 2
-      ExplicitTop = 15
-      ExplicitWidth = 396
-      ExplicitHeight = 387
-    end
   end
   object gbButtons: TGroupBox
     Left = 6
-    Top = 411
+    Height = 80
+    Top = 424
     Width = 373
-    Height = 69
     Anchors = [akLeft, akBottom]
+    ClientHeight = 60
+    ClientWidth = 369
     TabOrder = 2
     object btnAddGroup: TButton
       Left = 6
-      Top = 37
-      Width = 117
       Height = 25
+      Top = 29
+      Width = 117
       Action = actAddGroup
       TabOrder = 3
     end
     object btnAddElement: TButton
       Left = 128
-      Top = 37
-      Width = 117
       Height = 25
+      Top = 29
+      Width = 117
       Action = actAddElement
       TabOrder = 4
-      WordWrap = True
     end
     object btnDel: TButton
       Left = 250
-      Top = 7
-      Width = 117
       Height = 25
+      Top = -1
+      Width = 117
       Action = actDel
       TabOrder = 2
     end
     object btnCopy: TButton
       Left = 250
-      Top = 37
-      Width = 117
       Height = 25
+      Top = 29
+      Width = 117
       Action = actCopy
       TabOrder = 5
     end
     object btnUp: TButton
       Left = 6
-      Top = 7
-      Width = 117
       Height = 25
+      Top = -1
+      Width = 117
       Action = actItemUp
       TabOrder = 0
     end
     object btnDown: TButton
       Left = 128
-      Top = 7
-      Width = 117
       Height = 25
+      Top = -1
+      Width = 117
       Action = actItemDown
       TabOrder = 1
     end
   end
   object gbMainButtons: TGroupBox
     Left = 386
-    Top = 411
+    Height = 80
+    Top = 424
     Width = 400
-    Height = 69
     Anchors = [akLeft, akRight, akBottom]
+    ClientHeight = 60
+    ClientWidth = 396
     TabOrder = 3
-    DesignSize = (
-      400
-      69)
-    object lblVer: TLinkLabel
-      Left = 10
-      Top = 14
-      Width = 46
-      Height = 17
+    object lblVer: TLabel
       Cursor = crHandPoint
-      Align = alCustom
-      Alignment = taRightJustify
-      Caption = 'Version: '
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -11
-      Font.Name = 'Tahoma'
-      Font.Style = []
+      Left = 16
+      Height = 15
+      Top = 3
+      Width = 41
+      Caption = 'Version:'
+      Font.Color = clBlue
+      Font.Style = [fsUnderline]
       ParentFont = False
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 0
-      TabStop = True
-      OnLinkClick = lblVerLinkClick
+      OnClick = lblVerClick
     end
     object btnApply: TButton
-      Left = 319
-      Top = 37
-      Width = 75
+      Left = 315
       Height = 25
+      Top = 29
+      Width = 75
       Action = actApply
       Anchors = [akRight, akBottom]
       TabOrder = 3
     end
     object btnClose: TButton
-      Left = 236
-      Top = 37
-      Width = 75
+      Left = 232
       Height = 25
+      Top = 29
+      Width = 75
       Action = actClose
-      Anchors = [akRight, akBottom]
-      Cancel = True
-      TabOrder = 2
-    end
-    object btnOK: TButton
-      Left = 153
-      Top = 37
-      Width = 75
-      Height = 25
-      Action = actOK
       Anchors = [akRight, akBottom]
       TabOrder = 1
     end
-    object btnOptions: TButton
-      Left = 10
-      Top = 37
-      Width = 107
+    object btnOK: TButton
+      Left = 149
       Height = 25
+      Top = 29
+      Width = 75
+      Action = actOK
+      Anchors = [akRight, akBottom]
+      TabOrder = 0
+    end
+    object btnOptions: TButton
+      Left = 8
+      Height = 25
+      Top = 29
+      Width = 107
       Caption = 'Options'
       PopupMenu = ppOptionsMenu
-      TabOrder = 4
+      TabOrder = 2
       OnClick = btnOptionsClick
     end
   end
@@ -266,7 +233,6 @@ object frmConfig: TfrmConfig
   end
   object TrayIcon: TTrayIcon
     Hint = 'Quick launch from the system tray'
-    PopupMenu = ppConfigMenu
     OnMouseUp = TrayIconMouseUp
     Left = 228
     Top = 47
@@ -288,13 +254,12 @@ object frmConfig: TfrmConfig
     end
   end
   object TreeImageList: TImageList
-    ColorDepth = cd32Bit
     Left = 212
     Top = 192
   end
   object ppOptionsMenu: TPopupMenu
-    Left = 506
-    Top = 423
+    Left = 512
+    Top = 416
     object miOptionsLang: TMenuItem
       Caption = 'Interface language'
     end

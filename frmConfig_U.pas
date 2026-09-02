@@ -1,22 +1,26 @@
-﻿unit frmConfig_U;
+unit frmConfig_U;
+
+{$mode delphi}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, ExtCtrls, Menus, StdCtrls, ActnList, registry,
-  CommandsClass_U, windows, Messages,   TypInfo, System.Actions,
-  Vcl.ImgList, frmCommandConfig_U, MPPopupMenu, System.IniFiles,
-  Winapi.CommCtrl, System.Math, System.ImageList, Vcl.TitleBarCtrls,
-  System.Generics.Collections;
+  Classes, SysUtils, Types, Forms, Controls, Graphics, Dialogs, ComCtrls,
+  ExtCtrls, Menus, StdCtrls, ActnList, Registry, Windows, ImgList,
+  IniFiles, Generics.Collections, LMessages, CommandsClass_U,
+  frmCommandConfig_U, MPPopupMenu;
 
-const cIniFormIdent  = 'FormConfig'; cIniFormState  = 'State';
-      cIniFormLeft   = 'Left';       cIniFormTop    = 'Top';
-      cIniFormWidth  = 'Width';      cIniFormHeight = 'Height';
+const
+  cIniFormIdent = 'FormConfig';
+  cIniFormState = 'State';
+  cIniFormLeft = 'Left';
+  cIniFormTop = 'Top';
+  cIniFormWidth = 'Width';
+  cIniFormHeight = 'Height';
+
+{$PUSH}
+{$WARN 5024 OFF}
 type
-
-  { TfrmConfig }
-
   TfrmConfig = class(TForm)
     actAddElement: TAction;
     actCopy: TAction;
@@ -48,7 +52,7 @@ type
     tvItems: TTreeView;
     TreeImageList: TImageList;
     frmCommandConfig: TfrmCommandConfig;
-    lblVer: TLinkLabel;
+    lblVer: TLabel;
     actAddGroup: TAction;
     btnOptions: TButton;
     ppOptionsMenu: TPopupMenu;
@@ -71,7 +75,6 @@ type
     procedure actItemUpExecute(Sender: TObject);
     procedure actItemUpUpdate(Sender: TObject);
     procedure actOKExecute(Sender: TObject);
-    procedure btnDelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure ppCMConfigClick(Sender: TObject);
@@ -91,8 +94,7 @@ type
     procedure tvItemsCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure FormHide(Sender: TObject);
-    procedure lblVerLinkClick(Sender: TObject; const Link: string;
-      LinkType: TSysLinkType);
+    procedure lblVerClick(Sender: TObject);
     procedure FormConstrainedResize(Sender: TObject; var MinWidth, MinHeight,
       MaxWidth, MaxHeight: Integer);
     procedure miOptionsExitProgramClick(Sender: TObject);
@@ -101,391 +103,377 @@ type
     procedure miOptionsExtensionsClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
-    { private declarations }
-    gMenuItemBmpWidth, gMenuItemBmpHeight: integer;
-
+    gMenuItemBmpWidth, gMenuItemBmpHeight: Integer;
     IsModified: Boolean;
-    // IsTreeViewItemChanging: Boolean; // true if list changing
-
     MouseButtonSwapped: Boolean;
-
     ppTrayMenu: TMPPopupMenu;
-
     procedure CorrectTreeViewItemHeight;
-
-    procedure DisposeTreeNodeData(TreeNode: TTreeNode; const AddToListDeletedImageIndexes: Boolean);
-
+    procedure DisposeTreeNodeData(TreeNode: TTreeNode;
+      const AddToDeletedImages: Boolean);
+    procedure DisposeAllTreeData;
     procedure ReloadData;
-
     procedure ppTrayMenuItemOnClick(Sender: TObject);
-
+    function ppTrayMenuQueryItemMissing(Item: TMenuItem): Boolean;
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
-      const NotifyEvent: TNotifyEvent);//; AOldCommonDataList: TList);
-    // it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
+      const NotifyEvent: TNotifyEvent);
     procedure UpdateLblVerLeftAndCaption;
-    // to save form properties when exiting
     procedure SaveFormProperties;
-    // to show my way and restore when minimized
     procedure MyFormShow;
-    // due to don't terminate the App after close main window
-    procedure WMClose(var Message: TMessage); message WM_CLOSE;
-
+    procedure ExitProgram;
   protected
-    procedure WndProc(var Message: TMessage); override;
+    procedure WndProc(var Message: TLMessage); override;
   public
-    { public declarations }
-    MainIniFile: TIniFile; // from the project
+    MainIniFile: TIniFile;
     ListDeletedImageIndexes: TList<Word>;
+    destructor Destroy; override;
     procedure miOptionsLangClick(Sender: TObject);
   end;
 
 var
   frmConfig: TfrmConfig;
-
   WM_TASKBARCREATED: UINT = 0;
 
 implementation
 
-uses CommonU, frmExtensions_U, FilterClass_U, LangsU, XMLDoc, XMLIntf,
-  Winapi.ShellAPI, System.Types, System.UITypes;
+uses
+  CommCtrl, ShellApi, DOM, XMLRead, CommonU, frmExtensions_U,
+  LangsU;
 
-{$R *.dfm}
-{ TfrmConfig }
+{$R *.lfm}
 
 procedure TfrmConfig.actApplyExecute(Sender: TObject);
+var
+  I, J, ImageIndex, LastImageIndex: Integer;
 begin
-  // сохраним редактируемые данные
   if not frmCommandConfig.SaveAssigned then
     Exit;
 
-  TreeToXML(tvItems.Items); // заполнение RunAtTime здесь
-
+  TreeToXML(tvItems.Items);
   ppTrayMenu.Items.Clear;
-
   if ListDeletedImageIndexes.Count > 0 then
-    begin
+  begin
     ListDeletedImageIndexes.Sort;
-    var vTreeNodes := tvItems.Items;
+    tvItems.Items.BeginUpdate;
     try
-      vTreeNodes.BeginUpdate;
-      for var I := ListDeletedImageIndexes.Count - 1 downto 0 do
+      LastImageIndex := -1;
+      for I := ListDeletedImageIndexes.Count - 1 downto 0 do
+      begin
+        ImageIndex := ListDeletedImageIndexes[I];
+        if (ImageIndex <= 0) or (ImageIndex = LastImageIndex) then
+          Continue;
+        LastImageIndex := ImageIndex;
+        if ImageIndex < TreeImageList.Count then
         begin
-        var vIndex: Integer := Integer(ListDeletedImageIndexes[I]);
-        if ImageList_Remove(TreeImageList.Handle, vIndex)then
-          for var J := 0 to vTreeNodes.Count - 1 do
+          TreeImageList.Delete(ImageIndex);
+          for J := 0 to tvItems.Items.Count - 1 do
+            if tvItems.Items[J].SelectedIndex > ImageIndex then
             begin
-            var vTVItem := vTreeNodes[J];
-            if vTVItem.SelectedIndex > vIndex then
-              begin
-              vTVItem.SelectedIndex := vTVItem.SelectedIndex - 1;
-              vTVItem.ImageIndex := vTVItem.SelectedIndex;
-              end;
+              tvItems.Items[J].SelectedIndex :=
+                tvItems.Items[J].SelectedIndex - 1;
+              tvItems.Items[J].ImageIndex := tvItems.Items[J].SelectedIndex;
             end;
         end;
-      finally
-        ListDeletedImageIndexes.Clear;
-        vTreeNodes.EndUpdate;
       end;
+    finally
+      ListDeletedImageIndexes.Clear;
+      tvItems.Items.EndUpdate;
     end;
-
-  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick); //, oldCommonData);
-
+  end;
+  TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);
   IsModified := False;
 end;
 
 procedure TfrmConfig.actAddElementExecute(Sender: TObject);
+var
+  ItemTag: PtrInt;
+  CommandData: TCommandData;
 begin
-  if frmCommandConfig.SaveAssigned then
-    begin
-    var vTag := (Sender as TAction).Tag; // -1 for Element and 0 for Group
-    var vComData := TCommandData.Create;
-    vComData.isGroup := (vTag = 0);
-    tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '', vComData);
-
-    tvItems.Selected.ImageIndex := vTag;
-    tvItems.Selected.SelectedIndex := vTag;
-
-    if tvItems.Items.Count = 1 then // first adding
-      CorrectTreeViewItemHeight;
-
-    tvItems.Repaint;
-
-    IsModified := True;
-    end;
-
+  if not frmCommandConfig.SaveAssigned then
+    Exit;
+  ItemTag := TAction(Sender).Tag;
+  CommandData := TCommandData.Create;
+  CommandData.isGroup := ItemTag = 0;
+  tvItems.Selected := tvItems.Items.AddObject(tvItems.Selected, '', CommandData);
+  tvItems.Selected.ImageIndex := ItemTag;
+  tvItems.Selected.SelectedIndex := ItemTag;
+  if tvItems.Items.Count = 1 then
+    CorrectTreeViewItemHeight;
+  tvItems.Repaint;
+  IsModified := True;
   frmCommandConfig.edtCaption.SetFocus;
 end;
 
 procedure TfrmConfig.actApplyUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := IsModified or frmCommandConfig.IsModified;
+  TAction(Sender).Enabled := IsModified or frmCommandConfig.IsModified;
 end;
 
 procedure TfrmConfig.actCloseExecute(Sender: TObject);
 begin
-  if (IsModified or frmCommandConfig.IsModified) then
+  if IsModified or frmCommandConfig.IsModified then
   begin
-    if AskForConfirmation(Self, GetLangString('LangStrings', 'CancelConfirm'))
-    then
-    begin //Cancel
-      Hide;
-
-      ppTrayMenu.Items.Clear; // Data will be cleared below
-
-      //DisposeTreeViewData;
-      var tn := tvItems.TopItem;
-      while tn <> nil do
-        begin
-        DisposeTreeNodeData(tn, False);
-        tn := tn.GetNextSibling;
-        end;
-
-      tvItems.OnChange := nil;
-      tvItems.Items.Clear;
-      tvItems.OnChange := tvItemsChange;
-      TreeImageList.Clear;
-      IsModified := False;
-
-      ReloadData;
-    end
+    if not AskForConfirmation(Self,
+      GetLangString('LangStrings', 'CancelConfirm')) then
+      Exit;
+    Hide;
+    ppTrayMenu.Items.Clear;
+    frmCommandConfig.ClearAssigned;
+    tvItems.OnChange := nil;
+    tvItems.OnChanging := nil;
+    DisposeAllTreeData;
+    tvItems.Items.Clear;
+    tvItems.OnChange := tvItemsChange;
+    tvItems.OnChanging := tvItemsChanging;
+    TreeImageList.Clear;
+    IsModified := False;
+    ReloadData;
   end
   else
-  begin
     Hide;
-  end;
 end;
 
 procedure TfrmConfig.actCloseUpdate(Sender: TObject);
 begin
   if IsModified or frmCommandConfig.IsModified then
-    actClose.Caption := GetLangString('LangStrings', 'Cancel') // 'Cancel'
+    actClose.Caption := GetLangString('LangStrings', 'Cancel')
   else
-    actClose.Caption := GetLangString('LangStrings', 'Close'); // 'Close';
+    actClose.Caption := GetLangString('LangStrings', 'Close');
 end;
 
 procedure TfrmConfig.actDelExecute(Sender: TObject);
 var
-  futureSelNode: TTreeNode;
+  NodeToDelete, FutureNode: TTreeNode;
 begin
-  if Assigned(tvItems.Selected) and AskForDeletion(Self, tvItems.Selected.Text)
-  then
-  begin
-    try
-    tvItems.Items.BeginUpdate;
-    DisposeTreeNodeData(tvItems.Selected, True);
+  NodeToDelete := tvItems.Selected;
+  if (not Assigned(NodeToDelete)) or
+    (not AskForDeletion(Self, NodeToDelete.Text)) then
+    Exit;
 
-    // определим, что оставить выделенным
-    futureSelNode := tvItems.Selected.GetNextSibling;
-    // попробуем выделить следующий элемент того же уровня
-    if futureSelNode = nil then
-    begin
-      futureSelNode := tvItems.Selected.GetPrevSibling;
-      // попробуем выделить предыдущий элемент того же уровня
-      if futureSelNode = nil then
-      begin
-        futureSelNode := tvItems.Selected.Parent;
-        // тогда пробуем выделить родителя
-        if futureSelNode = nil then
-          futureSelNode := tvItems.TopItem // пробуем выделить самый верхний
-      end;
-    end;
-    frmCommandConfig.ClearAssigned;//Assign(nil);
-    // avoid possible bug and better empty view for properties
-    tvItems.Selected.Delete;
-
-    tvItems.Selected := futureSelNode;
-    finally
-      tvItems.Items.EndUpdate;
-    end;
-
-    IsModified := True;
+  tvItems.Items.BeginUpdate;
+  try
+    FutureNode := NodeToDelete.GetNextSibling;
+    if not Assigned(FutureNode) then
+      FutureNode := NodeToDelete.GetPrevSibling;
+    if not Assigned(FutureNode) then
+      FutureNode := NodeToDelete.Parent;
+    DisposeTreeNodeData(NodeToDelete, True);
+    frmCommandConfig.ClearAssigned;
+    NodeToDelete.Delete;
+    tvItems.Selected := FutureNode;
+  finally
+    tvItems.Items.EndUpdate;
   end;
+  IsModified := True;
 end;
 
 procedure TfrmConfig.actCopyExecute(Sender: TObject);
-  function CopyTreeNode(TreeNode: TTreeNode; ParentTreeNode: TTreeNode = nil): TTreeNode;
+
+  function CopyTreeNode(TreeNode: TTreeNode;
+    ParentTreeNode: TTreeNode): TTreeNode;
+  var
+    CommandData: TCommandData;
+    ImageIndex: Integer;
+    Icon: TIcon;
+    ChildTreeNode: TTreeNode;
   begin
-  var vCommandData := TCommandData.Create;
-  TCommandData(TreeNode.Data).Assign(vCommandData);
+    CommandData := TCommandData.Create;
+    TCommandData(TreeNode.Data).Assign(CommandData);
+    if Assigned(ParentTreeNode) then
+      Result := tvItems.Items.AddChildObject(ParentTreeNode,
+        TreeNode.Text, CommandData)
+    else
+      Result := tvItems.Items.AddObject(TreeNode, TreeNode.Text, CommandData);
 
-  if ParentTreeNode = nil then
-    Result := tvItems.Items.AddObject(TreeNode, TreeNode.Text, vCommandData)
-  else
-    Result := tvItems.Items.AddChildObject(ParentTreeNode, TreeNode.Text, vCommandData);
-
-  var vImageIndex: Integer;
-  // 0 for group, -1 for undef element
-  if TreeNode.ImageIndex <= 0 then
-    vImageIndex := TreeNode.ImageIndex
-  else
+    if TreeNode.ImageIndex <= 0 then
+      ImageIndex := TreeNode.ImageIndex
+    else
     begin
-    var vIcon := TIcon.Create;
-    try
-      TreeImageList.GetIcon(TreeNode.ImageIndex, vIcon);
-      vImageIndex := TreeImageList.AddIcon(vIcon);
-    finally
-      vIcon.Free;
-    end; //try..finaly
+      Icon := TIcon.Create;
+      try
+        TreeImageList.GetIcon(TreeNode.ImageIndex, Icon);
+        ImageIndex := TreeImageList.AddIcon(Icon);
+      finally
+        Icon.Free;
+      end;
     end;
-  Result.ImageIndex := vImageIndex;
-  Result.SelectedIndex := vImageIndex;
-  // child nodes
-  var vChildTreeNode := TreeNode.GetFirstChild;
-  while vChildTreeNode <> nil do
+    Result.ImageIndex := ImageIndex;
+    Result.SelectedIndex := ImageIndex;
+    ChildTreeNode := TreeNode.GetFirstChild;
+    while Assigned(ChildTreeNode) do
     begin
-    CopyTreeNode(vChildTreeNode, Result);
-    vChildTreeNode := vChildTreeNode.getNextSibling;
+      CopyTreeNode(ChildTreeNode, Result);
+      ChildTreeNode := ChildTreeNode.GetNextSibling;
     end;
-
-  Result.Expanded := TreeNode.Expanded;
+    Result.Expanded := TreeNode.Expanded;
   end;
+
+var
+  SelectedNode: TTreeNode;
 begin
-  var vSelected := tvItems.Selected;
-  if not Assigned(vSelected) then
+  SelectedNode := tvItems.Selected;
+  if not Assigned(SelectedNode) then
     Exit;
-
-  if frmCommandConfig.SaveAssigned then
-    begin
-    tvItems.Items.BeginUpdate;
-    try
-      tvItems.Selected := CopyTreeNode(vSelected, nil);
-    finally
-      tvItems.Items.EndUpdate;
-    end;
-
-    IsModified := True;
-    end
-  else
+  if not frmCommandConfig.SaveAssigned then
+  begin
     frmCommandConfig.SetFocus;
+    Exit;
+  end;
+  tvItems.Items.BeginUpdate;
+  try
+    tvItems.Selected := CopyTreeNode(SelectedNode, nil);
+  finally
+    tvItems.Items.EndUpdate;
+  end;
+  IsModified := True;
 end;
 
 procedure TfrmConfig.actCopyUpdate(Sender: TObject);
+var
+  HasSelection: Boolean;
 begin
-  var vEnabled := tvItems.Selected <> nil;
-
-  (Sender as TAction).Enabled := vEnabled;
-  frmCommandConfig.Enabled := vEnabled;
+  HasSelection := Assigned(tvItems.Selected);
+  TAction(Sender).Enabled := HasSelection;
+  frmCommandConfig.Enabled := HasSelection;
 end;
 
 procedure TfrmConfig.actItemDownExecute(Sender: TObject);
 begin
-  if (tvItems.Selected = nil) or (tvItems.Selected.GetNextSibling = nil) then
+  if (not Assigned(tvItems.Selected)) or
+    (not Assigned(tvItems.Selected.GetNextSibling)) then
     Exit;
-
   tvItems.Selected.GetNextSibling.MoveTo(tvItems.Selected, naInsert);
   IsModified := True;
 end;
 
 procedure TfrmConfig.actItemDownUpdate(Sender: TObject);
 begin
-  actItemDown.Enabled := (tvItems.Selected <> nil) and
-    (tvItems.Selected.GetNextSibling <> nil);
+  actItemDown.Enabled := Assigned(tvItems.Selected) and
+    Assigned(tvItems.Selected.GetNextSibling);
 end;
 
 procedure TfrmConfig.actItemUpExecute(Sender: TObject);
 begin
-  if (tvItems.Selected = nil) or (tvItems.Selected.GetPrevSibling = nil) then
+  if (not Assigned(tvItems.Selected)) or
+    (not Assigned(tvItems.Selected.GetPrevSibling)) then
     Exit;
-
   tvItems.Selected.MoveTo(tvItems.Selected.GetPrevSibling, naInsert);
   IsModified := True;
 end;
 
 procedure TfrmConfig.actItemUpUpdate(Sender: TObject);
 begin
-  actItemUp.Enabled := (tvItems.Selected <> nil) and
-    (tvItems.Selected.GetPrevSibling <> nil);
+  actItemUp.Enabled := Assigned(tvItems.Selected) and
+    Assigned(tvItems.Selected.GetPrevSibling);
 end;
 
 procedure TfrmConfig.actOKExecute(Sender: TObject);
 begin
+  if not frmCommandConfig.SaveAssigned then
+    Exit;
   actApplyExecute(actApply);
   Hide;
 end;
 
-procedure TfrmConfig.btnDelClick(Sender: TObject);
-begin
-  if tvItems.Selected <> nil then
-    tvItems.Items.Delete(tvItems.Selected);
-end;
-
 procedure TfrmConfig.btnOptionsClick(Sender: TObject);
+var
+  PopupPoint: TPoint;
 begin
- with btnOptions.ClientToScreen(point(0, btnOptions.Height)) do
-    btnOptions.PopupMenu.Popup(X, Y);
+  PopupPoint := btnOptions.ClientToScreen(Types.Point(0, btnOptions.Height));
+  btnOptions.PopupMenu.Popup(PopupPoint.X, PopupPoint.Y);
 end;
 
 procedure TfrmConfig.CorrectTreeViewItemHeight;
+var
+  ItemHeight: Integer;
 begin
-  TreeView_SetItemHeight(tvItems.Items[0].Handle, gMenuItemBmpHeight +
-    IfThen(Odd(gMenuItemBmpHeight), 3, 2));
+  ItemHeight := gMenuItemBmpHeight;
+  if Odd(ItemHeight) then
+    Inc(ItemHeight, 3)
+  else
+    Inc(ItemHeight, 2);
+  SendMessage(tvItems.Handle, TVM_SETITEMHEIGHT, ItemHeight, 0);
 end;
 
 procedure TfrmConfig.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   SaveFormProperties;
+  if not Application.Terminated then
+  begin
+    Action := caNone;
+    actCloseExecute(actClose);
+  end;
 end;
 
-procedure TfrmConfig.FormConstrainedResize(Sender: TObject; var MinWidth,
-  MinHeight, MaxWidth, MaxHeight: Integer);
+procedure TfrmConfig.FormConstrainedResize(Sender: TObject;
+  var MinWidth, MinHeight, MaxWidth, MaxHeight: Integer);
 begin
   MinWidth := 808;
   MinHeight := 525;
 end;
 
 procedure TfrmConfig.FormCreate(Sender: TObject);
+var
+  Reg: TRegistry;
 begin
-  MainIniFile := nil; // first init
+  MainIniFile := nil;
   MouseButtonSwapped := GetSystemMetrics(SM_SWAPBUTTON) <> 0;
+  ShowMsgIfDebug('MouseButtonSwapped',
+    BoolToStr(MouseButtonSwapped, True));
 
-  ShowMsgIfDebug('MouseButtonSwapped', BoolToStr(MouseButtonSwapped, True));
+  frmCommandConfig := TfrmCommandConfig.Create(Self);
+  frmCommandConfig.Name := 'frmCommandConfig';
+  frmCommandConfig.Parent := gbProperties;
+  frmCommandConfig.Align := alClient;
 
   ppTrayMenu := TMPPopupMenu.Create(Self);
-  with ppTrayMenu do
-  begin
-    Images := TreeImageList;
-    //OwnerDraw := True;
-    OnItemMiddleClick := ppTrayMenuItemMiddleClick;
-    OnItemRightClick := ppTrayMenuItemRightClick;
-  end;
+  ppTrayMenu.Images := TreeImageList;
+  ppTrayMenu.OnItemMiddleClick := ppTrayMenuItemMiddleClick;
+  ppTrayMenu.OnItemRightClick := ppTrayMenuItemRightClick;
+  ppTrayMenu.OnQueryItemMissing := ppTrayMenuQueryItemMissing;
 
-  // if not Swapped then tbRightButton else tbLeftButton
-  ppConfigMenu.TrackButton := TTrackButton(MouseButtonSwapped);
-
-  TrayIcon.Icon := Application.Icon;
-
+  TrayIcon.PopUpMenu := nil;
+  TrayIcon.Icon.Assign(Application.Icon);
   gMenuItemBmpWidth := GetSystemMetrics(SM_CXSMICON);
   gMenuItemBmpHeight := GetSystemMetrics(SM_CYSMICON);
   TreeImageList.Width := gMenuItemBmpWidth;
   TreeImageList.Height := gMenuItemBmpHeight;
-
   ListDeletedImageIndexes := TList<Word>.Create;
   frmCommandConfig.ListDeletedImageIndexes := ListDeletedImageIndexes;
   frmCommandConfig.TreeImageList := TreeImageList;
-
   ReloadData;
 
-  with TRegistry.Create(KEY_READ) do
-    try
-      RootKey := HKEY_CURRENT_USER;
-      miOptionsRunAtStart.Checked :=
-        OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Run') and
-          ValueExists('StartFromTray');
-      IsModified := False;
-    finally
-      Free;
-    end;
-
+  Reg := TRegistry.Create(KEY_READ);
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    miOptionsRunAtStart.Checked :=
+      Reg.OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Run') and
+      Reg.ValueExists('StartFromTray');
+  finally
+    Reg.Free;
+  end;
   IsModified := False;
-
   WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
+end;
 
+destructor TfrmConfig.Destroy;
+var
+  I: Integer;
+begin
+  if Assigned(ppTrayMenu) then
+    ppTrayMenu.Items.Clear;
+  DisposeAllTreeData;
+  if Assigned(miOptionsLang) then
+    for I := 0 to miOptionsLang.Count - 1 do
+      if miOptionsLang.Items[I].Tag <> 0 then
+        StrDispose(PChar(Pointer(miOptionsLang.Items[I].Tag)));
+  ListDeletedImageIndexes.Free;
+  inherited Destroy;
 end;
 
 procedure TfrmConfig.FormHide(Sender: TObject);
 begin
-  if Application.Terminated then Exit;
-
+  if Application.Terminated then
+    Exit;
   Application.Title := TrayIcon.Hint;
   SaveFormProperties;
 end;
@@ -494,19 +482,29 @@ procedure TfrmConfig.FormShow(Sender: TObject);
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
   UpdateLblVerLeftAndCaption;
-
   tvItems.SetFocus;
 end;
 
-procedure TfrmConfig.lblVerLinkClick(Sender: TObject; const Link: string;
-  LinkType: TSysLinkType);
+procedure TfrmConfig.lblVerClick(Sender: TObject);
+var
+  WideVerb, WideLink: UnicodeString;
 begin
-  ShellExecute(Handle, 'open', PChar(Link), nil, nil, SW_SHOWNORMAL);
+  WideVerb := 'open';
+  WideLink := 'https://github.com/avmaksimov/StartFromTray';
+  ShellExecuteW(Handle, PWideChar(WideVerb), PWideChar(WideLink), nil, nil,
+    SW_SHOWNORMAL);
+end;
+
+procedure TfrmConfig.ExitProgram;
+begin
+  SaveFormProperties;
+  TrayIcon.Visible := False;
+  Application.Terminate;
 end;
 
 procedure TfrmConfig.miOptionsExitProgramClick(Sender: TObject);
 begin
-  Close;
+  ExitProgram;
 end;
 
 procedure TfrmConfig.miOptionsExtensionsClick(Sender: TObject);
@@ -515,191 +513,186 @@ begin
 end;
 
 procedure TfrmConfig.miOptionsLangClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
 begin
-  var vMenuItem := TMenuItem(Sender);
-
-  SetLang(StrPas(PChar(vMenuItem.Tag)));
+  MenuItem := TMenuItem(Sender);
+  SetLang(
+    StrPas(PChar(Pointer(MenuItem.Tag))),
+    MainIniFile
+  );
   if Visible then
     UpdateLblVerLeftAndCaption;
   lblVer.Hint := GetLangString(Name, 'VersionHint');
-
-  vMenuItem.Checked := True;
+  MenuItem.Checked := True;
 end;
 
 procedure TfrmConfig.miOptionsRunAtStartClick(Sender: TObject);
+var
+  Reg: TRegistry;
 begin
-  with TRegistry.Create(KEY_READ or KEY_WRITE or KEY_SET_VALUE) do
-    try
-      RootKey := HKEY_CURRENT_USER;
-      if OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
-        if miOptionsRunAtStart.Checked then
-          WriteString('StartFromTray', ParamStr(0))
-        else
-          DeleteValue('StartFromTray');
-    finally
-      Free;
-    end;
+  Reg := TRegistry.Create(KEY_READ or KEY_WRITE);
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if Reg.OpenKey('Software\Microsoft\Windows\CurrentVersion\Run', True) then
+      if miOptionsRunAtStart.Checked then
+        Reg.WriteString('StartFromTray', '"' + ParamStr(0) + '"')
+      else if Reg.ValueExists('StartFromTray') then
+        Reg.DeleteValue('StartFromTray');
+  finally
+    Reg.Free;
+  end;
 end;
 
 procedure TfrmConfig.MyFormShow;
 begin
   Show;
-  if IsIconic(Application.Handle) then
-    begin
-    var vWindowState := WindowState;
-    ShowWindow(Handle, SW_RESTORE);
-    WindowState := vWindowState;
-    end;
-
+  if WindowState = wsMinimized then
+    WindowState := wsNormal;
+  BringToFront;
 end;
 
 procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
 begin
-  MyFormShow; //Show;
+  MyFormShow;
 end;
 
 procedure TfrmConfig.ppCMExitClick(Sender: TObject);
 begin
-  //SaveFormProperties;
-  Close;
+  ExitProgram;
+end;
+
+function TfrmConfig.ppTrayMenuQueryItemMissing(Item: TMenuItem): Boolean;
+var
+  CommandData: TCommandData;
+begin
+  Result := False;
+  if (not Assigned(Item)) or (Item.Tag = 0) or (Item.Count > 0) then
+    Exit;
+  CommandData := TCommandData(Pointer(Item.Tag));
+  Result := (not CommandData.isGroup) and
+    (CommandData.ExtendCommandToFullName = '');
 end;
 
 procedure TfrmConfig.TrayIconMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  // иначе не закрывается по клику в другой области и повторно не открывается
   SetForegroundWindow(Handle);
   PostMessage(Handle, WM_NULL, 0, 0);
-
-  ppTrayMenu.CloseMenu;
-  // all right with button swap (so mbLeft may be sometimes as mbRight :) )
-  if Button = mbLeft then
-  begin
-    ppTrayMenu.Popup(X, Y);
-  end
-  else if Button = mbMiddle then
-    begin
-    MyFormShow;
-    if frmExtensions.Visible then
+  ppTrayMenu.Close;
+  case Button of
+    mbLeft:
+      ppTrayMenu.Popup(X, Y);
+    mbMiddle:
       begin
-      frmExtensions.SetFocus;
+        MyFormShow;
+        if frmExtensions.Visible then
+          frmExtensions.SetFocus;
       end;
-    end;
+    mbRight:
+      ppConfigMenu.Popup(X, Y);
+  end;
 end;
 
-procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
-  const NotifyEvent: TNotifyEvent);
+procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes;
+  AMenuItems: TMenuItem; const NotifyEvent: TNotifyEvent);
 
-  procedure ProcessTreeItem(atn: TTreeNode; ami: TMenuItem);
+  procedure ProcessTreeItem(TreeNode: TTreeNode; ParentItem: TMenuItem);
   var
-    newMenuItem: TMPMenuItem;
-    vtn: TTreeNode;
+    MenuItem: TMPMenuItem;
+    ChildNode: TTreeNode;
   begin
-    newMenuItem := TMPMenuItem.Create(AMenuItems);
-
-    with newMenuItem do
+    MenuItem := TMPMenuItem.Create(ppTrayMenu);
+    MenuItem.Caption := TreeNode.Text;
+    MenuItem.ImageIndex := TreeNode.ImageIndex;
+    MenuItem.Tag := PtrInt(TreeNode.Data);
+    MenuItem.OnClick := NotifyEvent;
+    ParentItem.Add(MenuItem);
+    ChildNode := TreeNode.GetFirstChild;
+    while Assigned(ChildNode) do
     begin
-      Caption := atn.Text;
-      ImageIndex := atn.ImageIndex;
-      Tag := LongInt(atn.Data);
-      OnClick := NotifyEvent;
+      ProcessTreeItem(ChildNode, MenuItem);
+      ChildNode := ChildNode.GetNextSibling;
     end;
+  end;
 
-    ami.Add(newMenuItem);
-
-    // child nodes
-    vtn := atn.GetFirstChild;
-    while vtn <> nil do
-    begin
-      ProcessTreeItem(vtn, newMenuItem);
-      vtn := vtn.GetNextSibling;
-    end;
-  end; (* ProcessTreeItem *)
-
+var
+  TreeNode: TTreeNode;
 begin
-  var tn := ATreeNodes.GetFirstNode; // TopNode;
-  while tn <> nil do
+  TreeNode := ATreeNodes.GetFirstNode;
+  while Assigned(TreeNode) do
   begin
-    ProcessTreeItem(tn, AMenuItems);
-
-    tn := tn.GetNextSibling;
+    ProcessTreeItem(TreeNode, AMenuItems);
+    TreeNode := TreeNode.GetNextSibling;
   end;
 end;
 
 procedure TfrmConfig.tvItemsChange(Sender: TObject; Node: TTreeNode);
 begin
-  begin
-    frmCommandConfig.Assign(Node);
-  end
+  if Assigned(Node) then
+    frmCommandConfig.Assign(Node)
+  else
+    frmCommandConfig.ClearAssigned;
 end;
 
 procedure TfrmConfig.tvItemsChanging(Sender: TObject; Node: TTreeNode;
   var AllowChange: Boolean);
 begin
-  if (tvItems.Selected <> nil) and not Node.Deleting then
-    begin
+  if Assigned(tvItems.Selected) and Assigned(Node) and (not Node.Deleting) then
+  begin
     if frmCommandConfig.IsModified then
       IsModified := True;
     AllowChange := frmCommandConfig.SaveAssigned;
-    end;
+  end;
 end;
 
 procedure TfrmConfig.tvItemsCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
-  if not Assigned(Node.Data) or TCommandData(Node.Data).isGroup  or
+  if (not Assigned(Node.Data)) or TCommandData(Node.Data).isGroup or
     ((Node = frmCommandConfig.AssignedTreeNode) and
       frmCommandConfig.CheckFileCommandExists) or
     ((Node <> frmCommandConfig.AssignedTreeNode) and
-    (TCommandData(Node.Data).ExtendCommandToFullName <> '')) then
+      (TCommandData(Node.Data).ExtendCommandToFullName <> '')) then
     Sender.Canvas.Font.Style := []
   else
   begin
     Sender.Canvas.Font.Style := [fsStrikeOut];
-    Sender.Canvas.Font.Color := clWindowText; // непонятно, почему белый по умолчанию
+    Sender.Canvas.Font.Color := clWindowText;
   end;
 end;
 
 procedure TfrmConfig.tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
 var
-  vMode: TNodeAttachMode;
+  AttachMode: TNodeAttachMode;
+  TargetNode: TTreeNode;
 begin
-  if (Source <> Sender) or (Sender <> tvItems) then
+  if (Source <> Sender) or (Sender <> tvItems) or
+    (not Assigned(tvItems.Selected)) then
+    Exit;
+  TargetNode := tvItems.GetNodeAt(X, Y);
+  if TargetNode = tvItems.Selected then
     Exit;
 
-  var vTreeNode := tvItems.GetNodeAt(X, Y); // element under mouse
-
-  if vTreeNode = tvItems.Selected then
-    Exit; // the same element
-
-  IsModified := True;
-
-  if vTreeNode = nil then
-    // если переносим в пустое место, то добавить
+  if not Assigned(TargetNode) then
     if Y > 0 then
-      vMode := naAdd // at the end
+      AttachMode := naAdd
     else
-      vMode := naAddFirst // at the begin
+      AttachMode := naAddFirst
+  else if TCommandData(TargetNode.Data).isGroup then
+    AttachMode := naAddChild
   else
-    begin
-      var vTreeNodeData := TCommandData(vTreeNode.Data);
-      if vTreeNodeData.isGroup then
-        begin
-        vMode := naAddChild;
-        end
-      else
-        begin
-        vMode := naInsert;
-        if (tvItems.Selected.DisplayRect(False)).Top < Y then
-          vTreeNode := vTreeNode.getNextSibling;
-        end;
-    end;
-
-  tvItems.Selected.MoveTo(vTreeNode, vMode);
+  begin
+    AttachMode := naInsert;
+    if tvItems.Selected.Top < Y then
+      TargetNode := TargetNode.GetNextSibling;
+  end;
+  tvItems.Selected.MoveTo(TargetNode, AttachMode);
+  IsModified := True;
 end;
 
-procedure TfrmConfig.tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
-  State: TDragState; var Accept: Boolean);
+procedure TfrmConfig.tvItemsDragOver(Sender, Source: TObject;
+  X, Y: Integer; State: TDragState; var Accept: Boolean);
 begin
   Accept := (Sender = Source) and (Sender = tvItems);
 end;
@@ -708,220 +701,249 @@ procedure TfrmConfig.tvItemsEdited(Sender: TObject; Node: TTreeNode;
   var S: string);
 begin
   if Node.Text <> S then
+  begin
     frmCommandConfig.Caption := S;
+    IsModified := True;
+  end;
 end;
 
-// it can't be updated because Width for Autosize can't be evaluated when Form is not Visible
 procedure TfrmConfig.UpdateLblVerLeftAndCaption;
-  function _GetBuildInfo: string;
+
+  function GetBuildInfo: string;
   var
-    VerInfoSize, VerValueSize, Dummy: DWORD;
-    VerInfo: Pointer;
+    VerInfoSize, Dummy: DWORD;
+    VerValueSize: UINT;
+    VerInfo, VerValuePointer: Pointer;
     VerValue: PVSFixedFileInfo;
+    WideFileName: UnicodeString;
+    SubBlock: UnicodeString;
   begin
-    VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
-    if VerInfoSize > 0 then
-    begin
-        GetMem(VerInfo, VerInfoSize);
-        try
-          if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo) then
-          begin
-            VerQueryValue(VerInfo, '\', Pointer(VerValue), VerValueSize);
-            with VerValue^ do
-            begin
-              Result := (dwFileVersionMS shr 16).ToString + '.' +
-                (dwFileVersionMS and $FFFF).ToString + '.' +
-                //(dwFileVersionLS shr 16).ToString + '.' +
-                (dwFileVersionLS and $FFFF).ToString;
-            end;
-          end;
-        finally
-          FreeMem(VerInfo, VerInfoSize);
-        end;
+    Result := '';
+    WideFileName := UTF8Decode(ParamStr(0));
+    SubBlock := '\';
+    Dummy := 0;
+    VerInfoSize := GetFileVersionInfoSizeW(PWideChar(WideFileName), Dummy);
+    if VerInfoSize = 0 then
+      Exit;
+    GetMem(VerInfo, VerInfoSize);
+    try
+      VerValuePointer := nil;
+      VerValueSize := 0;
+      if GetFileVersionInfoW(PWideChar(WideFileName), 0, VerInfoSize,
+        VerInfo) and VerQueryValueW(VerInfo, PWideChar(SubBlock),
+        VerValuePointer, VerValueSize) and Assigned(VerValuePointer) then
+      begin
+        VerValue := PVSFixedFileInfo(VerValuePointer);
+        Result := IntToStr(VerValue^.dwFileVersionMS shr 16) + '.' +
+          IntToStr(VerValue^.dwFileVersionMS and $FFFF) + '.' +
+          IntToStr(VerValue^.dwFileVersionLS and $FFFF);
+      end;
+    finally
+      FreeMem(VerInfo);
     end;
   end;
+
 begin
   Application.Title := TrayIcon.Hint + ' - ' + Caption;
-
-  lblVer.Caption := '<a href="https://github.com/avmaksimov/StartFromTray">' +
-    GetLangString(Name, 'Version') + ' ' + _GetBuildInfo + '</a>';
+  lblVer.Caption := GetLangString(Name, 'Version') + ' ' + GetBuildInfo;
 end;
 
-procedure TfrmConfig.WMClose(var Message: TMessage);
+procedure TfrmConfig.WndProc(var Message: TLMessage);
 begin
-  actCloseExecute(actClose);
-end;
-
-procedure TfrmConfig.WndProc(var Message: TMessage);
-begin
-  if (WM_TASKBARCREATED > 0) and (Message.Msg = WM_TASKBARCREATED) then
+  if (WM_TASKBARCREATED > 0) and (Message.msg = WM_TASKBARCREATED) then
   begin
-    // возможно надо заново регистрировать (вроде не надо)
-    // vWM_TASKBARCREATED := WM_TASKBARCREATED;
     WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
-
-    // Иногда оно True, но реально не отображается, поэтому False не прокатит.
     try
       TrayIcon.Visible := False;
-      // если не будет работать, то смотреть в сторону Shell_NotifyIcon, NIM_ADD, node(типа NOTIFYICONDATA_
     except
-      { ShowMessage('Debug: Begin. WM_TASKBARCREATED: Old = ' + IntToStr(vWM_TASKBARCREATED) + '; New = ' + IntToStr(WM_TASKBARCREATED) + #13#10 +
-        'Except: GetLastError = ' + IntToStr(GetLastError)); }
     end;
     TrayIcon.Visible := True;
   end;
   inherited WndProc(Message);
 end;
 
-procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode; const AddToListDeletedImageIndexes: Boolean);
+procedure TfrmConfig.DisposeTreeNodeData(TreeNode: TTreeNode;
+  const AddToDeletedImages: Boolean);
+var
+  ChildNode, NextChild: TTreeNode;
+  CommandData: TCommandData;
 begin
-  if TreeNode.Data <> nil then
+  if not Assigned(TreeNode) then
+    Exit;
+  ChildNode := TreeNode.GetFirstChild;
+  while Assigned(ChildNode) do
   begin
-    FreeAndNil(TCommandData(TreeNode.Data));
-    if AddToListDeletedImageIndexes and (TreeNode.ImageIndex >= 0) then
-      frmConfig.ListDeletedImageIndexes.Add(TreeNode.ImageIndex);
+    NextChild := ChildNode.GetNextSibling;
+    DisposeTreeNodeData(ChildNode, AddToDeletedImages);
+    ChildNode := NextChild;
   end;
-
-  // child nodes
-  TreeNode := TreeNode.GetFirstChild;
-  while TreeNode <> nil do
+  if Assigned(TreeNode.Data) then
   begin
-    DisposeTreeNodeData(TreeNode, AddToListDeletedImageIndexes);
-    TreeNode := TreeNode.GetNextSibling;
+    CommandData := TCommandData(TreeNode.Data);
+    TreeNode.Data := nil;
+    CommandData.Free;
+    if AddToDeletedImages and (TreeNode.ImageIndex > 0) then
+      ListDeletedImageIndexes.Add(TreeNode.ImageIndex);
+  end;
+end;
+
+procedure TfrmConfig.DisposeAllTreeData;
+var
+  Node, NextNode: TTreeNode;
+begin
+  if not Assigned(tvItems) then
+    Exit;
+  Node := tvItems.Items.GetFirstNode;
+  while Assigned(Node) do
+  begin
+    NextNode := Node.GetNextSibling;
+    DisposeTreeNodeData(Node, False);
+    Node := NextNode;
   end;
 end;
 
 procedure TfrmConfig.ppTrayMenuItemOnClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+  CommandData: TCommandData;
 begin
-  var AMenuItem := (Sender as TMenuItem);
-  if AMenuItem.Count = 0 then
-  begin
-    var vCommandData := TCommandData(AMenuItem.Tag);
-    if not MouseButtonSwapped then
-      vCommandData.Run(crtNormalRun)
-    else
-      vCommandData.Edit;
-  end;
+  MenuItem := TMenuItem(Sender);
+  if MenuItem.Count <> 0 then
+    Exit;
+  CommandData := TCommandData(Pointer(MenuItem.Tag));
+  if not MouseButtonSwapped then
+    CommandData.Run(crtNormalRun)
+  else
+    CommandData.Edit;
 end;
 
 procedure TfrmConfig.ppTrayMenuItemMiddleClick(Item: TMenuItem);
+var
+  I: Integer;
 begin
-  if Item.Count = 0 then
-  begin
-    for var I := 0 to tvItems.Items.Count - 1 do
-      if tvItems.Items[I].Data = Pointer(Item.Tag) then
-        begin
-          ppTrayMenu.CloseMenu;
-          Show;
-          tvItems.Selected := tvItems.Items[I];
-          break;
-        end;
-  end;
+  if Item.Count <> 0 then
+    Exit;
+  for I := 0 to tvItems.Items.Count - 1 do
+    if tvItems.Items[I].Data = Pointer(Item.Tag) then
+    begin
+      ppTrayMenu.Close;
+      MyFormShow;
+      tvItems.Selected := tvItems.Items[I];
+      Break;
+    end;
 end;
 
 procedure TfrmConfig.ppTrayMenuItemRightClick(Item: TMenuItem);
+var
+  CommandData: TCommandData;
 begin
-  if Item.Count = 0 then
-  begin
-    var vCommandData := TCommandData(Item.Tag);
-    if not MouseButtonSwapped then
-      vCommandData.Edit
-    else
-      vCommandData.Run(crtNormalRun);
-  end;
+  if Item.Count <> 0 then
+    Exit;
+  CommandData := TCommandData(Pointer(Item.Tag));
+  if not MouseButtonSwapped then
+    CommandData.Edit
+  else
+    CommandData.Run(crtNormalRun);
 end;
 
 procedure TfrmConfig.ReloadData;
+
   procedure XMLToTree(TreeNodes: TTreeNodes);
   var
-    ImageListHandle: HIMAGELIST;
+    XMLDoc: TXMLDocument;
+    Node: TDOMNode;
+    IconIndex: Word;
+    IconPath: array[0..MAX_PATH] of Char;
+    FolderIcon: HICON;
+    FolderIconImage: TIcon;
 
-    procedure ProcessNode(Node: IXMLNode; TreeNode: TTreeNode);
+    procedure ProcessNode(Element: TDOMElement; ParentNode: TTreeNode);
+    var
+      TreeNode: TTreeNode;
+      CommandData: TCommandData;
+      ChildNode: TDOMNode;
+      ImageIndex: Integer;
     begin
-      // добавляем узел в дерево
-      TreeNode := TreeNodes.AddChild(TreeNode, GetPropertyFromNodeAttributes(Node,
-        'Caption'));
-
-      var vCommandData := TCommandData.Create;
-      vCommandData.AssignFrom(Node);
-
-      TreeNode.Data := vCommandData;
-
-      // переходим к дочернему узлу
-      var aNode := Node.ChildNodes.First;
-
-      // проходим по всем дочерним узлам
-      while aNode <> nil do
-      begin
-        ProcessNode(aNode, TreeNode);
-        aNode := aNode.NextSibling;
+      CommandData := TCommandData.Create;
+      try
+        CommandData.AssignFrom(Element);
+        TreeNode := TreeNodes.AddChildObject(ParentNode,
+          GetPropertyFromNodeAttributes(Element, 'Caption'), CommandData);
+      except
+        CommandData.Free;
+        raise;
       end;
-
-        var iImageListIndex := vCommandData.GetImageIndex(ImageListHandle);
-        TreeNode.ImageIndex := iImageListIndex;
-        TreeNode.SelectedIndex := iImageListIndex;
-      //end;
+      ChildNode := Element.FirstChild;
+      while Assigned(ChildNode) do
+      begin
+        if ChildNode.NodeType = ELEMENT_NODE then
+          ProcessNode(TDOMElement(ChildNode), TreeNode);
+        ChildNode := ChildNode.NextSibling;
+      end;
+      ImageIndex := CommandData.GetImageIndex(TreeImageList);
+      TreeNode.ImageIndex := ImageIndex;
+      TreeNode.SelectedIndex := ImageIndex;
     end;
 
-  var
-    XMLDoc: IXMLDocument;
-    cNode: IXMLNode;
-    w: word;
-
   begin
-    ImageListHandle := TreeImageList.Handle; // ImageList.Handle;
-
-    // добавим иконку для папки, если не добавлено (всегда первая)
-    w := 3;
-    ImageList_ReplaceIcon(ImageListHandle, -1,
-      ExtractAssociatedIcon(Application.Handle, PChar('SHELL32.dll'), w));
+    IconIndex := 3;
+    IconPath[0] := #0;
+    StrPLCopy(PChar(@IconPath[0]), 'SHELL32.dll', High(IconPath));
+    FolderIcon := ExtractAssociatedIcon(HInstance,
+      PChar(@IconPath[0]), @IconIndex);
+    if FolderIcon <> 0 then
+    begin
+      FolderIconImage := TIcon.Create;
+      try
+        FolderIconImage.Handle := FolderIcon;
+        TreeImageList.AddIcon(FolderIconImage);
+      finally
+        FolderIconImage.Free;
+      end;
+    end;
 
     if not FileExists(ExtractFilePath(ParamStr(0)) + cItemsFileName) then
       Exit;
-
-    XMLDoc := TXMLDocument.Create(nil);
-
-    XMLDoc.LoadFromFile(ExtractFilePath(ParamStr(0)) + cItemsFileName);
-
-    cNode := XMLDoc.ChildNodes.FindNode('tree2xml').ChildNodes.First;
-    while cNode <> nil do
-    begin
-      ProcessNode(cNode, nil); // Рекурсия
-      cNode := cNode.NextSibling;
+    ReadXMLFile(XMLDoc, ExtractFilePath(ParamStr(0)) + cItemsFileName);
+    try
+      if not Assigned(XMLDoc.DocumentElement) then
+        Exit;
+      Node := XMLDoc.DocumentElement.FirstChild;
+      while Assigned(Node) do
+      begin
+        if Node.NodeType = ELEMENT_NODE then
+          ProcessNode(TDOMElement(Node), nil);
+        Node := Node.NextSibling;
+      end;
+    finally
+      XMLDoc.Free;
     end;
-
-    TreeNodes.Owner.FullExpand;
+    tvItems.FullExpand;
   end;
+
 begin
   XMLToTree(tvItems.Items);
-
   ListDeletedImageIndexes.Clear;
-
   TreeToMenu(tvItems.Items, ppTrayMenu.Items, ppTrayMenuItemOnClick);
-
   if tvItems.Items.Count > 0 then
   begin
     CorrectTreeViewItemHeight;
+    tvItems.Selected := tvItems.Items.GetFirstNode;
   end
   else
-    begin
     frmCommandConfig.ClearAssigned;
-    end;
 end;
 
 procedure TfrmConfig.SaveFormProperties;
 begin
-  if Assigned(MainIniFile) then
-    with MainIniFile do
-      begin
-      if WindowState <> TWindowState.wsMinimized then
-        WriteInteger(cIniFormIdent, cIniFormState, Integer(WindowState));
-      //WriteInteger(cIniFormIdent, cIniFormLeft, Left);
-      //WriteInteger(cIniFormIdent, cIniFormTop, Top);
-      WriteInteger(cIniFormIdent, cIniFormWidth, Width);
-      WriteInteger(cIniFormIdent, cIniFormHeight, Height);
-      end;
+  if not Assigned(MainIniFile) then
+    Exit;
+  if WindowState <> wsMinimized then
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormState,
+      Integer(WindowState));
+  MainIniFile.WriteInteger(cIniFormIdent, cIniFormWidth, Width);
+  MainIniFile.WriteInteger(cIniFormIdent, cIniFormHeight, Height);
 end;
 
+{$POP}
 end.
-

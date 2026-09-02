@@ -1,90 +1,70 @@
-﻿unit CommandsClass_U;
+unit CommandsClass_U;
+
+{$mode delphi}{$H+}
 
 interface
 
 uses
-  SysUtils, ShellApi, Dialogs, contnrs, ComCtrls, XMLDoc, XMLIntf, Windows,
-  Variants, System.TypInfo, Winapi.ShlObj, Winapi.ShLwApi,
-  DateUtils, Types, FilterClass_U, ComObj, ActiveX, System.UITypes,
-  System.Classes;
+  Classes, SysUtils, Contnrs, ComCtrls, ImgList, DOM, Windows,
+  FilterClass_U;
 
 type
-  TCommandRunType = (crtNormalRun, crtEdit); // crtByTimeRun
+  TCommandRunType = (crtNormalRun, crtEdit);
   TCommandIconType = (citDefault, citFromFileRes, citFromFileExt);
 
   TCmdWaitForRunningThread = class;
-
-  { TCommandData }
-
   TCommandList = TObjectList;
 
-  // директива для работы с RTTI
-{$M+}
+  {$M+}
   TCommandData = class
   private
-    FisGroup: boolean;
-    Fcommand: String; // команда для выполнения
-    FisRunning: boolean; // сейчас команда запущена
-
+    FisGroup: Boolean;
+    Fcommand: string;
+    FisRunning: Boolean;
     FChilds: TCommandList;
-
     FCommandParameters: string;
-
     FWaitForRunningThread: TCmdWaitForRunningThread;
-
-    FIconFilename: string;  // ='' when default
+    FIconFilename: string;
     FIconFileIndex: Integer;
     FIconType: TCommandIconType;
     FIconExt: string;
     FIsRunAsAdmin: Boolean;
-
-    // just RunCommand
-    {function InternalRun(const AHelper: string; const ADefaultOperation: PChar;
-      const RunType: TCommandRunType; const IsRunAsAdmin: Boolean): THandle;}
-    function InternalRun(const AHelper: string; const AHelperParams: string; const RunType: TCommandRunType): THandle;
-
+    function InternalRun(const AHelper, AHelperParams: string;
+      const RunType: TCommandRunType): THandle;
   public
-    constructor Create; overload;
-    //constructor Create(const NodeAttributes: IXMLNode); overload;
-
+    constructor Create;
     destructor Destroy; override;
 
-    // edit
     procedure Edit;
-    // запуск
     procedure Run(const RunType: TCommandRunType);
-
     procedure Assign(Dest: TCommandData);
-    procedure AssignFrom(SrcNode: IXMLNode);
-    procedure AssignTo(DestNode: IXMLNode; const ACaption: String);
-    // If Command exists than return it else check in Path and result Fullname
-    // from Path or return '' if not found
+    procedure AssignFrom(SrcNode: TDOMElement);
+    procedure AssignTo(DestNode: TDOMElement; const ACaption: string);
     function ExtendCommandToFullName: string;
-    function GetImageIndex(const AImageListHandle: Integer): Integer;
-    // real property
-    property isRunning: boolean read FisRunning write FisRunning;
-  published // all this properties saves in xmls
+    function GetImageIndex(const AImageList: TCustomImageList): Integer;
 
-    //property Name: string read FName write FName;
-    //property isVisible: boolean read FisVisible write FisVisible;
-    property isGroup: boolean read FisGroup write FisGroup default False;
+    property isRunning: Boolean read FisRunning write FisRunning;
+  published
+    property isGroup: Boolean read FisGroup write FisGroup default False;
     property Childs: TCommandList read FChilds;
     property Command: string read Fcommand write Fcommand;
     property CommandParameters: string read FCommandParameters
       write FCommandParameters;
-    property IsRunAsAdmin: Boolean read FIsRunAsAdmin write FIsRunAsAdmin default False;
-    property IconType: TCommandIconType read FIconType write FIconType default citDefault;
+    property IsRunAsAdmin: Boolean read FIsRunAsAdmin write FIsRunAsAdmin
+      default False;
+    property IconType: TCommandIconType read FIconType write FIconType
+      default citDefault;
     property IconFilename: string read FIconFilename write FIconFilename;
-    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex default -1;
+    property IconFileIndex: Integer read FIconFileIndex write FIconFileIndex
+      default -1;
     property IconExt: string read FIconExt write FIconExt;
   end;
-{$M-}
-  { TCommandWaitForRunningThread }
+  {$M-}
 
   TCmdWaitForRunningThread = class(TThread)
   private
     FProcessHandle: THandle;
-    Fcommand: TCommandData;
+    FCommand: TCommandData;
   protected
     procedure Execute; override;
   public
@@ -92,545 +72,654 @@ type
   end;
 
 procedure TreeToXML(ATreeNodes: TTreeNodes);
-
-// получение значения свойства из атрибута (обход nil)
-function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
-  const sProperty: String): string;
+function GetPropertyFromNodeAttributes(const NodeAttributes: TDOMElement;
+  const PropertyName: string): string;
 
 implementation
 
-uses CommonU, Winapi.CommCtrl, System.Win.Registry;
+uses
+  Dialogs, TypInfo, Graphics, ShellApi, ShlObj, ShLwApi, Registry,
+  CommonU;
+
+function ToDOMString(const S: string): DOMString;
+begin
+  Result := DOMString(UTF8Decode(S));
+end;
+
+function FromDOMString(const S: DOMString): string;
+begin
+  Result := UTF8Encode(UnicodeString(S));
+end;
+
+function IsStringKind(AKind: TTypeKind): Boolean;
+begin
+  Result := AKind in [tkSString, tkLString, tkAString, tkWString, tkUString];
+end;
+
+function IsRelativeWindowsPath(const FileName: string): Boolean;
+var
+  WideFileName: UnicodeString;
+begin
+  WideFileName := UTF8Decode(FileName);
+  if PathIsRelativeW(PWideChar(WideFileName)) then
+    Result := True
+  else
+    Result := False;
+end;
+
+function EscapeXMLAttribute(const S: string): string;
+begin
+  Result := StringReplace(S, '&', '&amp;', [rfReplaceAll]);
+  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
+  Result := StringReplace(Result, #13, '&#13;', [rfReplaceAll]);
+  Result := StringReplace(Result, #10, '&#10;', [rfReplaceAll]);
+end;
+
+procedure WriteCompatibleXMLFile(ADocument: TXMLDocument;
+  const FileName: string);
+var
+  Lines: TStringList;
+
+  procedure WriteElement(AElement: TDOMElement; Indent: Integer);
+  var
+    I: Integer;
+    Line: string;
+    Child: TDOMNode;
+    HasElementChildren: Boolean;
+  begin
+    Line := StringOfChar(' ', Indent * 2) + '<' +
+      FromDOMString(AElement.NodeName);
+    if Assigned(AElement.Attributes) then
+      for I := 0 to AElement.Attributes.Length - 1 do
+        Line := Line + ' ' +
+          FromDOMString(AElement.Attributes.Item[I].NodeName) + '="' +
+          EscapeXMLAttribute(FromDOMString(
+            AElement.Attributes.Item[I].NodeValue)) + '"';
+
+    HasElementChildren := False;
+    Child := AElement.FirstChild;
+    while Assigned(Child) do
+    begin
+      if Child.NodeType = ELEMENT_NODE then
+      begin
+        HasElementChildren := True;
+        Break;
+      end;
+      Child := Child.NextSibling;
+    end;
+
+    if not HasElementChildren then
+    begin
+      Lines.Add(Line + '/>');
+      Exit;
+    end;
+
+    Lines.Add(Line + '>');
+    Child := AElement.FirstChild;
+    while Assigned(Child) do
+    begin
+      if Child.NodeType = ELEMENT_NODE then
+        WriteElement(TDOMElement(Child), Indent + 1);
+      Child := Child.NextSibling;
+    end;
+    Lines.Add(StringOfChar(' ', Indent * 2) + '</' +
+      FromDOMString(AElement.NodeName) + '>');
+  end;
+
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.LineBreak := #13#10;
+    if Assigned(ADocument.DocumentElement) then
+      WriteElement(ADocument.DocumentElement, 0);
+    Lines.SaveToFile(FileName);
+  finally
+    Lines.Free;
+  end;
+end;
 
 procedure TreeToXML(ATreeNodes: TTreeNodes);
 var
-  tn: TTreeNode;
-  XMLDoc: IXMLDocument;
-  Node: IXMLNode;
+  TreeNode: TTreeNode;
+  XMLDoc: TXMLDocument;
+  RootNode: TDOMElement;
+  FileName, NewFileName: string;
 
-  procedure ProcessTreeItem(atn: TTreeNode; aNode: IXMLNode);
+  procedure ProcessTreeItem(ANode: TTreeNode; AParent: TDOMElement);
   var
-    cNode: IXMLNode;
-    vCommonData: TCommandData;
+    ChildElement: TDOMElement;
+    CommandData: TCommandData;
+    ChildTreeNode: TTreeNode;
   begin
-    // такая проверка все равно есть перед заходом в рекурсию
-    cNode := aNode.AddChild('item');
+    ChildElement := XMLDoc.CreateElement('item');
+    AParent.AppendChild(ChildElement);
+    CommandData := TCommandData(ANode.Data);
+    CommandData.AssignTo(ChildElement, ANode.Text);
 
-    vCommonData := TCommandData(atn.Data);
-    // vCommonData.CalcNextRunAtDateTime;
-
-    // showmessage(atn.Text);
-    vCommonData.AssignTo(cNode, atn.Text);
-
-    // child nodes
-    atn := atn.GetFirstChild;
-    while atn <> nil do
+    ChildTreeNode := ANode.GetFirstChild;
+    while Assigned(ChildTreeNode) do
     begin
-      ProcessTreeItem(atn, cNode);
-      atn := atn.getNextSibling;
+      ProcessTreeItem(ChildTreeNode, ChildElement);
+      ChildTreeNode := ChildTreeNode.GetNextSibling;
     end;
-  end; (* ProcessTreeItem *)
-
-var
-  vFilename, vFilenameNew: string;
-begin
-  XMLDoc := TXMLDocument.Create(nil);
-  // XMLDoc.Encoding := 'UTF-8';
-  XMLDoc.Active := True;
-  XMLDoc.Options := XMLDoc.Options + [doNodeAutoIndent];
-
-  Node := XMLDoc.AddChild('tree2xml');
-  Node.Attributes['name'] := 'tvItems';
-
-  tn := ATreeNodes.GetFirstNode; // TopNode;
-  while tn <> nil do
-  begin
-    ProcessTreeItem(tn, Node);
-
-    tn := tn.getNextSibling;
   end;
 
-  vFilename := ExtractFilePath(ParamStr(0)) + cItemsFileName;
-  vFilenameNew := ExtractFilePath(ParamStr(0)) + 'new-' + cItemsFileName;
-
-  XMLDoc.SaveToFile(vFilenameNew);
-  if FileExists(vFilename) then
-    if not DeleteFile(PChar(vFilename)) then
-      RaiseLastOSError;
-  if not RenameFile(vFilenameNew, vFilename) then
-    RaiseLastOSError;
-end; // TreeToXML
-
-// получение значения свойства из атрибута (обход nil)
-function GetPropertyFromNodeAttributes(const NodeAttributes: IXMLNode;
-  const sProperty: String): string;
-var
-  Res: OleVariant;
 begin
-  Res := (NodeAttributes.Attributes[sProperty]);
+  XMLDoc := TXMLDocument.Create;
+  try
+    RootNode := XMLDoc.CreateElement('tree2xml');
+    XMLDoc.AppendChild(RootNode);
+    RootNode.SetAttribute('name', 'tvItems');
 
-  if not VarIsNull(Res) then
-    Result := Res
+    TreeNode := ATreeNodes.GetFirstNode;
+    while Assigned(TreeNode) do
+    begin
+      ProcessTreeItem(TreeNode, RootNode);
+      TreeNode := TreeNode.GetNextSibling;
+    end;
+
+    FileName := ExtractFilePath(ParamStr(0)) + cItemsFileName;
+    NewFileName := ExtractFilePath(ParamStr(0)) + 'new-' + cItemsFileName;
+    if FileExists(NewFileName) and (not SysUtils.DeleteFile(NewFileName)) then
+      RaiseLastOSError;
+    WriteCompatibleXMLFile(XMLDoc, NewFileName);
+    if FileExists(FileName) and (not SysUtils.DeleteFile(FileName)) then
+      RaiseLastOSError;
+    if not RenameFile(NewFileName, FileName) then
+      RaiseLastOSError;
+  finally
+    XMLDoc.Free;
+  end;
+end;
+
+function GetPropertyFromNodeAttributes(const NodeAttributes: TDOMElement;
+  const PropertyName: string): string;
+begin
+  if Assigned(NodeAttributes) then
+    Result := FromDOMString(NodeAttributes.GetAttribute(ToDOMString(PropertyName)))
   else
     Result := '';
 end;
-
-{ TCommandData }
 
 constructor TCommandData.Create;
 begin
   inherited Create;
-
-  FisGroup := false; // признак группы
-  Fcommand := ''; // команда для выполнения
-  FCommandParameters := ''; // параметр команды для выполнения
-  FIconType := citDefault; // by Default
+  FisGroup := False;
+  Fcommand := '';
+  FCommandParameters := '';
+  FIconType := citDefault;
   FIconFilename := '';
   FIconFileIndex := -1;
   FIconExt := '';
-
   FWaitForRunningThread := nil;
-
-  // real properties
-  FisRunning := false;
+  FisRunning := False;
+  FChilds := TCommandList.Create(True);
 end;
 
 destructor TCommandData.Destroy;
 begin
-  if FWaitForRunningThread <> nil then
+  if Assigned(FWaitForRunningThread) then
+  begin
+    FWaitForRunningThread.FCommand := nil;
     FWaitForRunningThread.Terminate;
+    FWaitForRunningThread := nil;
+  end;
+  FChilds.Free;
+  inherited Destroy;
 end;
 
-function TCommandData.InternalRun(const AHelper: string; const AHelperParams: string; const RunType: TCommandRunType): THandle;
+function TCommandData.InternalRun(const AHelper, AHelperParams: string;
+  const RunType: TCommandRunType): THandle;
 const
-  strCommandRunType: array [TCommandRunType] of string = ('Normal Run', 'Edit');
-
-  cHelperParamForCommand = ':(command)';
+  RunTypeNames: array[TCommandRunType] of string = ('Normal Run', 'Edit');
+  HelperCommandMarker = ':(command)';
+var
+  FileName, Parameters, Operation, TechMessage: string;
+  WideFileName, WideParameters, WideOperation, WideDirectory: UnicodeString;
+  SEInfo: TShellExecuteInfoW;
+  LastErrorCode: Cardinal;
 begin
   Result := 0;
-
-  //CoInitializeEx(nil, COINIT_APARTMENTTHREADED or COINIT_DISABLE_OLE1DDE);
-  var vFilename, vParameters: string;
   if AHelper = '' then
-    begin
-    vFilename := Fcommand;
-    vParameters := FCommandParameters;
-    end
+  begin
+    FileName := Fcommand;
+    Parameters := FCommandParameters;
+  end
   else
-    begin
-    vFilename := AHelper; //'"' + AHelper + '"';
-    //var vHelperParams: string := '';
-    if AHelperParams.Contains(cHelperParamForCommand) then
-      vParameters := AHelperParams.Replace(cHelperParamForCommand, Fcommand)
+  begin
+    FileName := AHelper;
+    if Pos(HelperCommandMarker, AHelperParams) > 0 then
+      Parameters := StringReplace(AHelperParams, HelperCommandMarker,
+        Fcommand, [rfReplaceAll])
     else
-      vParameters := AHelperParams + ' "' + Fcommand + '"';
-    vParameters := vParameters + ' ' + FCommandParameters;
-    //vParameters := '"' + Fcommand + '"' + FCommandParameters;
-    end;
+      Parameters := AHelperParams + ' "' + Fcommand + '"';
+    Parameters := TrimRight(Parameters + ' ' + FCommandParameters);
+  end;
 
-  var vOperation: PChar;
-  if not IsRunAsAdmin then
-    vOperation := nil
+  if IsRunAsAdmin then
+    Operation := 'runas'
   else
-    vOperation := PChar('runas');
+    Operation := '';
 
-  var SEInfo: TShellExecuteInfo;
-  FillChar(SEInfo, SizeOf(SEInfo), 0);
-  with SEInfo do
-    begin
-    cbSize := SizeOf(TShellExecuteInfo);
-    lpVerb := vOperation;
-    lpFile := PChar(vFilename);
-    lpParameters := PChar(vParameters);
-    lpDirectory := PChar(ExtractFilePath(Fcommand));
-    nShow := SW_SHOWNORMAL;
-    if RunType <> crtEdit then
-      fMask := SEE_MASK_NOCLOSEPROCESS;
-    end;
+  WideFileName := UTF8Decode(FileName);
+  WideParameters := UTF8Decode(Parameters);
+  WideOperation := UTF8Decode(Operation);
+  WideDirectory := UTF8Decode(ExtractFilePath(Fcommand));
 
-   var sTechMsg: string;
-   if gDebug then
-      begin
-      sTechMsg := 'InternalRun: ' +
-          strCommandRunType[RunType] + LineFeed;
-      if vOperation = nil then
-        sTechMsg := sTechMsg + 'nil'
-      else
-        sTechMsg := sTechMsg + vOperation;
-      sTechMsg := sTechMsg + '; ' + vFilename + '; ';
-      if vParameters = '' then
-        sTechMsg := sTechMsg + '<empty string>'
-      else
-        sTechMsg := sTechMsg + vParameters;
-      MessageDlg(sTechMsg, TMsgDlgType.mtInformation, [TMsgDlgBtn.mbOK], 0);
-      end;
+  SEInfo := Default(TShellExecuteInfoW);
+  SEInfo.cbSize := SizeOf(TShellExecuteInfoW);
+  if Operation <> '' then
+    SEInfo.lpVerb := PWideChar(WideOperation);
+  SEInfo.lpFile := PWideChar(WideFileName);
+  SEInfo.lpParameters := PWideChar(WideParameters);
+  SEInfo.lpDirectory := PWideChar(WideDirectory);
+  SEInfo.nShow := SW_SHOWNORMAL;
+  if RunType <> crtEdit then
+    SEInfo.fMask := SEE_MASK_NOCLOSEPROCESS;
 
-  if ShellExecuteEx(@SEInfo) then
+  TechMessage := 'InternalRun: ' + RunTypeNames[RunType] + LineEnding;
+  if Operation = '' then
+    TechMessage := TechMessage + 'nil'
+  else
+    TechMessage := TechMessage + Operation;
+  TechMessage := TechMessage + '; ' + FileName + '; ';
+  if Parameters = '' then
+    TechMessage := TechMessage + '<empty string>'
+  else
+    TechMessage := TechMessage + Parameters;
+
+  if gDebug then
+    MessageDlg(TechMessage, mtInformation, [mbOK], 0);
+
+  if ShellExecuteExW(@SEInfo) then
     Result := SEInfo.hProcess
   else if gDebug then
-    begin
-    var vGetLastError: Cardinal := GetLastError;
-    if vGetLastError <> ERROR_NO_ASSOCIATION then  // avoid double error messages
-      begin
-      M_Error('Error with ' + ': ' +
-        SysErrorMessage(vGetLastError) + LineFeed + 'Error code: ' +
-        IntToStr(vGetLastError) + LineFeed + 'TechErrorMsg: ' +
-          sTechMsg);
-      end;
-    end;
+  begin
+    LastErrorCode := GetLastError;
+    if LastErrorCode <> ERROR_NO_ASSOCIATION then
+      M_Error('Error: ' + SysErrorMessage(LastErrorCode) + LineEnding +
+        'Error code: ' + IntToStr(LastErrorCode) + LineEnding +
+        'TechErrorMsg: ' + TechMessage);
+  end;
 end;
 
 procedure TCommandData.Edit;
-  function OpenFolderAndSelectFile(const FileName: string): boolean;
+
+  function OpenFolderAndSelectFile(const FileName: string): Boolean;
   var
-    IIDL: PItemIDList;
+    ItemIDList: PItemIDList;
+    WideFileName: UnicodeString;
   begin
-    Result := false;
-    IIDL := ILCreateFromPath(PChar(FileName));
-    if IIDL <> nil then
+    Result := False;
+    WideFileName := UTF8Decode(FileName);
+    ItemIDList := ILCreateFromPathW(PWideChar(WideFileName));
+    if Assigned(ItemIDList) then
       try
-        Result := SHOpenFolderAndSelectItems(IIDL, 0, nil, 0) = S_OK;
+        Result := SHOpenFolderAndSelectItems(ItemIDList, 0,
+          LPPCITEMIDLIST(nil), 0) = S_OK;
       finally
-        ILFree(IIDL);
+        ILFree(ItemIDList);
       end;
   end;
-  function GetAssociatedExeForEdit(const vFilename: string): string;
+
+  function GetAssociatedExeForEdit(const FileName: string): string;
   var
-    pResult: PChar;
-    pResultSize: DWORD;
+    BufferSize: DWORD;
+    WideFileName, WideResult, EditVerb: UnicodeString;
   begin
     Result := '';
-    pResultSize := 255;
-    pResult := StrAlloc(MAX_PATH);
-    try
-      if AssocQueryString(0, ASSOCSTR_EXECUTABLE, PChar(vFilename), 'edit',
-        pResult, @pResultSize) = S_OK then
-          Result := pResult;
-    finally
-      StrDispose(pResult);
+    BufferSize := 0;
+    WideResult := '';
+    WideFileName := UTF8Decode(FileName);
+    EditVerb := 'edit';
+    AssocQueryStringW(0, ASSOCSTR_EXECUTABLE, PWideChar(WideFileName),
+      PWideChar(EditVerb), nil, @BufferSize);
+    if BufferSize = 0 then
+      Exit;
+
+    SetLength(WideResult, BufferSize);
+    if AssocQueryStringW(0, ASSOCSTR_EXECUTABLE, PWideChar(WideFileName),
+      PWideChar(EditVerb), PWideChar(WideResult),
+      @BufferSize) = S_OK then
+    begin
+      SetLength(WideResult, BufferSize - 1);
+      Result := UTF8Encode(WideResult);
     end;
   end;
 
+var
+  FilterData: TFilterData;
+  EditHelper, EditParams: string;
 begin
-  if Fcommand <> '' then
+  if Fcommand = '' then
+    Exit;
+
+  FilterData := Filters_GetFilterByFilename(Fcommand);
+  EditHelper := '';
+  EditParams := '';
+  if Assigned(FilterData) then
   begin
-    var vFilterData := Filters_GetFilterByFilename(Fcommand);
-    var editHelper: string := '';
-    var editParams: string := '';
-    if Assigned(vFilterData) then
-      begin
-      editHelper := vFilterData.Edit;
-      editParams := vFilterData.EditParams;
-      end;
-    // if empty edit helper
-    if editHelper = '' then
-      begin
-      editHelper := GetAssociatedExeForEdit(Fcommand);
-      editParams := '';
-      end;
-    if editHelper <> '' then
-      InternalRun(editHelper, editParams, crtEdit)
-    else
-      OpenFolderAndSelectFile(Fcommand);
+    EditHelper := FilterData.Edit;
+    EditParams := FilterData.EditParams;
   end;
+  if EditHelper = '' then
+  begin
+    EditHelper := GetAssociatedExeForEdit(Fcommand);
+    EditParams := '';
+  end;
+  if EditHelper <> '' then
+    InternalRun(EditHelper, EditParams, crtEdit)
+  else
+    OpenFolderAndSelectFile(Fcommand);
 end;
 
 procedure TCommandData.Run(const RunType: TCommandRunType);
+var
+  FilterData: TFilterData;
+  RunHelper, RunParams: string;
+  ProcessHandle: THandle;
 begin
-  if (Fcommand <> '') and not FisRunning then
-  begin
-    var vFilterData := Filters_GetFilterByFilename(Fcommand);
-    var runHelper: string;
-    var runParams: string;
-    if Assigned(vFilterData) then
-      begin
-      runHelper := vFilterData.Run;
-      runParams := vFilterData.RunParams;
-      end;
-    // if empty run helper
-    if runHelper = '' then
-      begin
-      runHelper := '';
-      runParams := '';
-      end;
+  if (Fcommand = '') or FisRunning then
+    Exit;
 
-    var ProcessHandle := InternalRun(runHelper, runParams, RunType);
-    if ProcessHandle <> 0 then
-      begin
-      isRunning := True;
-      FWaitForRunningThread := TCmdWaitForRunningThread.Create
-        (ProcessHandle, Self);
-      end;
+  FilterData := Filters_GetFilterByFilename(Fcommand);
+  RunHelper := '';
+  RunParams := '';
+  if Assigned(FilterData) then
+  begin
+    RunHelper := FilterData.Run;
+    RunParams := FilterData.RunParams;
+  end;
+
+  ProcessHandle := InternalRun(RunHelper, RunParams, RunType);
+  if ProcessHandle <> 0 then
+  begin
+    isRunning := True;
+    TCmdWaitForRunningThread.Create(ProcessHandle, Self);
   end;
 end;
 
-// If Command exists than return it else check in Path and result Fullname
-// from Path or return '' if not found
 function TCommandData.ExtendCommandToFullName: string;
+const
+  RootKeys: array[0..1] of HKEY = (HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE);
+var
+  Reg: TRegistry;
+  RootKeyIndex: Integer;
+  KeyPath: string;
 begin
-  //directory must be absolute path
-  if DirectoryExists(Command) and not IsRelativePath(Command) then
-    begin
+  if DirectoryExists(Command) and (not IsRelativeWindowsPath(Command)) then
     Exit(Command);
-    end;
+
   Result := '';
-  // todo: extractfilename for Command?
-  if(ExtractFileExt(Command).ToLower = '.exe') then
-    begin
-      var reg: TRegistry := TRegistry.Create(KEY_READ);
-      try
-        var vRootKey: HKEY;
-        for vRootKey in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE] do
-          begin
-            reg.RootKey := vRootKey;
-            var vKeyPath: string := '\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\' + Command;
-            if Reg.OpenKeyReadOnly(vKeyPath) then
-              begin
-                case Reg.GetDataType('') of
-                  rdString:
-                    Result := Reg.ReadString('');
-                  rdExpandString:
-                    Result := MyExpandEnvironmentStrings(Reg.ReadString(''));
-                end;
-              end;
-          if Result <> '' then
-            Exit(Result);
+  if SameText(ExtractFileExt(Command), '.exe') then
+  begin
+    Reg := TRegistry.Create(KEY_READ);
+    try
+      for RootKeyIndex := Low(RootKeys) to High(RootKeys) do
+      begin
+        Reg.RootKey := RootKeys[RootKeyIndex];
+        KeyPath := '\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\' +
+          Command;
+        if Reg.OpenKeyReadOnly(KeyPath) then
+          case Reg.GetDataType('') of
+            rdString:
+              Result := Reg.ReadString('');
+            rdExpandString:
+              Result := MyExpandEnvironmentStrings(Reg.ReadString(''));
           end;
-      finally
-        reg.Free;
+        if Result <> '' then
+          Exit;
       end;
+    finally
+      Reg.Free;
     end;
-  if Result = '' then
-    Result := FileSearch(Command, GetEnvironmentVariable('PATH'));
+  end;
+
+  Result := FileSearch(Command, SysUtils.GetEnvironmentVariable('PATH'));
 end;
 
-// now AFileName can be not full and be in Path
-// Result: 0 or valid hIcon
-function TCommandData.GetImageIndex(const AImageListHandle: Integer): Integer;
+function TCommandData.GetImageIndex(
+  const AImageList: TCustomImageList): Integer;
+var
+  IconHandle, LargeIcon, SmallIcon: HICON;
+  Icon: TIcon;
+  FileForIcon, Extension: string;
+  WideFileForIcon, WideIconFileName: UnicodeString;
+  Mask: Cardinal;
+  Info: TSHFileInfoW;
 begin
-var vHIcon: HIcon := 0;
-if IconType in [citDefault, citFromFileExt] then
-  begin
-  var vFileForIcon: string;
-  // must be zero only for directory with full path because if it's relative may it's not a folder)).
-  var vMask: Cardinal := SHGFI_USEFILEATTRIBUTES;
-  if IconType = citDefault then
-    begin
-    if isGroup then
-      Exit(0); // already created for group and Default IconType
+  if not Assigned(AImageList) then
+    Exit(-1);
 
-    if not DirectoryExists(Command) or IsRelativePath(Command) then
-      begin
-      var vExt := ExtractFileExt(Command);
-      if (vExt <> '') and (vExt <> '.') then
-        begin
-        vExt := vExt.ToLower;
-        if (vExt = '.exe') or (vExt = '.dll') or (vExt = '.ico') then
-          begin
-          vFileForIcon := ExtendCommandToFullName;
-          if vFileForIcon = '' then
-            vFileForIcon := vExt; // not found - so default
-          end
-        else // common document - enough only Ext
-          vFileForIcon := vExt;
-        end
-      else
-        vFileForIcon := Command;
-      end
-    else
-      begin
-      vFileForIcon := Command;
-      vMask := SHGFI_SYSICONINDEX;
-      end;
-    end  // IconType = citDefault
-  else //citFromFileExt
-    vFileForIcon := '.' + IconExt;
-  // IconType in [citDefault, citFromFileExt]
-  var Info: TSHFileInfo;
-  ZeroMemory(@Info, SizeOf(Info));
-  Result := SHGetFileInfo(PChar(vFileForIcon), FILE_ATTRIBUTE_NORMAL, Info,
-    SizeOf(TSHFileInfo), {SHGFI_USEFILEATTRIBUTES} vMask or SHGFI_SMALLICON or SHGFI_ICON or SHGFI_OPENICON);
-  If Result <> 0 then
+  IconHandle := 0;
+  if IconType in [citDefault, citFromFileExt] then
+  begin
+    FileForIcon := '';
+    Mask := SHGFI_USEFILEATTRIBUTES;
+    if IconType = citDefault then
     begin
-    if vMask <> SHGFI_SYSICONINDEX then
-      vHIcon := Info.HIcon
-    else
+      if isGroup then
+        Exit(0);
+
+      if (not DirectoryExists(Command)) or IsRelativeWindowsPath(Command) then
       begin
-      DestroyIcon(Info.HIcon);
-      vHIcon := ImageList_GetIcon(Result, Info.iIcon, ILD_NORMAL);
+        Extension := LowerCase(ExtractFileExt(Command));
+        if (Extension <> '') and (Extension <> '.') then
+        begin
+          if SameText(Extension, '.exe') or SameText(Extension, '.dll') or
+            SameText(Extension, '.ico') then
+          begin
+            FileForIcon := ExtendCommandToFullName;
+            if FileForIcon = '' then
+              FileForIcon := Extension;
+          end
+          else
+            FileForIcon := Extension;
+        end
+        else
+          FileForIcon := Command;
+      end
+      else
+      begin
+        FileForIcon := Command;
+        Mask := 0;
       end;
-    end;
-  end //IconType in [citDefault, citFromFileExt]
-else //citFromFileRes
-  begin
-  var vLargeIcon: hIcon := 0;
-  var vSmallIcon: HIcon := 1; // non zero
-  if ExtractIconEx(PChar(IconFilename), IconFileIndex, vLargeIcon, vSmallIcon, 1) > 0 then
-    vHIcon := vSmallIcon;
-  end;
-if vHIcon > 0 then
-  begin
-  Result := ImageList_ReplaceIcon(AImageListHandle, -1, vHIcon);
-  DestroyIcon(vHIcon);
+    end
+    else
+      FileForIcon := '.' + IconExt;
+
+    Info := Default(TSHFileInfoW);
+    WideFileForIcon := UTF8Decode(FileForIcon);
+    if SHGetFileInfoW(PWideChar(WideFileForIcon), FILE_ATTRIBUTE_NORMAL, Info,
+      SizeOf(Info), Mask or SHGFI_SMALLICON or SHGFI_ICON or
+      SHGFI_OPENICON) <> 0 then
+      IconHandle := Info.hIcon;
   end
-else
-  Result := -1;
+  else
+  begin
+    LargeIcon := 0;
+    SmallIcon := 0;
+    WideIconFileName := UTF8Decode(IconFilename);
+    if ExtractIconExW(PWideChar(WideIconFileName), IconFileIndex,
+      LargeIcon, SmallIcon, 1) > 0 then
+    begin
+      if SmallIcon <> 0 then
+        IconHandle := SmallIcon
+      else
+      begin
+        IconHandle := LargeIcon;
+        LargeIcon := 0;
+      end;
+      if LargeIcon <> 0 then
+        DestroyIcon(LargeIcon);
+    end;
+  end;
+
+  if IconHandle <> 0 then
+  begin
+    Icon := TIcon.Create;
+    try
+      Icon.Handle := IconHandle;
+      Result := AImageList.AddIcon(Icon);
+    finally
+      Icon.Free;
+    end;
+  end
+  else
+    Result := -1;
 end;
 
 procedure TCommandData.Assign(Dest: TCommandData);
 var
-  i, FPropCount: integer;
-  TypeData: PTypeData;
-  FPropList: PPropList;
-  FProp: PPropInfo;
+  I, PropCount: Integer;
+  PropList: PPropList;
+  PropInfo: PPropInfo;
 begin
-  TypeData := GetTypeData(ClassInfo);
-  FPropCount := TypeData.PropCount;
-
-  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  PropCount := GetTypeData(ClassInfo)^.PropCount;
+  GetMem(PropList, SizeOf(PPropInfo) * PropCount);
   try
-    GetPropInfos(ClassInfo, FPropList);
-    for i := 0 to FPropCount - 1 do
+    GetPropInfos(ClassInfo, PropList);
+    for I := 0 to PropCount - 1 do
     begin
-      FProp := FPropList[i];
-
-      case FProp.PropType^.Kind of
-        tkUString:
-          SetStrProp(Dest, FProp, GetStrProp(Self, FProp));
-        tkEnumeration, tkInteger:
-          SetOrdProp(Dest, FProp, GetOrdProp(Self, FProp));
-        tkFloat:
-          SetFloatProp(Dest, FProp, GetFloatProp(Self, FProp));
-        { else
-          begin
-          Raise EInvalidCast.Create('TCommandData.Assign: неожиданный тип ' + FProp.PropType^.Name + ' для свойства: ' + FProp.Name);
-          end; }
-      end; // case
-    end; // for i .. FPropCount-1
+      PropInfo := PropList^[I];
+      if IsStringKind(PropInfo^.PropType^.Kind) then
+        SetStrProp(Dest, PropInfo, GetStrProp(Self, PropInfo))
+      else
+        case PropInfo^.PropType^.Kind of
+          tkEnumeration, tkInteger, tkBool, tkInt64, tkQWord:
+            SetOrdProp(Dest, PropInfo, GetOrdProp(Self, PropInfo));
+          tkFloat:
+            SetFloatProp(Dest, PropInfo, GetFloatProp(Self, PropInfo));
+        end;
+    end;
   finally
-    FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+    FreeMem(PropList);
   end;
 end;
 
-procedure TCommandData.AssignFrom(SrcNode: IXMLNode);
+procedure TCommandData.AssignFrom(SrcNode: TDOMElement);
 var
-  FPropList: PPropList;
-  FProp: PPropInfo;
+  I, PropCount: Integer;
+  PropList: PPropList;
+  PropInfo: PPropInfo;
+  DataToLoad, DataType: string;
 begin
-  var FPropCount := GetTypeData(ClassInfo).PropCount;
-  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  PropCount := GetTypeData(ClassInfo)^.PropCount;
+  GetMem(PropList, SizeOf(PPropInfo) * PropCount);
   try
-    GetPropInfos(ClassInfo, FPropList);
-    for var i := 0 to FPropCount - 1 do
+    GetPropInfos(ClassInfo, PropList);
+    for I := 0 to PropCount - 1 do
     begin
-      FProp := FPropList[i];
-
-      var sDataToLoad := GetPropertyFromNodeAttributes(SrcNode,
-        string(FProp.Name));
-
-      if sDataToLoad = '' then
+      PropInfo := PropList^[I];
+      DataToLoad := GetPropertyFromNodeAttributes(SrcNode,
+        string(PropInfo^.Name));
+      if DataToLoad = '' then
         Continue;
 
-      case FProp.PropType^.Kind of
-        tkUString:
-          SetStrProp(Self, FProp, sDataToLoad);
-        tkEnumeration, tkInteger:
-          SetOrdProp(Self, FProp, System.SysUtils.StrToInt(sDataToLoad));
-        tkFloat:
-          begin
-            var sDataType := FProp.PropType^.Name;
-            if sDataType = 'TDateTime' then
-              SetFloatProp(Self, FProp, StrToDateTime(sDataToLoad))
-            else if sDataType = 'TTime' then
-              SetFloatProp(Self, FProp, StrToTime(sDataToLoad))
-          end;
-      end; // case
-    end; // for i .. FPropCount-1
+      if IsStringKind(PropInfo^.PropType^.Kind) then
+        SetStrProp(Self, PropInfo, DataToLoad)
+      else
+        case PropInfo^.PropType^.Kind of
+          tkEnumeration, tkInteger, tkBool, tkInt64, tkQWord:
+            SetOrdProp(Self, PropInfo, StrToInt64(DataToLoad));
+          tkFloat:
+            begin
+              DataType := string(PropInfo^.PropType^.Name);
+              if DataType = 'TDateTime' then
+                SetFloatProp(Self, PropInfo, StrToDateTime(DataToLoad))
+              else if DataType = 'TTime' then
+                SetFloatProp(Self, PropInfo, StrToTime(DataToLoad));
+            end;
+        end;
+    end;
   finally
-    FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+    FreeMem(PropList);
   end;
 end;
 
-procedure TCommandData.AssignTo(DestNode: IXMLNode; const ACaption: String);
+procedure TCommandData.AssignTo(DestNode: TDOMElement;
+  const ACaption: string);
 var
-  i, FPropCount: integer;
-  TypeData: PTypeData;
-  FPropList: PPropList;
-  FProp: PPropInfo;
-  sDataToSave: string;
-  sDataType: TSymbolName;
+  I, PropCount: Integer;
+  PropList: PPropList;
+  PropInfo: PPropInfo;
+  DataToSave, DataType: string;
+  OrdValue: Int64;
 begin
-  DestNode.SetAttribute('Caption', ACaption);
-
-  TypeData := GetTypeData(ClassInfo);
-  FPropCount := TypeData.PropCount;
-
-  GetMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+  DestNode.SetAttribute('Caption', ToDOMString(ACaption));
+  PropCount := GetTypeData(ClassInfo)^.PropCount;
+  GetMem(PropList, SizeOf(PPropInfo) * PropCount);
   try
-    GetPropInfos(ClassInfo, FPropList);
-    for i := 0 to FPropCount - 1 do
+    GetPropInfos(ClassInfo, PropList);
+    for I := 0 to PropCount - 1 do
     begin
-      FProp := FPropList[i];
+      PropInfo := PropList^[I];
+      DataToSave := '';
+      if IsStringKind(PropInfo^.PropType^.Kind) then
+        DataToSave := GetStrProp(Self, PropInfo)
+      else
+        case PropInfo^.PropType^.Kind of
+          tkEnumeration, tkInteger, tkBool, tkInt64, tkQWord:
+            begin
+              OrdValue := GetOrdProp(Self, PropInfo);
+              if (PropInfo^.Default = Low(LongInt)) or
+                (OrdValue <> PropInfo^.Default) then
+                DataToSave := IntToStr(OrdValue);
+            end;
+          tkFloat:
+            begin
+              DataType := string(PropInfo^.PropType^.Name);
+              if DataType = 'TDateTime' then
+                DataToSave := FormatDateTime('c', GetFloatProp(Self, PropInfo))
+              else if DataType = 'TTime' then
+                DataToSave := TimeToStr(GetFloatProp(Self, PropInfo));
+            end;
+        end;
 
-      sDataToSave := '';
-      case FProp.PropType^.Kind of
-        tkUString:
-          sDataToSave := GetStrProp(Self, FProp);
-        tkEnumeration, tkInteger:
-          begin
-          var vDataInt := GetOrdProp(Self, FProp);
-          if (FProp.Default = Low(Integer)) or (vDataInt <> FProp.Default) then
-            sDataToSave := IntToStr(vDataInt);
-          //sDataToSave := GetOrdProp(Self, FProp).ToString;
-          end;
-        tkFloat:
-          begin
-            sDataType := FProp.PropType^.Name;
-            if sDataType = 'TDateTime' then
-              sDataToSave := FormatDateTime('c', GetFloatProp(Self, FProp))
-            else if sDataType = 'TTime' then
-              sDataToSave := TimeToStr(GetFloatProp(Self, FProp))
-          end;
-      end; // case
-      if sDataToSave <> '' then
-        DestNode.SetAttribute(string(FProp.Name), sDataToSave);
-    end; // for i .. FPropCount-1
+      if DataToSave <> '' then
+        DestNode.SetAttribute(ToDOMString(string(PropInfo^.Name)),
+          ToDOMString(DataToSave));
+    end;
   finally
-    FreeMem(FPropList, SizeOf(PPropInfo) * FPropCount);
+    FreeMem(PropList);
   end;
 end;
-
-{ TCmdWaitForRunningThread }
 
 constructor TCmdWaitForRunningThread.Create(const AProcessHandle: THandle;
   Command: TCommandData);
 begin
   FProcessHandle := AProcessHandle;
-  Fcommand := Command;
-
-  inherited Create(false);
-
+  FCommand := Command;
+  inherited Create(True);
   Priority := tpLower;
   FreeOnTerminate := True;
+  Command.FWaitForRunningThread := Self;
+  Start;
 end;
 
 procedure TCmdWaitForRunningThread.Execute;
 var
-  Res: Cardinal;
+  WaitResult: Cardinal;
 begin
-  while not Terminated do
-  begin
-    Res := WaitForSingleObject(FProcessHandle, 1000);
-    if Res <> WAIT_TIMEOUT then
+  try
+    while not Terminated do
     begin
-      if (Res = WAIT_OBJECT_0) and not Terminated then
-        Fcommand.FisRunning := false;
-      Break;
+      WaitResult := WaitForSingleObject(FProcessHandle, 1000);
+      if WaitResult <> WAIT_TIMEOUT then
+      begin
+        if (WaitResult = WAIT_OBJECT_0) and (not Terminated) and
+          Assigned(FCommand) then
+          FCommand.FisRunning := False;
+        Break;
+      end;
     end;
+  finally
+    CloseHandle(FProcessHandle);
+    if Assigned(FCommand) then
+      FCommand.FWaitForRunningThread := nil;
   end;
-  Fcommand.FWaitForRunningThread := nil;
 end;
-
-//initialization
-//SystemImageList := SHGetFileInfo('',0,Info,SizeOf(Info),SHGFI_SYSICONINDEX or SHGFI_ICON);
 
 end.

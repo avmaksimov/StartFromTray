@@ -1,12 +1,15 @@
 unit frmExtensions_U;
 
+{$mode delphi}{$H+}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Mask, ComCtrls,
-  FilterClass_U, Vcl.ImgList, System.ImageList, Vcl.TitleBarCtrls;
+  SysUtils, Classes, Graphics, Controls, Forms, Dialogs, StdCtrls,
+  ExtCtrls, ImgList, EditBtn, FilterClass_U;
 
+{$PUSH}
+{$WARN 5024 OFF}
 type
   TfrmExtensions = class(TForm)
     gbExtensions: TGroupBox;
@@ -22,14 +25,13 @@ type
     gbExtensionProperties: TGroupBox;
     edtExtensions: TLabeledEdit;
     edtName: TLabeledEdit;
-    OpenDialog: TFileOpenDialog;
+    OpenDialog: TOpenDialog;
     ImageList: TImageList;
-    TitleBarPanel: TTitleBarPanel;
     lblEditHelper: TLabel;
-    edtEditHelper: TButtonedEdit;
+    edtEditHelper: TEditButton;
     edtEditParams: TLabeledEdit;
     pbEdit: TPaintBox;
-    edtRunHelper: TButtonedEdit;
+    edtRunHelper: TEditButton;
     lblRunHelper: TLabel;
     edtRunParams: TLabeledEdit;
     pbRun: TPaintBox;
@@ -42,30 +44,25 @@ type
     procedure btnExtensionDownClick(Sender: TObject);
     procedure edtNameChange(Sender: TObject);
     procedure lvFiltersClick(Sender: TObject);
-    procedure edtEditRunHelperAfterDialog(Sender: TObject; var AName: string;
-      var AAction: Boolean);
     procedure edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure lvFiltersDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure TitleBarPanelCustomButtons0Click(Sender: TObject);
     procedure pbEdit_or_RunPaint(Sender: TObject);
     procedure edtEdit_or_RunHelperChange(Sender: TObject);
   private
-    { Private declarations }
     FAssignedCaption: string;
     FAssignedData: TFilterData;
     FAssignedListItemIndex: Integer;
     FIsAssigningListItemIndex: Boolean;
     FIsModified: Boolean;
-
     procedure AssignCurrentItem;
     function SaveAssignedItem: Boolean;
     function GetIsModified: Boolean;
+    procedure ClearLocalFilters;
   public
-    { Public declarations }
     procedure AssignFilters(AFilters: TStringList);
     procedure MoveToList(AFilters: TStringList);
     procedure ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
@@ -76,414 +73,339 @@ var
 
 implementation
 
-uses System.Math, System.UITypes, VCL.Themes, LangsU, CommonU;
+uses
+  LangsU, CommonU;
 
-{$R *.dfm}
+{$R *.lfm}
 
 procedure TfrmExtensions.AssignFilters(AFilters: TStringList);
 var
-  i: Integer;
-  vFilter: TFilterData;
+  I: Integer;
+  Filter: TFilterData;
 begin
-  for i := 0 to AFilters.Count - 1 do
+  for I := 0 to AFilters.Count - 1 do
   begin
-    vFilter := TFilterData.Create;
-    vFilter.Assign(TFilterData(AFilters.Objects[i]));
-
-    lvFilters.Items.AddObject(AFilters[i], vFilter);
+    Filter := TFilterData.Create;
+    Filter.Assign(TFilterData(AFilters.Objects[I]));
+    lvFilters.Items.AddObject(AFilters[I], Filter);
   end;
-
   if AFilters.Count > 0 then
     lvFilters.ItemIndex := 0;
-
   AssignCurrentItem;
 end;
 
 procedure TfrmExtensions.MoveToList(AFilters: TStringList);
 var
-  i: Integer;
+  I: Integer;
 begin
-  for i := 0 to AFilters.Count - 1 do
-    AFilters.Objects[i].Free;
-
+  for I := 0 to AFilters.Count - 1 do
+    AFilters.Objects[I].Free;
   AFilters.Clear;
-
-  for i := 0 to lvFilters.Items.Count - 1 do
-    AFilters.AddObject(lvFilters.Items[i],
-      TFilterData(lvFilters.Items.Objects[i]));
-
+  for I := 0 to lvFilters.Items.Count - 1 do
+    AFilters.AddObject(lvFilters.Items[I], lvFilters.Items.Objects[I]);
   lvFilters.Clear;
+end;
 
+procedure TfrmExtensions.ClearLocalFilters;
+var
+  I: Integer;
+begin
+  for I := 0 to lvFilters.Items.Count - 1 do
+    lvFilters.Items.Objects[I].Free;
+  lvFilters.Clear;
+  FAssignedData := nil;
+  FAssignedListItemIndex := -1;
 end;
 
 procedure TfrmExtensions.pbEdit_or_RunPaint(Sender: TObject);
-  procedure BevelLine(const ACanvas: TCanvas; const C: TColor; const X1, Y1, X2, Y2: Integer);
+const
+  TextKeys: array[0..1] of string = ('ActionForEdit', 'ActionForRun');
+  TextLeftIndent = 20;
+  TextLineIndent = 5;
+var
+  PaintBox: TPaintBox;
+  Canvas: TCanvas;
+  Text, BeforeBold, BoldText, AfterBold: string;
+  OpenPos, ClosePos, LeftPos, LineY, TextY: Integer;
+
+  procedure BevelLine(AColor: TColor; X1, X2: Integer);
   begin
-    with ACanvas do
-    begin
-      Pen.Color := C;
-      MoveTo(X1, Y1);
-      LineTo(X2, Y2);
-    end;
+    Canvas.Pen.Color := AColor;
+    Canvas.MoveTo(X1, LineY);
+    Canvas.LineTo(X2, LineY);
   end;
 
-  procedure TextOutAndIncPos(const ACanvas: TCanvas; const AString: string;
-    var APosStr: Integer; const ANewPosStr: Integer;
-    var ALeft: Integer; const ATop: Integer);
+  procedure DrawPart(const S: string; Bold: Boolean);
   begin
-  if ANewPosStr > APosStr then
-    begin
-    var s := Copy(AString, APosStr, ANewPosStr - APosStr);
-    with ACanvas do
-      begin
-      TextOut(ALeft, ATop, s);
-      Inc(ALeft, TextWidth(s));
-      APosStr := ANewPosStr;
-      end;
-    end;
+    if S = '' then
+      Exit;
+    if Bold then
+      Canvas.Font.Style := [fsBold]
+    else
+      Canvas.Font.Style := [];
+    Canvas.TextOut(LeftPos, TextY, S);
+    Inc(LeftPos, Canvas.TextWidth(S));
   end;
 
-const cTextLeftIndent = 20; cTextLineIndent = 5;
-  cTextAr: array of string = ['ActionForEdit', 'ActionForRun'];
 begin
-var vPaintBox := Sender as TPaintBox;
-var LStyle: TCustomStyleServices := StyleServices(vPaintBox);
-
-var vCanvas: TCanvas := vPaintBox.Canvas;
-var vColor1: TColor := LStyle.GetSystemColor(clBtnShadow);
-var vColor2: TColor := LStyle.GetSystemColor(clBtnHighlight);
-
-var vLeft: Integer := 0;
-
-var vText: string := GetLangString('frmExtensions', cTextAr[vPaintBox.Tag]);
-
-with vCanvas do
+  PaintBox := TPaintBox(Sender);
+  Canvas := PaintBox.Canvas;
+  Text := GetLangString('frmExtensions', TextKeys[PaintBox.Tag]);
+  OpenPos := Pos('<b>', Text);
+  ClosePos := Pos('</b>', Text);
+  if (OpenPos > 0) and (ClosePos > OpenPos) then
   begin
-  Pen.Style := psSolid;
-  Pen.Mode  := pmCopy;
-  Pen.Width := 1;
-  Brush.Style := bsSolid;
-
-  vPaintBox.Height := TextHeight(vText);
-  var vTop4Line: Integer := Ceil(vPaintBox.Height{TextHeight(vText)} / 2);
-
-  BevelLine(vCanvas, vColor1, vLeft, vTop4Line, cTextLeftIndent, vTop4Line);
-  BevelLine(vCanvas, vColor2, vLeft, vTop4Line + 1, cTextLeftIndent, vTop4Line + 1);
-
-  Inc(vLeft, cTextLeftIndent + cTextLineIndent);
-
-  var iStrPos: Integer := 1; var vStrLen := vText.Length;
-  var vIsNormalText := True;
-  while iStrPos <= vStrLen do
-    begin
-    var i, vEndPos: Integer;
-    if vIsNormalText then
-      begin
-      i := Pos('<b>', vText, iStrPos);
-      if i >= 1 then
-        begin
-        vEndPos := i;
-        vIsNormalText := False;
-        end
-      else
-        vEndPos := vStrLen + 1;
-      vCanvas.Font.Style := [];
-      TextOutAndIncPos(vCanvas, vText, iStrPos, vEndPos, vLeft, 0);
-      if i >= 1 then
-        Inc(iStrPos, 3);
-      end
-    else // vIsNormalText = False
-      begin
-      i := Pos('</b>', vText, iStrPos);
-      if i >= 1 then
-        begin
-        vEndPos := i;
-        vIsNormalText := True;
-        end
-      else
-        vEndPos := vStrLen + 1;
-      vCanvas.Font.Style := [TFontStyle.fsBold];
-      TextOutAndIncPos(vCanvas, vText, iStrPos, vEndPos, vLeft, 0);
-      if i >= 1 then
-        Inc(iStrPos, 4);
-      end;
-    end;
-
-  Inc(vLeft, cTextLineIndent);
-
-  BevelLine(vCanvas, vColor1, vLeft, vTop4Line, vPaintBox.Width, vTop4Line);
-  BevelLine(vCanvas, vColor2, vLeft, vTop4Line + 1, vPaintBox.Width, vTop4Line + 1);
-
+    BeforeBold := Copy(Text, 1, OpenPos - 1);
+    BoldText := Copy(Text, OpenPos + 3, ClosePos - OpenPos - 3);
+    AfterBold := Copy(Text, ClosePos + 4, MaxInt);
+  end
+  else
+  begin
+    BeforeBold := Text;
+    BoldText := '';
+    AfterBold := '';
   end;
+
+  PaintBox.Height := Canvas.TextHeight('Hg') + 2;
+  LineY := PaintBox.Height div 2;
+  TextY := 0;
+  BevelLine(clBtnShadow, 0, TextLeftIndent);
+  Inc(LineY);
+  BevelLine(clBtnHighlight, 0, TextLeftIndent);
+  Dec(LineY);
+
+  LeftPos := TextLeftIndent + TextLineIndent;
+  DrawPart(BeforeBold, False);
+  DrawPart(BoldText, True);
+  DrawPart(AfterBold, False);
+  Inc(LeftPos, TextLineIndent);
+  Canvas.Font.Style := [];
+  BevelLine(clBtnShadow, LeftPos, PaintBox.Width);
+  Inc(LineY);
+  BevelLine(clBtnHighlight, LeftPos, PaintBox.Width);
 end;
 
-procedure TfrmExtensions.ApplicationOnFormIdle(Sender: TObject; var Done: Boolean);
+procedure TfrmExtensions.ApplicationOnFormIdle(Sender: TObject;
+  var Done: Boolean);
+var
+  ItemIndex: Integer;
 begin
   btnOK.Enabled := FIsModified or GetIsModified;
-
-  var vItemIndex := lvFilters.ItemIndex;
-  btnExtensionUp.Enabled := vItemIndex > 0;
-  btnExtensionDown.Enabled := (vItemIndex >= 0) and (vItemIndex < lvFilters.Count - 1);
-  btnExtensionDelete.Enabled := vItemIndex > -1;
+  ItemIndex := lvFilters.ItemIndex;
+  btnExtensionUp.Enabled := ItemIndex > 0;
+  btnExtensionDown.Enabled := (ItemIndex >= 0) and
+    (ItemIndex < lvFilters.Count - 1);
+  btnExtensionDelete.Enabled := ItemIndex >= 0;
+  Done := True;
 end;
 
 procedure TfrmExtensions.AssignCurrentItem;
 var
-  bSelected: Boolean;
+  Selected: Boolean;
 begin
   FIsAssigningListItemIndex := True;
-
-  FAssignedListItemIndex := lvFilters.ItemIndex;
-  bSelected := FAssignedListItemIndex > -1;
-
-  M_SetChildsEnable(gbExtensionProperties, bSelected);
-
-  if bSelected then
+  try
+    FAssignedListItemIndex := lvFilters.ItemIndex;
+    Selected := FAssignedListItemIndex >= 0;
+    M_SetChildsEnable(gbExtensionProperties, Selected);
+    if Selected then
     begin
-    FAssignedCaption := lvFilters.Items[FAssignedListItemIndex];
-    FAssignedData := TFilterData(lvFilters.Items.Objects
-      [FAssignedListItemIndex]);
-
-    edtName.Text := FAssignedCaption;
-
-    with FAssignedData do
-      begin
-      edtExtensions.Text := Extensions;
-
-      edtEditHelper.Text := Edit;
-      edtEditParams.Text := EditParams;
-      edtRunHelper.Text := Run;
-      edtRunParams.Text := RunParams;
-      end;
+      FAssignedCaption := lvFilters.Items[FAssignedListItemIndex];
+      FAssignedData := TFilterData(
+        lvFilters.Items.Objects[FAssignedListItemIndex]);
+      edtName.Text := FAssignedCaption;
+      edtExtensions.Text := FAssignedData.Extensions;
+      edtEditHelper.Text := FAssignedData.Edit;
+      edtEditParams.Text := FAssignedData.EditParams;
+      edtRunHelper.Text := FAssignedData.Run;
+      edtRunParams.Text := FAssignedData.RunParams;
     end
-  else
+    else
     begin
-    FAssignedCaption := '';
-    edtName.Text := '';
-
-    edtExtensions.Text := '';
-
-    edtEditHelper.Text := '';
-    edtEditParams.Text := '';
-    edtRunHelper.Text := '';
-    edtRunParams.Text := '';
-
-    FAssignedData := nil;
+      FAssignedCaption := '';
+      FAssignedData := nil;
+      edtName.Text := '';
+      edtExtensions.Text := '';
+      edtEditHelper.Text := '';
+      edtEditParams.Text := '';
+      edtRunHelper.Text := '';
+      edtRunParams.Text := '';
     end;
-  FIsAssigningListItemIndex := False;
+  finally
+    FIsAssigningListItemIndex := False;
+  end;
 end;
 
 function TfrmExtensions.SaveAssignedItem: Boolean;
+var
+  Name, Extensions, ExceptionText: string;
 begin
-  if (FAssignedListItemIndex < 0) or not Assigned(FAssignedData) then
+  if (FAssignedListItemIndex < 0) or (not Assigned(FAssignedData)) then
     Exit(True);
 
   FIsModified := FIsModified or GetIsModified;
-
-  var vName := Trim(edtName.Text);
-  var vExtensions := Trim(edtExtensions.Text);
-
-  var vExceptionStr := '';
-
-  if (vName = '') then
-    vExceptionStr := GetLangString('frmExtensions', 'ErrorEmptyName');
-
-  if (vExtensions = '') then
-    begin
-    if vExceptionStr <> '' then
-      vExceptionStr := vExceptionStr + #13#10#13#10;
-    vExceptionStr := vExceptionStr + GetLangString('frmExtensions', 'ErrorEmptyExtensions');
-    end;
-
-  if (vExceptionStr <> '') then
-    begin
-    ErrorDialog(Self, vExceptionStr);
+  Name := Trim(edtName.Text);
+  Extensions := Trim(edtExtensions.Text);
+  ExceptionText := '';
+  if Name = '' then
+    ExceptionText := GetLangString('frmExtensions', 'ErrorEmptyName');
+  if Extensions = '' then
+  begin
+    if ExceptionText <> '' then
+      ExceptionText := ExceptionText + LineEnding + LineEnding;
+    ExceptionText := ExceptionText +
+      GetLangString('frmExtensions', 'ErrorEmptyExtensions');
+  end;
+  if ExceptionText <> '' then
+  begin
+    ErrorDialog(Self, ExceptionText);
     Exit(False);
-    end;
+  end;
 
-  lvFilters.Items[FAssignedListItemIndex] := vName;
-  with FAssignedData do
-    begin
-    Extensions := vExtensions;
-
-    Edit := Trim(edtEditHelper.Text);
-    EditParams := Trim(edtEditParams.Text);
-    Run := Trim(edtRunHelper.Text);
-    RunParams := Trim(edtRunParams.Text);
-    end;
+  lvFilters.Items[FAssignedListItemIndex] := Name;
+  FAssignedData.Extensions := Extensions;
+  FAssignedData.Edit := Trim(edtEditHelper.Text);
+  FAssignedData.EditParams := Trim(edtEditParams.Text);
+  FAssignedData.Run := Trim(edtRunHelper.Text);
+  FAssignedData.RunParams := Trim(edtRunParams.Text);
+  FAssignedCaption := Name;
   Result := True;
 end;
 
-procedure TfrmExtensions.TitleBarPanelCustomButtons0Click(Sender: TObject);
-begin
-  Application.Minimize;
-end;
-
 procedure TfrmExtensions.btnCancelClick(Sender: TObject);
-var
-  i: Integer;
 begin
-  for i := 0 to lvFilters.Items.Count - 1 do
-    TFilterData(lvFilters.Items.Objects[i]).Free;
-
-  lvFilters.Clear;
+  ClearLocalFilters;
+  ModalResult := mrCancel;
 end;
 
 procedure TfrmExtensions.btnExtensionUpClick(Sender: TObject);
+var
+  NewItemIndex: Integer;
 begin
-  with lvFilters do
-    if (ItemIndex > 0) then
-    begin
-      var newItemIndex := ItemIndex - 1;
-      Items.Exchange(ItemIndex, newItemIndex);
-      ItemIndex := newItemIndex;
-      FAssignedListItemIndex := newItemIndex;
-    end;
+  if lvFilters.ItemIndex <= 0 then
+    Exit;
+  NewItemIndex := lvFilters.ItemIndex - 1;
+  lvFilters.Items.Exchange(lvFilters.ItemIndex, NewItemIndex);
+  lvFilters.ItemIndex := NewItemIndex;
+  FAssignedListItemIndex := NewItemIndex;
+  FIsModified := True;
 end;
 
 procedure TfrmExtensions.btnExtensionDownClick(Sender: TObject);
+var
+  NewItemIndex: Integer;
 begin
-  with lvFilters do
-    if (ItemIndex > -1) and (ItemIndex < Count - 1) then
-    begin
-      var newItemIndex := ItemIndex + 1;
-      Items.Exchange(ItemIndex, newItemIndex);
-      ItemIndex := newItemIndex;
-      FAssignedListItemIndex := newItemIndex;
-    end;
+  if (lvFilters.ItemIndex < 0) or
+    (lvFilters.ItemIndex >= lvFilters.Count - 1) then
+    Exit;
+  NewItemIndex := lvFilters.ItemIndex + 1;
+  lvFilters.Items.Exchange(lvFilters.ItemIndex, NewItemIndex);
+  lvFilters.ItemIndex := NewItemIndex;
+  FAssignedListItemIndex := NewItemIndex;
+  FIsModified := True;
 end;
 
 procedure TfrmExtensions.btnExtensionAddClick(Sender: TObject);
 begin
   if not SaveAssignedItem then
     Exit;
-
-  with lvFilters do
-  begin
-    Items.AddObject('', TFilterData.Create);
-
-    ItemIndex := Items.Count - 1;
-  end;
-
+  lvFilters.Items.AddObject('', TFilterData.Create);
+  lvFilters.ItemIndex := lvFilters.Items.Count - 1;
+  FIsModified := True;
   AssignCurrentItem;
   edtName.SetFocus;
 end;
 
 procedure TfrmExtensions.btnExtensionDeleteClick(Sender: TObject);
+var
+  NewItemIndex: Integer;
 begin
-  with lvFilters do
-  begin
-    if (ItemIndex <= -1) or not AskForDeletion(Self, Items[ItemIndex]) then
-      Exit;
-
-    var newItemIndex := ItemIndex;
-
-    if ItemIndex = Count - 1 then
-      newItemIndex := newItemIndex - 1;
-
-    TFilterData(Items.Objects[ItemIndex]).Free;
-    Items.Delete(ItemIndex);
-
-    ItemIndex := newItemIndex;
-  end;
-
+  if (lvFilters.ItemIndex < 0) or
+    (not AskForDeletion(Self, lvFilters.Items[lvFilters.ItemIndex])) then
+    Exit;
+  NewItemIndex := lvFilters.ItemIndex;
+  if NewItemIndex = lvFilters.Count - 1 then
+    Dec(NewItemIndex);
+  lvFilters.Items.Objects[lvFilters.ItemIndex].Free;
+  lvFilters.Items.Delete(lvFilters.ItemIndex);
+  lvFilters.ItemIndex := NewItemIndex;
+  FIsModified := True;
   AssignCurrentItem;
 end;
 
 procedure TfrmExtensions.btnOKClick(Sender: TObject);
 begin
-  SaveAssignedItem;
-  for var i := 0 to Filters.Count - 1 do
-    Filters.Objects[i].Free;
-
-  Filters.Clear;
-
-  for var i := 0 to lvFilters.Items.Count - 1 do
-    Filters.AddObject(lvFilters.Items[i],
-      TFilterData(lvFilters.Items.Objects[i]));
-
-  lvFilters.Clear;
-
+  if not SaveAssignedItem then
+    Exit;
+  MoveToList(Filters);
   Filters_SaveToFile;
+  ModalResult := mrOK;
 end;
 
 procedure TfrmExtensions.edtEdit_or_RunHelperChange(Sender: TObject);
+var
+  Edit: TEditButton;
 begin
-  var vButtonedEdit := Sender as TButtonedEdit;
-
-  vButtonedEdit.Font.Color := IfThen(FileSearch(vButtonedEdit.Text, GetEnvironmentVariable('PATH')) <> '',
-    TColors.SysWindowText, TColors.Red);
-end;
-
-procedure TfrmExtensions.edtEditRunHelperAfterDialog(Sender: TObject;
-  var AName: string; var AAction: Boolean);
-begin
-  AName := ExtractRelativePath(GetCurrentDir, AName);
+  Edit := TEditButton(Sender);
+  if (Trim(Edit.Text) = '') or FileExists(Edit.Text) or
+    (FileSearch(Edit.Text, GetEnvironmentVariable('PATH')) <> '') then
+    Edit.Font.Color := clWindowText
+  else
+    Edit.Font.Color := clRed;
 end;
 
 procedure TfrmExtensions.edtNameChange(Sender: TObject);
 begin
-  if not FIsAssigningListItemIndex then
+  if (not FIsAssigningListItemIndex) and (lvFilters.ItemIndex >= 0) then
     lvFilters.Items[lvFilters.ItemIndex] := edtName.Text;
 end;
 
 procedure TfrmExtensions.edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
 const
-  cTitles: array of string = ['ChooseFileForEdit', 'ChooseFileForRun'];
+  Titles: array[0..1] of string = ('ChooseFileForEdit', 'ChooseFileForRun');
 var
-  Edit: TButtonedEdit;
+  Edit: TEditButton;
 begin
-  Edit := Sender as TButtonedEdit;
-  with OpenDialog do
-  begin
-    DefaultFolder := ExtractFilePath(Edit.Text);
-    FileName := ExtractFileName(Edit.Text);
-    Title := GetLangString('frmExtensions', cTitles[Edit.Tag]);
-    if Execute then
-      Edit.Text := OpenDialog.FileName;
-  end;
+  Edit := TEditButton(Sender);
+  OpenDialog.InitialDir := ExtractFilePath(Edit.Text);
+  OpenDialog.FileName := ExtractFileName(Edit.Text);
+  OpenDialog.Title := GetLangString('frmExtensions', Titles[Edit.Tag]);
+  if OpenDialog.Execute then
+    Edit.Text := OpenDialog.FileName;
 end;
 
 procedure TfrmExtensions.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   Application.OnIdle := nil;
+  if (ModalResult <> mrOK) and (lvFilters.Items.Count > 0) then
+    ClearLocalFilters;
 end;
 
 procedure TfrmExtensions.FormShow(Sender: TObject);
 begin
+  if ImageList.Count = 0 then
+    BuildBrowseButtonImages(ImageList, False);
+  ClearLocalFilters;
   FIsModified := False;
-
-  AssignFilters(Filters);
-
   FIsAssigningListItemIndex := False;
-  with OpenDialog.FileTypes do
-  begin
-    Clear;
-    with Add do
-    begin
-      DisplayName := GetLangString('LangStrings', 'FileDialogExecutableFile');
-      FileMask := '*.exe';
-    end;
-    with Add do
-    begin
-      DisplayName := GetLangString('LangStrings', 'FileDialogAnyFile');
-      FileMask := '*';
-    end;
-  end;
-
+  edtRunHelper.Tag := 1;
+  OpenDialog.Filter := GetLangString('LangStrings',
+    'FileDialogExecutableFile') + '|*.exe|' +
+    GetLangString('LangStrings', 'FileDialogAnyFile') + '|*.*';
+  OpenDialog.FilterIndex := 1;
+  AssignFilters(Filters);
   Application.OnIdle := ApplicationOnFormIdle;
 end;
 
 function TfrmExtensions.GetIsModified: Boolean;
 begin
   Result := edtName.Text <> FAssignedCaption;
-  if not Result and Assigned(FAssignedData) then
-  begin
-    with FAssignedData do
-      Result := Result or (edtExtensions.Text <> Extensions) or
-        (edtEditHelper.Text <> Edit) or (edtEditParams.Text <> EditParams) or
-        (edtRunHelper.Text <> Run) or (edtRunParams.Text <> RunParams);
-  end;
+  if (not Result) and Assigned(FAssignedData) then
+    Result := (edtExtensions.Text <> FAssignedData.Extensions) or
+      (edtEditHelper.Text <> FAssignedData.Edit) or
+      (edtEditParams.Text <> FAssignedData.EditParams) or
+      (edtRunHelper.Text <> FAssignedData.Run) or
+      (edtRunParams.Text <> FAssignedData.RunParams);
 end;
 
 procedure TfrmExtensions.lvFiltersClick(Sender: TObject);
@@ -491,43 +413,42 @@ begin
   if (lvFilters.ItemIndex < 0) or
     (lvFilters.ItemIndex = FAssignedListItemIndex) then
     Exit;
-
   if not SaveAssignedItem then
-    begin
+  begin
     lvFilters.ItemIndex := FAssignedListItemIndex;
     lvFilters.EndDrag(False);
     edtName.SetFocus;
-    end;
-
+    Exit;
+  end;
   AssignCurrentItem;
 end;
 
-procedure TfrmExtensions.lvFiltersDragDrop(Sender, Source: TObject; X,
-  Y: Integer);
+procedure TfrmExtensions.lvFiltersDragDrop(Sender, Source: TObject;
+  X, Y: Integer);
+var
+  NewItemIndex: Integer;
 begin
-  if (Source <> Sender) or (Sender <> lvFilters) then
+  if (Source <> Sender) or (Sender <> lvFilters) or
+    (lvFilters.ItemIndex < 0) then
     Exit;
-with lvFilters do
-  begin
-    if ItemIndex < 0 then Exit;
-    var vNewItemIndex := ItemAtPos(TPoint.Create(X, Y), True);
-    if vNewItemIndex = -1 then
-      if Y < 0 then
-        vNewItemIndex := 0
-      else
-        vNewItemIndex := Count - 1;
-
-    Items.Move(ItemIndex, vNewItemIndex);
-    ItemIndex := vNewItemIndex;
-    FAssignedListItemIndex := ItemIndex;
-  end;
+  NewItemIndex := lvFilters.ItemAtPos(Point(X, Y), True);
+  if NewItemIndex = -1 then
+    if Y < 0 then
+      NewItemIndex := 0
+    else
+      NewItemIndex := lvFilters.Count - 1;
+  lvFilters.Items.Move(lvFilters.ItemIndex, NewItemIndex);
+  lvFilters.ItemIndex := NewItemIndex;
+  FAssignedListItemIndex := NewItemIndex;
+  FIsModified := True;
 end;
 
-procedure TfrmExtensions.lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
-  State: TDragState; var Accept: Boolean);
+procedure TfrmExtensions.lvFiltersDragOver(Sender, Source: TObject;
+  X, Y: Integer; State: TDragState; var Accept: Boolean);
 begin
   Accept := (Sender = Source) and (Sender = lvFilters) and
-    ((Sender as TListBox).ItemIndex >= 0);
+    (TListBox(Sender).ItemIndex >= 0);
 end;
 
+{$POP}
 end.
