@@ -38,9 +38,6 @@ const
 function M_GetUserDefaultUILanguage: LANGID; stdcall;
   external 'kernel32.dll' name 'GetUserDefaultUILanguage';
 
-const
-  cMUILanguageID = $00000004;
-
 function M_SetProcessPreferredUILanguages(Flags: DWORD;
   Languages: PWideChar; var LanguageCount: ULONG): BOOL; stdcall;
   external 'kernel32.dll' name 'SetProcessPreferredUILanguages';
@@ -503,8 +500,8 @@ begin
   WideConfirmation := UTF8Decode(AConfirmation);
   WideCaption := UTF8Decode(AForm.Caption);
   Result := MessageBoxExW(AForm.Handle, PWideChar(WideConfirmation),
-    PWideChar(WideCaption), MB_ICONWARNING or MB_YESNO or MB_DEFBUTTON2,
-    StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = IDYES;
+    PWideChar(WideCaption), MB_ICONWARNING or MB_OKCANCEL or MB_DEFBUTTON2,
+    StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = IDOK;
 end;
 
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;

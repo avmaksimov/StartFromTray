@@ -199,7 +199,7 @@ object frmExtensions: TfrmExtensions
       Width = 407
       EditLabel.Height = 15
       EditLabel.Width = 407
-      EditLabel.Caption = 'Parameters (the file is appended or replaces :(command)):'
+      EditLabel.Caption = 'Parameters — the path is appended or inserted at {file}:'
       TabOrder = 3
       OnChange = edtNameChange
     end
@@ -226,7 +226,7 @@ object frmExtensions: TfrmExtensions
       Width = 407
       EditLabel.Height = 15
       EditLabel.Width = 407
-      EditLabel.Caption = 'Parameters (the file is appended or replaces :(command)):'
+      EditLabel.Caption = 'Parameters — the path is appended or inserted at {file}:'
       TabOrder = 5
       OnChange = edtNameChange
     end

@@ -274,7 +274,7 @@ function TCommandData.InternalRun(const AHelper, AHelperParams: string;
   const RunType: TCommandRunType): THandle;
 const
   RunTypeNames: array[TCommandRunType] of string = ('Normal Run', 'Edit');
-  HelperCommandMarker = ':(command)';
+  HelperCommandMarker = '{file}';
 var
   FileName, Parameters, Operation, TechMessage: string;
   WideFileName, WideParameters, WideOperation, WideDirectory: UnicodeString;

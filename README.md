@@ -57,7 +57,28 @@ Keep the application in a folder where your Windows account has write access. Th
 
 The interface supports external language files stored in the `Langs` directory. New translations can be added without recompiling the application.
 
-StartFromTray is a native Windows application written in Delphi using VCL.
+The following interface languages are currently included:
+
+* English
+* Russian
+* German
+* Spanish
+* French
+* Brazilian Portuguese
+* Japanese
+* Simplified Chinese
+
+## Building from source
+
+StartFromTray currently targets Windows and is developed using Lazarus 4.8 and Free Pascal 3.2.2.
+
+1. Open `StartFromTray.lpi` in Lazarus. Do not open `StartFromTray.lpr` as a standalone project.
+2. Select the required Windows target architecture in the project settings.
+3. Choose **Run → Clean up and build**.
+
+The user interface and most of the application logic use LCL. Native Linux support is planned, but the remaining Windows integrations must first be replaced or adapted.
+
+StartFromTray is written in Object Pascal using Free Pascal and the Lazarus Component Library (LCL).
 
 ## License
 
