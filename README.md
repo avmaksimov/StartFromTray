@@ -43,7 +43,7 @@ For example, you can:
 * use different editors for different file types;
 * add custom file-type filters to the file selection dialog.
 
-Run and Edit applications can have their own command-line parameters. The `:(command)` placeholder can be used to specify the exact position of the selected file in the parameter string.
+Run and Edit applications can have their own command-line parameters. Use the `{file}` placeholder to insert the selected file at an exact position. If `{file}` is omitted, the file path is appended to the end.
 
 If no custom Edit action is configured, StartFromTray uses the Windows file association. If no editor is associated with the file, StartFromTray opens File Explorer and selects the file.
 
