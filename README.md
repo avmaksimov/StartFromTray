@@ -83,3 +83,7 @@ StartFromTray is written in Object Pascal using Free Pascal and the Lazarus Comp
 ## License
 
 StartFromTray is available under the [Mozilla Public License 2.0](LICENSE).
+
+## Maintainer
+
+StartFromTray is an independent open-source project created and maintained by Andrei Maksimov, founder of [MTG. Business Solutions] (https://mtg-biz.ru/). The application is also used internally by the company.

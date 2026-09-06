@@ -14,6 +14,7 @@ type
   TMPPopupMenu = class(TPopupMenu)
   private
     FLastButton: TMouseButton;
+    FSelectedItem: TMenuItem;
     FOnItemMiddleClick: TMenuItemClickEvent;
     FOnItemRightClick: TMenuItemClickEvent;
     FOnQueryItemMissing: TMenuItemMissingQueryEvent;
@@ -66,6 +67,32 @@ function MenuMessageFilter(Code: Integer; HookWParam: WPARAM;
   HookLParam: LPARAM): LRESULT; stdcall;
 var
   Msg: PMsg;
+
+  function DispatchSelectedGroup(
+    const AButton: TMouseButton): Boolean;
+  var
+    PopupMenu: TMPPopupMenu;
+    SelectedItem: TMenuItem;
+  begin
+    Result := False;
+    PopupMenu := ActivePopupMenu;
+
+    if not Assigned(PopupMenu) then
+      Exit;
+
+    SelectedItem := PopupMenu.FSelectedItem;
+    if not Assigned(SelectedItem) or (SelectedItem.Count = 0) then
+      Exit;
+
+    PopupMenu.FLastButton := AButton;
+    try
+      PopupMenu.DispatchAlternateClick(SelectedItem);
+    finally
+      PopupMenu.FLastButton := mbLeft;
+    end;
+
+    Result := True;
+  end;
 begin
   if Code < 0 then
     Exit(CallNextHookEx(MenuMessageHook, Code, HookWParam, HookLParam));
@@ -89,6 +116,12 @@ begin
         end;
       WM_RBUTTONUP:
         begin
+          if DispatchSelectedGroup(mbRight) then
+          begin
+            Msg^.message := WM_NULL;
+            Exit(1);
+          end;
+
           ActivePopupMenu.FLastButton := mbRight;
           Msg^.message := WM_LBUTTONUP;
           Msg^.wParam := Msg^.wParam and not WPARAM(MK_RBUTTON);
@@ -110,6 +143,12 @@ begin
         end;
       WM_MBUTTONUP:
         begin
+          if DispatchSelectedGroup(mbMiddle) then
+          begin
+            Msg^.message := WM_NULL;
+            Exit(1);
+          end;
+
           ActivePopupMenu.FLastButton := mbMiddle;
           Msg^.message := WM_LBUTTONUP;
           Msg^.wParam := Msg^.wParam and not WPARAM(MK_MBUTTON);
@@ -136,6 +175,7 @@ constructor TMPPopupMenu.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FLastButton := mbLeft;
+  FSelectedItem := nil;
   FPopupGeneration := 0;
   OwnerDraw := True;
 end;
@@ -147,7 +187,11 @@ begin
   ClickButton := FLastButton;
 
   { У родительского пункта меню Windows самостоятельно меню не закрывает. }
+  {$IFDEF MSWINDOWS}
+  Windows.EndMenu;
+  {$ELSE}
   Close;
+  {$ENDIF}
 
   case ClickButton of
     mbMiddle:
@@ -180,6 +224,8 @@ end;
 procedure TMPPopupMenu.Popup(X, Y: Integer);
 begin
   FLastButton := mbLeft;
+  FSelectedItem := nil;
+
   Inc(FPopupGeneration);
   if FPopupGeneration = 0 then
     Inc(FPopupGeneration);
@@ -292,13 +338,17 @@ end;
 
 procedure TMPMenuItem.IntfDoSelect;
 begin
+  if Assigned(ActivePopupMenu) then
+  begin
+    ActivePopupMenu.FSelectedItem := Self;
   { A submenu is prepared at most once for the current popup session. The
     rest of the tree remains untouched until the user actually enters it. }
-  if Assigned(ActivePopupMenu) and (Count > 0) and
-    (FPreparedGeneration <> ActivePopupMenu.FPopupGeneration) then
-  begin
-    FPreparedGeneration := ActivePopupMenu.FPopupGeneration;
-    ActivePopupMenu.PrepareLevel(Self);
+    if (Count > 0) and
+      (FPreparedGeneration <> ActivePopupMenu.FPopupGeneration) then
+    begin
+      FPreparedGeneration := ActivePopupMenu.FPopupGeneration;
+      ActivePopupMenu.PrepareLevel(Self);
+    end;
   end;
   inherited IntfDoSelect;
 end;
