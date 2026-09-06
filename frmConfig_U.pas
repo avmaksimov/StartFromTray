@@ -493,7 +493,7 @@ var
   WideVerb, WideLink: UnicodeString;
 begin
   WideVerb := 'open';
-  WideLink := 'https://github.com/avmaksimov/StartFromTray';
+  WideLink := 'https://github.com/avmaksimov/StartFromTray/releases';
   ShellExecuteW(Handle, PWideChar(WideVerb), PWideChar(WideLink), nil, nil,
     SW_SHOWNORMAL);
 end;
