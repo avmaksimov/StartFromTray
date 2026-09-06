@@ -18,9 +18,13 @@ const
   cIniFormWidth = 'Width';
   cIniFormHeight = 'Height';
 
-{$PUSH}
-{$WARN 5024 OFF}
+  cMinFormWidth = 808;
+  cMinFormHeight = 525;
+
 type
+
+  { TfrmConfig }
+
   TfrmConfig = class(TForm)
     actAddElement: TAction;
     actCopy: TAction;
@@ -77,6 +81,7 @@ type
     procedure actOKExecute(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FormWindowStateChange(Sender: TObject);
     procedure ppCMConfigClick(Sender: TObject);
     procedure ppCMExitClick(Sender: TObject);
     procedure tvItemsChange(Sender: TObject; Node: TTreeNode);
@@ -85,18 +90,18 @@ type
     procedure tvItemsDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure tvItemsEdited(Sender: TObject; Node: TTreeNode; var S: string);
     procedure TrayIconMouseUp(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
-    procedure tvItemsDragOver(Sender, Source: TObject; X, Y: Integer;
-      State: TDragState; var Accept: Boolean);
+      {%H-}Shift: TShiftState; X, Y: Integer);
+    procedure tvItemsDragOver(Sender, Source: TObject; {%H-}X, {%H-}Y: Integer;
+      {%H-}State: TDragState; var Accept: Boolean);
     procedure ppTrayMenuItemMiddleClick(Item: TMenuItem);
     procedure ppTrayMenuItemRightClick(Item: TMenuItem);
     procedure actCopyExecute(Sender: TObject);
     procedure tvItemsCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
-      State: TCustomDrawState; var DefaultDraw: Boolean);
+      {%H-}State: TCustomDrawState; var {%H-}DefaultDraw: Boolean);
     procedure FormHide(Sender: TObject);
     procedure lblVerClick(Sender: TObject);
     procedure FormConstrainedResize(Sender: TObject; var MinWidth, MinHeight,
-      MaxWidth, MaxHeight: Integer);
+      {%H-}MaxWidth, {%H-}MaxHeight: Integer);
     procedure miOptionsExitProgramClick(Sender: TObject);
     procedure btnOptionsClick(Sender: TObject);
     procedure miOptionsRunAtStartClick(Sender: TObject);
@@ -107,6 +112,7 @@ type
     IsModified: Boolean;
     MouseButtonSwapped: Boolean;
     ppTrayMenu: TMPPopupMenu;
+    FWindowStateBeforeMinimize: TWindowState;
     procedure CorrectTreeViewItemHeight;
     procedure DisposeTreeNodeData(TreeNode: TTreeNode;
       const AddToDeletedImages: Boolean);
@@ -117,6 +123,7 @@ type
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
       const NotifyEvent: TNotifyEvent);
     procedure UpdateLblVerLeftAndCaption;
+    procedure RestoreFormProperties;
     procedure SaveFormProperties;
     procedure MyFormShow;
     procedure ExitProgram;
@@ -126,6 +133,7 @@ type
     MainIniFile: TIniFile;
     ListDeletedImageIndexes: TList<Word>;
     destructor Destroy; override;
+    procedure Initialize(const AMainIniFile: TIniFile);
     procedure miOptionsLangClick(Sender: TObject);
   end;
 
@@ -396,7 +404,6 @@ end;
 
 procedure TfrmConfig.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  SaveFormProperties;
   if not Application.Terminated then
   begin
     Action := caNone;
@@ -407,8 +414,8 @@ end;
 procedure TfrmConfig.FormConstrainedResize(Sender: TObject;
   var MinWidth, MinHeight, MaxWidth, MaxHeight: Integer);
 begin
-  MinWidth := 808;
-  MinHeight := 525;
+  MinWidth := cMinFormWidth;
+  MinHeight := cMinFormHeight;
 end;
 
 procedure TfrmConfig.FormCreate(Sender: TObject);
@@ -462,10 +469,6 @@ begin
   if Assigned(ppTrayMenu) then
     ppTrayMenu.Items.Clear;
   DisposeAllTreeData;
-  if Assigned(miOptionsLang) then
-    for I := 0 to miOptionsLang.Count - 1 do
-      if miOptionsLang.Items[I].Tag <> 0 then
-        StrDispose(PChar(Pointer(miOptionsLang.Items[I].Tag)));
   ListDeletedImageIndexes.Free;
   inherited Destroy;
 end;
@@ -495,8 +498,33 @@ begin
     SW_SHOWNORMAL);
 end;
 
+procedure TfrmConfig.MyFormShow;
+var
+  WasMinimized: Boolean;
+  RestoreState: TWindowState;
+begin
+  WasMinimized := WindowState = wsMinimized;
+  RestoreState := FWindowStateBeforeMinimize;
+
+  Show;
+
+  if WasMinimized then
+    WindowState := RestoreState;
+
+  BringToFront;
+end;
+
 procedure TfrmConfig.ExitProgram;
 begin
+  if IsModified or frmCommandConfig.IsModified then
+  begin
+    MyFormShow;
+
+    if not AskForConfirmation(Self,
+      GetLangString('LangStrings', 'CancelConfirm')) then
+      Exit;
+  end;
+
   SaveFormProperties;
   TrayIcon.Visible := False;
   Application.Terminate;
@@ -514,13 +542,10 @@ end;
 
 procedure TfrmConfig.miOptionsLangClick(Sender: TObject);
 var
-  MenuItem: TMenuItem;
+  MenuItem: TLangMenuItem;
 begin
-  MenuItem := TMenuItem(Sender);
-  SetLang(
-    StrPas(PChar(Pointer(MenuItem.Tag))),
-    MainIniFile
-  );
+  MenuItem := TLangMenuItem(Sender);
+  SetLang(MenuItem.LangCode, MainIniFile);
   if Visible then
     UpdateLblVerLeftAndCaption;
   lblVer.Hint := GetLangString(Name, 'VersionHint');
@@ -544,14 +569,6 @@ begin
   end;
 end;
 
-procedure TfrmConfig.MyFormShow;
-begin
-  Show;
-  if WindowState = wsMinimized then
-    WindowState := wsNormal;
-  BringToFront;
-end;
-
 procedure TfrmConfig.ppCMConfigClick(Sender: TObject);
 begin
   MyFormShow;
@@ -567,9 +584,11 @@ var
   CommandData: TCommandData;
 begin
   Result := False;
-  if (not Assigned(Item)) or (Item.Tag = 0) or (Item.Count > 0) then
-    Exit;
-  CommandData := TCommandData(Pointer(Item.Tag));
+  if (not Assigned(Item)) or not (Item is TMPMenuItem) or
+     (TMPMenuItem(Item).Data = nil) or (Item.Count > 0) then
+       Exit;
+
+  CommandData := TCommandData(TMPMenuItem(Item).Data);
   Result := (not CommandData.isGroup) and
     (CommandData.ExtendCommandToFullName = '');
 end;
@@ -605,7 +624,7 @@ procedure TfrmConfig.TreeToMenu(ATreeNodes: TTreeNodes;
     MenuItem := TMPMenuItem.Create(ppTrayMenu);
     MenuItem.Caption := TreeNode.Text;
     MenuItem.ImageIndex := TreeNode.ImageIndex;
-    MenuItem.Tag := PtrInt(TreeNode.Data);
+    MenuItem.Data := TreeNode.Data;
     MenuItem.OnClick := NotifyEvent;
     ParentItem.Add(MenuItem);
     ChildNode := TreeNode.GetFirstChild;
@@ -687,6 +706,13 @@ begin
     if tvItems.Selected.Top < Y then
       TargetNode := TargetNode.GetNextSibling;
   end;
+
+  if not frmCommandConfig.SaveAssigned then
+  begin
+    frmCommandConfig.SetFocus;
+    Exit;
+  end;
+
   tvItems.Selected.MoveTo(TargetNode, AttachMode);
   IsModified := True;
 end;
@@ -748,6 +774,157 @@ begin
   lblVer.Caption := GetLangString(Name, 'Version') + ' ' + GetBuildInfo;
 end;
 
+procedure TfrmConfig.FormWindowStateChange(Sender: TObject);
+begin
+  if WindowState in [wsNormal, wsMaximized] then
+    FWindowStateBeforeMinimize := WindowState;
+end;
+
+procedure TfrmConfig.RestoreFormProperties;
+
+  function RectsIntersect(const A, B: TRect): Boolean;
+  begin
+    Result :=
+      (A.Left < B.Right) and
+      (A.Right > B.Left) and
+      (A.Top < B.Bottom) and
+      (A.Bottom > B.Top);
+  end;
+
+var
+  SavedLeft, SavedTop: Integer;
+  SavedWidth, SavedHeight: Integer;
+  SavedState: Integer;
+  NewLeft, NewTop: Integer;
+  WorkWidth, WorkHeight: Integer;
+  I: Integer;
+  SavedRect, WorkArea: TRect;
+  TargetMonitor: Forms.TMonitor;
+  HasSavedPosition, PositionIsVisible: Boolean;
+begin
+  if not Assigned(MainIniFile) then
+    Exit;
+
+  SavedWidth := MainIniFile.ReadInteger(
+    cIniFormIdent, cIniFormWidth, Width);
+  SavedHeight := MainIniFile.ReadInteger(
+    cIniFormIdent, cIniFormHeight, Height);
+
+  { Защищаемся от повреждённых или вручную изменённых размеров. }
+  if (SavedWidth < cMinFormWidth) or
+     (SavedWidth > Screen.DesktopWidth) then
+    SavedWidth := cMinFormWidth;
+
+  if (SavedHeight < cMinFormHeight) or
+     (SavedHeight > Screen.DesktopHeight) then
+    SavedHeight := cMinFormHeight;
+
+  SavedState := MainIniFile.ReadInteger(
+    cIniFormIdent, cIniFormState, Integer(wsNormal));
+
+  HasSavedPosition :=
+    MainIniFile.ValueExists(cIniFormIdent, cIniFormLeft) and
+    MainIniFile.ValueExists(cIniFormIdent, cIniFormTop);
+
+  PositionIsVisible := False;
+
+  if HasSavedPosition then
+  begin
+    SavedLeft := MainIniFile.ReadInteger(
+      cIniFormIdent, cIniFormLeft, Left);
+    SavedTop := MainIniFile.ReadInteger(
+      cIniFormIdent, cIniFormTop, Top);
+
+    { Не допускаем переполнения при построении прямоугольника. }
+    if (Int64(SavedLeft) + SavedWidth <= High(Integer)) and
+       (Int64(SavedTop) + SavedHeight <= High(Integer)) then
+    begin
+      SavedRect := Types.Rect(
+        SavedLeft,
+        SavedTop,
+        Integer(Int64(SavedLeft) + SavedWidth),
+        Integer(Int64(SavedTop) + SavedHeight)
+      );
+
+      for I := 0 to Screen.MonitorCount - 1 do
+        if RectsIntersect(
+          SavedRect, Screen.Monitors[I].WorkareaRect) then
+        begin
+          PositionIsVisible := True;
+          Break;
+        end;
+    end;
+  end;
+
+  if PositionIsVisible then
+    TargetMonitor := Screen.MonitorFromRect(SavedRect)
+  else
+    TargetMonitor := Screen.PrimaryMonitor;
+
+  WorkArea := TargetMonitor.WorkareaRect;
+  WorkWidth := WorkArea.Right - WorkArea.Left;
+  WorkHeight := WorkArea.Bottom - WorkArea.Top;
+
+  { Если разрешение уменьшилось, уменьшаем форму до рабочей области. }
+  if SavedWidth > WorkWidth then
+    SavedWidth := WorkWidth;
+
+  if SavedHeight > WorkHeight then
+    SavedHeight := WorkHeight;
+
+  if PositionIsVisible then
+  begin
+    NewLeft := SavedLeft;
+    NewTop := SavedTop;
+  end
+  else
+  begin
+    { Первый запуск или исчезнувший монитор — центр основного экрана. }
+    NewLeft := WorkArea.Left + (WorkWidth - SavedWidth) div 2;
+    NewTop := WorkArea.Top + (WorkHeight - SavedHeight) div 2;
+  end;
+
+  { Полностью возвращаем форму в рабочую область монитора. }
+  if NewLeft < WorkArea.Left then
+    NewLeft := WorkArea.Left;
+
+  if Int64(NewLeft) + SavedWidth > WorkArea.Right then
+    NewLeft := WorkArea.Right - SavedWidth;
+
+  if NewTop < WorkArea.Top then
+    NewTop := WorkArea.Top;
+
+  if Int64(NewTop) + SavedHeight > WorkArea.Bottom then
+    NewTop := WorkArea.Bottom - SavedHeight;
+
+  Position := poDesigned;
+  WindowState := wsNormal;
+
+  SetRestoredBounds(
+    NewLeft,
+    NewTop,
+    SavedWidth,
+    SavedHeight,
+    False
+  );
+
+  { Свёрнутым окно никогда не восстанавливаем. }
+  if SavedState = Integer(wsMaximized) then
+    WindowState := wsMaximized;
+end;
+
+procedure TfrmConfig.Initialize(const AMainIniFile: TIniFile);
+begin
+  if Assigned(MainIniFile) then
+    Exit;
+
+  if not Assigned(AMainIniFile) then
+    raise Exception.Create('Main INI file is not assigned.');
+
+  MainIniFile := AMainIniFile;
+  RestoreFormProperties;
+end;
+
 procedure TfrmConfig.WndProc(var Message: TLMessage);
 begin
   if (WM_TASKBARCREATED > 0) and (Message.msg = WM_TASKBARCREATED) then
@@ -804,13 +981,14 @@ end;
 
 procedure TfrmConfig.ppTrayMenuItemOnClick(Sender: TObject);
 var
-  MenuItem: TMenuItem;
+  MenuItem: TMPMenuItem;
   CommandData: TCommandData;
 begin
-  MenuItem := TMenuItem(Sender);
+  MenuItem := TMPMenuItem(Sender);
   if MenuItem.Count <> 0 then
     Exit;
-  CommandData := TCommandData(Pointer(MenuItem.Tag));
+
+  CommandData := TCommandData(MenuItem.Data);
   if not MouseButtonSwapped then
     CommandData.Run(crtNormalRun)
   else
@@ -820,16 +998,24 @@ end;
 procedure TfrmConfig.ppTrayMenuItemMiddleClick(Item: TMenuItem);
 var
   I: Integer;
+  MenuItem: TMPMenuItem;
 begin
-  if Item.Count <> 0 then
+  if not (Item is TMPMenuItem) then
     Exit;
+
+  MenuItem := TMPMenuItem(Item);
+
+  if MenuItem.Data = nil then
+    Exit;
+
+  MyFormShow;
+
   for I := 0 to tvItems.Items.Count - 1 do
-    if tvItems.Items[I].Data = Pointer(Item.Tag) then
+    if tvItems.Items[I].Data = MenuItem.Data then
     begin
-      ppTrayMenu.Close;
-      MyFormShow;
       tvItems.Selected := tvItems.Items[I];
-      Break;
+      tvItems.Items[I].MakeVisible;
+      Exit;
     end;
 end;
 
@@ -837,9 +1023,10 @@ procedure TfrmConfig.ppTrayMenuItemRightClick(Item: TMenuItem);
 var
   CommandData: TCommandData;
 begin
-  if Item.Count <> 0 then
+  if not (Item is TMPMenuItem) or (Item.Count <> 0) then
     Exit;
-  CommandData := TCommandData(Pointer(Item.Tag));
+
+  CommandData := TCommandData(TMPMenuItem(Item).Data);
   if not MouseButtonSwapped then
     CommandData.Edit
   else
@@ -935,15 +1122,33 @@ begin
 end;
 
 procedure TfrmConfig.SaveFormProperties;
+var
+  StateToSave: TWindowState;
 begin
   if not Assigned(MainIniFile) then
     Exit;
-  if WindowState <> wsMinimized then
-    MainIniFile.WriteInteger(cIniFormIdent, cIniFormState,
-      Integer(WindowState));
-  MainIniFile.WriteInteger(cIniFormIdent, cIniFormWidth, Width);
-  MainIniFile.WriteInteger(cIniFormIdent, cIniFormHeight, Height);
+
+  StateToSave := WindowState;
+  if StateToSave = wsMinimized then
+    StateToSave := FWindowStateBeforeMinimize;
+
+  MainIniFile.WriteInteger(cIniFormIdent, cIniFormState,
+    Integer(StateToSave));
+
+  if WindowState = wsNormal then
+  begin
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormLeft, Left);
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormTop, Top);
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormWidth, Width);
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormHeight, Height);
+  end
+  else
+  begin
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormLeft, RestoredLeft);
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormTop, RestoredTop);
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormWidth, RestoredWidth);
+    MainIniFile.WriteInteger(cIniFormIdent, cIniFormHeight, RestoredHeight);
+  end;
 end;
 
-{$POP}
 end.

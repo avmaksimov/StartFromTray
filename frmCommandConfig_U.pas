@@ -8,8 +8,6 @@ uses
   Classes, SysUtils, Types, Forms, Controls, StdCtrls, ExtCtrls, ComCtrls,
   Dialogs, ImgList, Menus, Buttons, Generics.Collections, CommandsClass_U;
 
-{$PUSH}
-{$WARN 5024 OFF}
 type
   TfrmCommandConfig = class(TFrame)
     cbIsVisible: TCheckBox;
@@ -537,7 +535,5 @@ begin
   FAssignedCaption := NewCaption;
   Result := True;
 end;
-
-{$POP}
 
 end.

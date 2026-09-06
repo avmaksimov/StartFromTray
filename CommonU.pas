@@ -25,7 +25,7 @@ var
 implementation
 
 uses
-  Forms, Dialogs, StdCtrls, IniFiles, Masks, Windows, ShellApi;
+  Forms, Dialogs, StdCtrls, Masks, Windows, ShellApi;
 
 procedure BuildBrowseButtonImages(AImageList: TImageList;
   const IncludeFolder: Boolean);
@@ -211,20 +211,5 @@ begin
     for I := 0 to TWinControl(AControl).ControlCount - 1 do
       M_SetChildsEnable(TWinControl(AControl).Controls[I], AEnabled);
 end;
-
-initialization
-  with FormatSettings do
-  begin
-    DateSeparator := '.';
-    TimeSeparator := ':';
-    ShortDateFormat := 'dd/mm/yyyy';
-    LongTimeFormat := 'hh:nn:ss';
-  end;
-  with TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini')) do
-    try
-      gDebug := ReadBool('Debug', 'Debug', False);
-    finally
-      Free;
-    end;
 
 end.

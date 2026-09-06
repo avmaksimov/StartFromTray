@@ -8,8 +8,6 @@ uses
   Classes, SysUtils, Types, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
   ImgList, Generics.Collections;
 
-{$PUSH}
-{$WARN 5024 OFF}
 type
   TfrmChooseExt = class(TForm)
     ImageList: TImageList;
@@ -21,9 +19,9 @@ type
     btnOK: TButton;
     btnCancel: TButton;
     procedure FormShow(Sender: TObject);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormClose(Sender: TObject; var {%H-}Action: TCloseAction);
     procedure lbExtensionsClick(Sender: TObject);
-    procedure lbExtensionsDrawItem(Control: TWinControl; Index: Integer;
+    procedure lbExtensionsDrawItem({%H-}Control: TWinControl; Index: Integer;
       ARect: Types.TRect; State: StdCtrls.TOwnerDrawState);
     procedure edtExtChange(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
@@ -246,5 +244,4 @@ begin
     lbExtensions.Canvas.DrawFocusRect(ARect);
 end;
 
-{$POP}
 end.

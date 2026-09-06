@@ -7,6 +7,14 @@ interface
 uses
   Forms, Classes, Menus, IniFiles;
 
+type
+  TLangMenuItem = class(TMenuItem)
+  private
+    FLangCode: string;
+  public
+    property LangCode: string read FLangCode write FLangCode;
+  end;
+
 procedure GenDefaultFileLang;
 function GetLangString(const ASection, AString: string): string;
 procedure SetLang(const ALangCode: string;
@@ -421,11 +429,11 @@ function LangFillListAndGetCurrent(const AMainIniFile: TIniFile;
 
   procedure AddSubMenuItem(const ALangName, ALangCode: string);
   var
-    MenuItem: TMenuItem;
+    MenuItem: TLangMenuItem;
   begin
-    MenuItem := TMenuItem.Create(AMenu);
+    MenuItem := TLangMenuItem.Create(AMenu);
     MenuItem.Caption := ALangName;
-    MenuItem.Tag := PtrInt(StrNew(PChar(ALangCode)));
+    MenuItem.LangCode := ALangCode;
     MenuItem.RadioItem := True;
     MenuItem.OnClick := AOnClick;
     AmiLang.Add(MenuItem);

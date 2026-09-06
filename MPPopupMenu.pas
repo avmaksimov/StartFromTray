@@ -35,6 +35,7 @@ type
 
   TMPMenuItem = class(TMenuItem)
   private
+    FData: Pointer;
     FMissingTarget: Boolean;
     FPreparedGeneration: Cardinal;
   protected
@@ -43,6 +44,7 @@ type
   public
     procedure Click; override;
     procedure IntfDoSelect; override;
+    property Data: Pointer read FData write FData;
     property MissingTarget: Boolean read FMissingTarget write FMissingTarget;
   end;
 
@@ -70,7 +72,10 @@ begin
 
   if (Code = MSGF_MENU) and Assigned(ActivePopupMenu) then
   begin
+    {$PUSH}
+    {$WARN 4055 OFF}
     Msg := PMsg(PtrUInt(HookLParam));
+    {$POP}
     case Msg^.message of
       WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK:
         ActivePopupMenu.FLastButton := mbLeft;
@@ -136,8 +141,15 @@ begin
 end;
 
 procedure TMPPopupMenu.DispatchAlternateClick(AItem: TMenuItem);
+var
+  ClickButton: TMouseButton;
 begin
-  case FLastButton of
+  ClickButton := FLastButton;
+
+  { У родительского пункта меню Windows самостоятельно меню не закрывает. }
+  Close;
+
+  case ClickButton of
     mbMiddle:
       if Assigned(FOnItemMiddleClick) then
         FOnItemMiddleClick(AItem);
@@ -257,10 +269,23 @@ begin
 end;
 
 procedure TMPMenuItem.Click;
+var
+  PopupMenu: TMPPopupMenu;
 begin
-  if Assigned(ActivePopupMenu) and
-    (ActivePopupMenu.LastButton in [mbMiddle, mbRight]) then
-    ActivePopupMenu.DispatchAlternateClick(Self)
+  if GetParentMenu is TMPPopupMenu then
+    PopupMenu := TMPPopupMenu(GetParentMenu)
+  else
+    PopupMenu := nil;
+
+  if Assigned(PopupMenu) and
+    (PopupMenu.LastButton in [mbMiddle, mbRight]) then
+  begin
+    try
+      PopupMenu.DispatchAlternateClick(Self);
+    finally
+      PopupMenu.FLastButton := mbLeft;
+    end;
+  end
   else
     inherited Click;
 end;

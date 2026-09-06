@@ -13,6 +13,7 @@ object frmConfig: TfrmConfig
   OnCreate = FormCreate
   OnHide = FormHide
   OnShow = FormShow
+  OnWindowStateChange = FormWindowStateChange
   object gbItems: TGroupBox
     Left = 6
     Height = 425

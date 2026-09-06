@@ -1,4 +1,5 @@
 # Lazarus / Free Pascal build results
+/dist/
 /lib/
 *.compiled
 *.ppu
@@ -7,6 +8,7 @@
 *.a
 *.so
 *.dll
+*.obj
 *.exe
 *.dbg
 
@@ -20,6 +22,8 @@
 /backup/
 *.bak
 *.~*
+
+# Generated files
 StartFromTray.ini
 Langs/Default.ini
 Items.xml

@@ -8,8 +8,6 @@ uses
   SysUtils, Classes, Graphics, Controls, Forms, Dialogs, StdCtrls,
   ExtCtrls, ImgList, EditBtn, FilterClass_U;
 
-{$PUSH}
-{$WARN 5024 OFF}
 type
   TfrmExtensions = class(TForm)
     gbExtensions: TGroupBox;
@@ -47,9 +45,9 @@ type
     procedure edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure lvFiltersDragDrop(Sender, Source: TObject; X, Y: Integer);
-    procedure lvFiltersDragOver(Sender, Source: TObject; X, Y: Integer;
-      State: TDragState; var Accept: Boolean);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure lvFiltersDragOver(Sender, Source: TObject; {%H-}X, {%H-}Y: Integer;
+      {%H-}State: TDragState; var Accept: Boolean);
+    procedure FormClose(Sender: TObject; var {%H-}Action: TCloseAction);
     procedure pbEdit_or_RunPaint(Sender: TObject);
     procedure edtEdit_or_RunHelperChange(Sender: TObject);
   private
@@ -450,5 +448,4 @@ begin
     (TListBox(Sender).ItemIndex >= 0);
 end;
 
-{$POP}
 end.
