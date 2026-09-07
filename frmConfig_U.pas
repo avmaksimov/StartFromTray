@@ -11,6 +11,11 @@ uses
   frmCommandConfig_U, MPPopupMenu;
 
 const
+  cShowTrayMenuMessageName =
+    'StartFromTray.ShowTrayMenu.{3A55B01F-07C3-4DC7-A7C0-C71A78C10B66}';
+  cMainWindowPropertyName =
+    'StartFromTray.MainWindow.{3A55B01F-07C3-4DC7-A7C0-C71A78C10B66}';
+
   cIniFormIdent = 'FormConfig';
   cIniFormState = 'State';
   cIniFormLeft = 'Left';
@@ -120,6 +125,7 @@ type
     procedure ReloadData;
     procedure ppTrayMenuItemOnClick(Sender: TObject);
     function ppTrayMenuQueryItemMissing(Item: TMenuItem): Boolean;
+    function GetTrayMenuPoint: TPoint;
     procedure TreeToMenu(ATreeNodes: TTreeNodes; AMenuItems: TMenuItem;
       const NotifyEvent: TNotifyEvent);
     procedure UpdateLblVerLeftAndCaption;
@@ -128,6 +134,8 @@ type
     procedure MyFormShow;
     procedure ExitProgram;
   protected
+    procedure CreateWnd; override;
+    procedure DestroyWnd; override;
     procedure WndProc(var Message: TLMessage); override;
   public
     MainIniFile: TIniFile;
@@ -140,6 +148,7 @@ type
 var
   frmConfig: TfrmConfig;
   WM_TASKBARCREATED: UINT = 0;
+  WM_SHOWTRAYMENU: UINT = 0;
 
 implementation
 
@@ -148,6 +157,44 @@ uses
   LangsU;
 
 {$R *.lfm}
+
+const
+  cLCLTrayIconID = 25;
+
+type
+  PNotifyIconIdentifierEx = ^TNotifyIconIdentifierEx;
+  TNotifyIconIdentifierEx = record
+    cbSize: DWORD;
+    hWnd: HWND;
+    uID: UINT;
+    guidItem: TGUID;
+  end;
+
+  PTrayIconRect = ^TRect;
+
+function M_Shell_NotifyIconGetRect(
+  Identifier: PNotifyIconIdentifierEx;
+  IconLocation: PTrayIconRect
+): HRESULT; stdcall;
+  external 'shell32.dll' name 'Shell_NotifyIconGetRect';
+
+procedure TfrmConfig.CreateWnd;
+begin
+  inherited CreateWnd;
+
+  if not Windows.SetProp(
+    Handle,
+    PChar(cMainWindowPropertyName),
+    THandle(1)
+  ) then
+    RaiseLastOSError;
+end;
+
+procedure TfrmConfig.DestroyWnd;
+begin
+  Windows.RemoveProp(Handle, PChar(cMainWindowPropertyName));
+  inherited DestroyWnd;
+end;
 
 procedure TfrmConfig.actApplyExecute(Sender: TObject);
 var
@@ -593,6 +640,27 @@ begin
     (CommandData.ExtendCommandToFullName = '');
 end;
 
+function TfrmConfig.GetTrayMenuPoint: TPoint;
+var
+  Identifier: TNotifyIconIdentifierEx;
+  IconRect: TRect;
+begin
+  { Запасной вариант — приблизительная позиция LCL. }
+  Result := TrayIcon.GetPosition;
+
+  FillChar(Identifier, SizeOf(Identifier), 0);
+  Identifier.cbSize := SizeOf(Identifier);
+  Identifier.hWnd := TrayIcon.Handle;
+  Identifier.uID := cLCLTrayIconID;
+
+  if (TrayIcon.Handle <> 0) and
+     (M_Shell_NotifyIconGetRect(@Identifier, @IconRect) = 0) then
+    Result := Types.Point(
+      (IconRect.Left + IconRect.Right) div 2,
+      (IconRect.Top + IconRect.Bottom) div 2
+    );
+end;
+
 procedure TfrmConfig.TrayIconMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
@@ -926,8 +994,32 @@ begin
 end;
 
 procedure TfrmConfig.WndProc(var Message: TLMessage);
+var
+  PopupPoint: TPoint;
 begin
-  if (WM_TASKBARCREATED > 0) and (Message.msg = WM_TASKBARCREATED) then
+  if (WM_SHOWTRAYMENU > 0) and
+     (Message.Msg = WM_SHOWTRAYMENU) then
+  begin
+    if ppTrayMenu.Items.Count > 0 then
+    begin
+      PopupPoint := GetTrayMenuPoint;
+      TrayIconMouseUp(
+        TrayIcon,
+        mbLeft,
+        [],
+        PopupPoint.X,
+        PopupPoint.Y
+      );
+    end
+    else
+      MyFormShow;
+
+    Message.Result := 0;
+    Exit;
+  end;
+
+  if (WM_TASKBARCREATED > 0) and
+     (Message.Msg = WM_TASKBARCREATED) then
   begin
     WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
     try
@@ -936,6 +1028,7 @@ begin
     end;
     TrayIcon.Visible := True;
   end;
+
   inherited WndProc(Message);
 end;
 
