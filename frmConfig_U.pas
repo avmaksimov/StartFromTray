@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Types, Forms, Controls, Graphics, Dialogs, ComCtrls,
   ExtCtrls, Menus, StdCtrls, ActnList, Registry, Windows, ImgList,
-  IniFiles, Generics.Collections, LMessages, CommandsClass_U,
+  IniFiles, LMessages, CommandsClass_U,
   frmCommandConfig_U, MPPopupMenu;
 
 const
@@ -139,7 +139,7 @@ type
     procedure WndProc(var Message: TLMessage); override;
   public
     MainIniFile: TIniFile;
-    ListDeletedImageIndexes: TList<Word>;
+    ListDeletedImageIndexes: TImageIndexList;
     destructor Destroy; override;
     procedure Initialize(const AMainIniFile: TIniFile);
     procedure miOptionsLangClick(Sender: TObject);
@@ -491,7 +491,7 @@ begin
   gMenuItemBmpHeight := GetSystemMetrics(SM_CYSMICON);
   TreeImageList.Width := gMenuItemBmpWidth;
   TreeImageList.Height := gMenuItemBmpHeight;
-  ListDeletedImageIndexes := TList<Word>.Create;
+  ListDeletedImageIndexes := TImageIndexList.Create;
   frmCommandConfig.ListDeletedImageIndexes := ListDeletedImageIndexes;
   frmCommandConfig.TreeImageList := TreeImageList;
   ReloadData;
@@ -648,10 +648,12 @@ begin
   { Запасной вариант — приблизительная позиция LCL. }
   Result := TrayIcon.GetPosition;
 
-  FillChar(Identifier, SizeOf(Identifier), 0);
+  //FillChar(Identifier{%H-}, SizeOf(Identifier), 0);
+  Identifier.guidItem := Default(TGUID);
   Identifier.cbSize := SizeOf(Identifier);
   Identifier.hWnd := TrayIcon.Handle;
   Identifier.uID := cLCLTrayIconID;
+
 
   if (TrayIcon.Handle <> 0) and
      (M_Shell_NotifyIconGetRect(@Identifier, @IconRect) = 0) then

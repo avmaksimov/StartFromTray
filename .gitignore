@@ -12,6 +12,10 @@
 *.exe
 *.dbg
 
+# Free Pascal generated linker scripts
+ppas.bat
+ppas.sh
+
 # Linux executable without extension
 /StartFromTray
 

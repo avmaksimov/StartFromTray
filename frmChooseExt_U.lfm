@@ -2,23 +2,25 @@ object frmChooseExt: TfrmChooseExt
   Left = 0
   Height = 413
   Top = 0
-  Width = 294
+  Width = 350
   BorderStyle = bsDialog
   Caption = 'Select an extension'
   ClientHeight = 413
-  ClientWidth = 294
+  ClientWidth = 350
   Position = poMainFormCenter
   LCLVersion = '4.8.0.0'
   OnClose = FormClose
+  OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
   object gbExtensions: TGroupBox
     Left = 4
     Height = 361
     Top = 0
-    Width = 283
+    Width = 339
+    Anchors = [akTop, akLeft, akRight]
     ClientHeight = 341
-    ClientWidth = 279
+    ClientWidth = 335
     TabOrder = 0
     object lblExtensions: TLabel
       Left = 10
@@ -26,44 +28,63 @@ object frmChooseExt: TfrmChooseExt
       Top = 43
       Width = 109
       Caption = 'Available extensions:'
-      FocusControl = lbExtensions
     end
     object edtExt: TLabeledEdit
       Left = 8
       Height = 23
       Top = 14
-      Width = 264
+      Width = 320
+      Anchors = [akTop, akLeft, akRight]
       EditLabel.Height = 15
-      EditLabel.Width = 264
+      EditLabel.Width = 320
       EditLabel.Caption = 'Extension:'
       TabOrder = 0
       OnChange = edtExtChange
     end
-    object lbExtensions: TListBox
+    object lvExtensions: TListView
       Left = 8
       Height = 271
       Top = 62
-      Width = 264
-      ItemHeight = 18
-      Style = lbOwnerDrawFixed
+      Width = 320
+      AllocBy = 256
+      Anchors = [akTop, akLeft, akRight]
+      AutoWidthLastColumn = True
+      Columns = <      
+        item
+          Caption = 'Extension'
+          Width = 33
+          SortIndicator = siAscending
+        end      
+        item
+          Caption = 'Description'
+          Width = 283
+        end>
+      ColumnClick = False
+      HideSelection = False
+      ReadOnly = True
+      RowSelect = True
+      SmallImages = ImageList
       TabOrder = 1
-      OnClick = lbExtensionsClick
-      OnDrawItem = lbExtensionsDrawItem
+      ViewStyle = vsReport
+      OnDblClick = lvExtensionsDblClick
+      OnSelectItem = lvExtensionsSelectItem
     end
   end
   object gbButtons: TGroupBox
     Left = 4
     Height = 47
     Top = 361
-    Width = 283
+    Width = 339
+    Anchors = [akTop, akLeft, akRight]
     ClientHeight = 27
-    ClientWidth = 279
+    ClientWidth = 335
     TabOrder = 1
     object btnOK: TButton
-      Left = 56
+      Left = 112
       Height = 25
       Top = -4
       Width = 105
+      Anchors = [akTop, akRight]
       Caption = 'OK'
       Default = True
       ModalResult = 1
@@ -71,10 +92,11 @@ object frmChooseExt: TfrmChooseExt
       OnClick = btnOKClick
     end
     object btnCancel: TButton
-      Left = 167
+      Left = 223
       Height = 25
       Top = -4
       Width = 105
+      Anchors = [akTop, akRight]
       Cancel = True
       Caption = 'Cancel'
       ModalResult = 2

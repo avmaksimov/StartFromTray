@@ -9,6 +9,8 @@ uses
   Dialogs, ImgList, Menus, Buttons, Generics.Collections, CommandsClass_U;
 
 type
+  TImageIndexList = class(TList<Integer>);
+
   TfrmCommandConfig = class(TFrame)
     cbIsVisible: TCheckBox;
     edtCaption: TLabeledEdit;
@@ -51,7 +53,7 @@ type
     FAssigningState: Boolean;
     FOldCommandText: string;
     FTreeImageList: TImageList;
-    FListDeletedImageIndexes: TList<Word>;
+    FListDeletedImageIndexes: TImageIndexList;
     function GetIsModified: Boolean;
     procedure SetCaption(const AValue: string);
     procedure UpdateIcon;
@@ -67,8 +69,7 @@ type
     function CheckFileCommandExists: Boolean;
     property AssignedTreeNode: TTreeNode read FAssignedTreeNode;
     property TreeImageList: TImageList read FTreeImageList write FTreeImageList;
-    property ListDeletedImageIndexes: TList<Word>
-      read FListDeletedImageIndexes write FListDeletedImageIndexes;
+    property ListDeletedImageIndexes: TImageIndexList read FListDeletedImageIndexes write FListDeletedImageIndexes;
     property Caption: string write SetCaption;
     property IsModified: Boolean read GetIsModified;
   end;
@@ -82,6 +83,99 @@ uses
 function PickIconDlgCompat(AOwnerWnd: HWND; AIconPath: PWideChar;
   AIconPathLength: UINT; var AIconIndex: Integer): Integer; stdcall;
   external 'shell32.dll' name 'PickIconDlg';
+
+threadvar
+  GCenterDialogHook: HHOOK;
+  GCenterDialogOwner: HWND;
+
+procedure CenterWindowOnOwner(AWindow, AOwner: HWND);
+var
+  WindowRect, OwnerRect: TRect;
+  X, Y: Integer;
+begin
+  if (AWindow = 0) or (AOwner = 0) then
+    Exit;
+
+  if not GetWindowRect(AWindow, WindowRect) then
+    Exit;
+
+  if not GetWindowRect(AOwner, OwnerRect) then
+    Exit;
+
+  X := OwnerRect.Left +
+    ((OwnerRect.Right - OwnerRect.Left -
+      (WindowRect.Right - WindowRect.Left)) div 2);
+
+  Y := OwnerRect.Top +
+    ((OwnerRect.Bottom - OwnerRect.Top -
+      (WindowRect.Bottom - WindowRect.Top)) div 2);
+
+  SetWindowPos(
+    AWindow,
+    0,
+    X,
+    Y,
+    0,
+    0,
+    SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE
+  );
+end;
+
+function CenterDialogHookProc(Code: Integer; WParam: WPARAM;
+  LParam: LPARAM): LRESULT; stdcall;
+var
+  CurrentHook: HHOOK;
+  DialogWindow: HWND;
+begin
+  CurrentHook := GCenterDialogHook;
+
+  if (Code = HCBT_ACTIVATE) and (GCenterDialogOwner <> 0) then
+  begin
+    DialogWindow := HWND(WParam);
+
+    if DialogWindow <> GCenterDialogOwner then
+    begin
+      CenterWindowOnOwner(DialogWindow, GCenterDialogOwner);
+
+      GCenterDialogOwner := 0;
+      GCenterDialogHook := 0;
+      UnhookWindowsHookEx(CurrentHook);
+    end;
+  end;
+
+  Result := CallNextHookEx(CurrentHook, Code, WParam, LParam);
+end;
+
+function PickIconDlgCentered(AOwnerWnd: HWND; AIconPath: PWideChar;
+  AIconPathLength: UINT; var AIconIndex: Integer): Integer;
+begin
+  AOwnerWnd := GetAncestor(AOwnerWnd, GA_ROOT);
+
+  GCenterDialogOwner := AOwnerWnd;
+  GCenterDialogHook := SetWindowsHookEx(
+    WH_CBT,
+    @CenterDialogHookProc,
+    0,
+    GetCurrentThreadId
+  );
+
+  try
+    Result := PickIconDlgCompat(
+      AOwnerWnd,
+      AIconPath,
+      AIconPathLength,
+      AIconIndex
+    );
+  finally
+    if GCenterDialogHook <> 0 then
+    begin
+      UnhookWindowsHookEx(GCenterDialogHook);
+      GCenterDialogHook := 0;
+    end;
+
+    GCenterDialogOwner := 0;
+  end;
+end;
 
 const
   sLangFormFramePath = 'frmConfig\frmCommandConfig';
@@ -352,9 +446,12 @@ begin
   for CharIndex := 1 to Length(WideFileName) do
     FileNameBuffer[CharIndex - 1] := WideFileName[CharIndex];
   FileNameBuffer[Length(WideFileName)] := #0;
-  if PickIconDlgCompat(HWND(Handle), PWideChar(@FileNameBuffer[0]),
+  if PickIconDlgCentered(
+    HWND(GetParentForm(Self).Handle),
+    PWideChar(@FileNameBuffer[0]),
     Length(FileNameBuffer),
-    IconIndex) = 1 then
+    IconIndex
+  ) = 1 then
   begin
     FAssignedCommandData.IconType := citFromFileRes;
     FAssignedCommandData.IconFilename :=

@@ -21,7 +21,7 @@
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
       <MinorVersionNr Value="3"/>
-      <BuildNr Value="263"/>
+      <BuildNr Value="270"/>
     </VersionInfo>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
@@ -76,13 +76,19 @@
             </SyntaxOptions>
           </Parsing>
           <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
             <TargetCPU Value="i386"/>
             <TargetOS Value="win32"/>
+            <Optimizations>
+              <OptimizationLevel Value="2"/>
+            </Optimizations>
+            <SmallerCode Value="True"/>
           </CodeGeneration>
           <Linking>
             <Debugging>
               <DebugInfoType Value="dsDwarf3"/>
             </Debugging>
+            <LinkSmart Value="True"/>
             <Options>
               <Win32>
                 <GraphicApplication Value="True"/>
@@ -177,11 +183,23 @@
     <Parsing>
       <SyntaxOptions>
         <SyntaxMode Value="Delphi"/>
+        <IncludeAssertionCode Value="True"/>
       </SyntaxOptions>
     </Parsing>
+    <CodeGeneration>
+      <Checks>
+        <IOChecks Value="True"/>
+        <RangeChecks Value="True"/>
+        <OverflowChecks Value="True"/>
+        <StackChecks Value="True"/>
+      </Checks>
+      <VerifyObjMethodCallValidity Value="True"/>
+    </CodeGeneration>
     <Linking>
       <Debugging>
         <DebugInfoType Value="dsDwarf3"/>
+        <UseHeaptrc Value="True"/>
+        <TrashVariables Value="True"/>
       </Debugging>
       <Options>
         <Win32>
@@ -193,6 +211,10 @@
       <Verbosity>
         <ShowNotes Value="False"/>
       </Verbosity>
+      <CustomOptions Value="-vm4046,5062"/>
+      <ExecuteBefore>
+        <Command Value="cmd /C del /Q &quot;$(ProjPath)\link*.res&quot; 2>NUL"/>
+      </ExecuteBefore>
     </Other>
   </CompilerOptions>
 </CONFIG>

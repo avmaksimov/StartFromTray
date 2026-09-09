@@ -5,36 +5,49 @@ unit frmChooseExt_U;
 interface
 
 uses
-  Classes, SysUtils, Types, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
-  ImgList, Generics.Collections;
+  Classes, SysUtils, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
+  ImgList, ComCtrls, Generics.Collections;
 
 type
+  TSystemIconCache = TDictionary<Integer, Integer>;
+
+  { TfrmChooseExt }
+
   TfrmChooseExt = class(TForm)
     ImageList: TImageList;
     gbExtensions: TGroupBox;
     edtExt: TLabeledEdit;
-    lbExtensions: TListBox;
+    lvExtensions: TListView;
     lblExtensions: TLabel;
     gbButtons: TGroupBox;
     btnOK: TButton;
     btnCancel: TButton;
+    procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var {%H-}Action: TCloseAction);
-    procedure lbExtensionsClick(Sender: TObject);
-    procedure lbExtensionsDrawItem({%H-}Control: TWinControl; Index: Integer;
-      ARect: Types.TRect; State: StdCtrls.TOwnerDrawState);
     procedure edtExtChange(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure lvExtensionsDblClick(Sender: TObject);
+    procedure lvExtensionsSelectItem(Sender: TObject; Item: TListItem;
+      Selected: Boolean);
   private
-    FlbChanging: Boolean;
-    FExtensionIcons: TObjectList<TIcon>;
-    FExtensionIconIndexes: array of Integer;
+    FlvChanging: Boolean;
+
+    FSystemIconCache: TSystemIconCache;
+    FIconTimer: TTimer;
+
+    procedure IconTimerTimer(Sender: TObject);
+    procedure InitExtensionItemData(AItem: TListItem);
+    procedure LoadIconForItem(Index: Integer);
+    procedure InsertExtensionItem(AIndex: Integer;
+      const AExtension: string);
+    function FindNextIconToLoad: Integer;
+    function IsIconNotLoaded(AItem: TListItem): Boolean;
     function FindExtInList(const Ext: string): Integer;
   public
     Extension: string;
     StartWithExtensions: TList<string>;
-    constructor Create(AOwner: TComponent); override;
   end;
 
 var
@@ -43,205 +56,537 @@ var
 implementation
 
 uses
-  Windows, ShellApi, Registry, StrUtils, LCLType;
+  Windows, ShellApi, Registry, StrUtils;
 
 {$R *.lfm}
 
-const
-  clbPairDelimiter = '/';
+type
+  TExtensionIconState = (
+    eisNotLoaded,
+    eisLoading,
+    eisFailed,
+    eisLoaded
+  );
 
-function ExtensionPart(const ItemText: string): string;
-var
-  DelimiterPos: Integer;
-begin
-  DelimiterPos := Pos(clbPairDelimiter, ItemText);
-  if DelimiterPos > 0 then
-    Result := Copy(ItemText, 1, DelimiterPos - 1)
-  else
-    Result := ItemText;
-end;
-{
-function MyCompareStr(const Left, Right: string): Integer;
-var
-  LeftExtension, RightExtension: string;
-begin
-  LeftExtension := ExtensionPart(Left);
-  RightExtension := ExtensionPart(Right);
-  Result := Length(LeftExtension) - Length(RightExtension);
-  if Result = 0 then
-    Result := AnsiCompareText(LeftExtension, RightExtension);
-end;
-}
-function MyStringListSortCompare(List: TStringList;
-  LeftIndex, RightIndex: Integer): Integer;
-begin
-  Result := AnsiCompareText(List[LeftIndex], List[RightIndex]);//MyCompareStr(List[LeftIndex], List[RightIndex]);
-end;
+  PExtensionItemData = ^TExtensionItemData;
+
+  TExtensionItemData = record
+    IconState: TExtensionIconState;
+  end;
+
+const
+  { We don’t let a single Timer event occupy the GUI for too long }
+  ICON_MAX_PER_TICK = 8;
+  ICON_TIME_BUDGET_MS = 8;
+
+{ TfrmChooseExt }
 
 procedure TfrmChooseExt.btnOKClick(Sender: TObject);
 begin
   Extension := edtExt.Text;
 end;
 
-constructor TfrmChooseExt.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Extension := '';
-  StartWithExtensions := TList<string>.Create;
-  FExtensionIcons := TObjectList<TIcon>.Create(True);
-  lbExtensions.Items.NameValueSeparator := clbPairDelimiter;
-end;
-
 procedure TfrmChooseExt.edtExtChange(Sender: TObject);
 var
   NewIndex: Integer;
 begin
-  if FlbChanging or (edtExt.Text = '') then
+  if FlvChanging or (edtExt.Text = '') then
     Exit;
+
   NewIndex := FindExtInList(edtExt.Text);
-  if lbExtensions.ItemIndex <> NewIndex then
-  begin
-    lbExtensions.ItemIndex := NewIndex;
-    lbExtensions.Repaint;
+
+  FlvChanging := True;
+  try
+    if NewIndex >= 0 then
+    begin
+      lvExtensions.Selected := lvExtensions.Items[NewIndex];
+      lvExtensions.Items[NewIndex].MakeVisible(False);
+    end
+    else
+      lvExtensions.Selected := nil;
+  finally
+    FlvChanging := False;
   end;
 end;
 
 function TfrmChooseExt.FindExtInList(const Ext: string): Integer;
 var
-  I: Integer;
+  LeftIndex, RightIndex, MiddleIndex: Integer;
+  SearchExt: string;
 begin
   Result := -1;
-  for I := 0 to lbExtensions.Items.Count - 1 do
-    if AnsiStartsText(Ext, ExtensionPart(lbExtensions.Items[I])) then
-      Exit(I);
+
+  SearchExt := Ext;
+
+  if StartsStr('.', SearchExt) then
+    Delete(SearchExt, 1, 1);
+
+  if SearchExt = '' then
+    Exit;
+
+  LeftIndex := 0;
+  RightIndex := lvExtensions.Items.Count;
+
+  while LeftIndex < RightIndex do
+  begin
+    MiddleIndex := LeftIndex + (RightIndex - LeftIndex) div 2;
+
+    if AnsiCompareText(
+         lvExtensions.Items[MiddleIndex].Caption,
+         SearchExt
+       ) < 0 then
+      LeftIndex := MiddleIndex + 1
+    else
+      RightIndex := MiddleIndex;
+  end;
+
+  if (LeftIndex < lvExtensions.Items.Count) and
+     AnsiStartsText(
+       SearchExt,
+       lvExtensions.Items[LeftIndex].Caption
+     ) then
+    Result := LeftIndex;
 end;
 
-procedure TfrmChooseExt.FormClose(Sender: TObject; var Action: TCloseAction);
+procedure TfrmChooseExt.FormClose(Sender: TObject;
+  var Action: TCloseAction);
 begin
+  FIconTimer.Enabled := False;
+
   Extension := edtExt.Text;
   StartWithExtensions.Clear;
 end;
 
 procedure TfrmChooseExt.FormDestroy(Sender: TObject);
+var
+  I: Integer;
+  ItemData: PExtensionItemData;
 begin
-  SetLength(FExtensionIconIndexes, 0);
-  FreeAndNil(FExtensionIcons);
+  FIconTimer.Enabled := False;
+
+  for I := 0 to lvExtensions.Items.Count - 1 do
+  begin
+    ItemData := PExtensionItemData(lvExtensions.Items[I].Data);
+
+    if Assigned(ItemData) then
+    begin
+      Dispose(ItemData);
+      lvExtensions.Items[I].Data := nil;
+    end;
+  end;
+
+  FreeAndNil(FSystemIconCache);
   FreeAndNil(StartWithExtensions);
+end;
+
+procedure TfrmChooseExt.lvExtensionsDblClick(Sender: TObject);
+begin
+  if Assigned(lvExtensions.Selected) then
+  begin
+    edtExt.Text := lvExtensions.Selected.Caption;
+    btnOK.Click;
+  end;
+end;
+
+procedure TfrmChooseExt.lvExtensionsSelectItem(Sender: TObject;
+  Item: TListItem; Selected: Boolean);
+begin
+  if not Selected or FlvChanging then
+    Exit;
+
+  FlvChanging := True;
+  try
+    edtExt.Text := Item.Caption;
+  finally
+    FlvChanging := False;
+  end;
 end;
 
 procedure TfrmChooseExt.FormShow(Sender: TObject);
 var
   Reg: TRegistry;
-  RegistryKeys, SortedExtensions: TStringList;
-  I, StartIndex: Integer;
+  RegistryKeys: TStringList;
+  I, ExtensionCount: Integer;
+  StartIndex, ListIndex, CompareResult: Integer;
   KeyName, StartExtension: string;
+  Item: TListItem;
 begin
-  FlbChanging := True;
-  lbExtensions.Items.BeginUpdate;
+  FIconTimer.Enabled := False;
+  FlvChanging := True;
+
+  lvExtensions.Items.BeginUpdate;
   try
     edtExt.Text := Extension;
-    lbExtensions.Items.Clear;
-    FExtensionIcons.Clear;
-    SetLength(FExtensionIconIndexes, 0);
+
     RegistryKeys := TStringList.Create;
-    SortedExtensions := TStringList.Create;
-    Reg := TRegistry.Create(KEY_READ);
     try
-      Reg.RootKey := HKEY_CLASSES_ROOT;
-      if Reg.OpenKeyReadOnly('') then
-        Reg.GetKeyNames(RegistryKeys);
+      Reg := TRegistry.Create(KEY_READ);
+      try
+        Reg.RootKey := HKEY_CLASSES_ROOT;
+
+        if Reg.OpenKeyReadOnly('') then
+        begin
+          try
+            Reg.GetKeyNames(RegistryKeys);
+          finally
+            Reg.CloseKey;
+          end;
+        end;
+      finally
+        Reg.Free;
+      end;
+
+      { Keep only extension keys in the same list }
+      ExtensionCount := 0;
+
       for I := 0 to RegistryKeys.Count - 1 do
       begin
         KeyName := RegistryKeys[I];
+
         if (Length(KeyName) > 1) and (KeyName[1] = '.') then
-          SortedExtensions.Add(LowerCase(Copy(KeyName, 2, MaxInt)));
+        begin
+          RegistryKeys[ExtensionCount] :=
+            LowerCase(Copy(KeyName, 2, MaxInt));
+          Inc(ExtensionCount);
+        end;
       end;
-      SortedExtensions.CustomSort(@MyStringListSortCompare);
-      lbExtensions.Items.Assign(SortedExtensions);
-      SetLength(FExtensionIconIndexes, lbExtensions.Items.Count);
-      for I := 0 to High(FExtensionIconIndexes) do
-        FExtensionIconIndexes[I] := -1;
+
+      while RegistryKeys.Count > ExtensionCount do
+        RegistryKeys.Delete(RegistryKeys.Count - 1);
+
+      RegistryKeys.CaseSensitive := False;
+      RegistryKeys.Sort;
+
+      if lvExtensions.Items.Count = 0 then
+      begin
+        for I := 0 to RegistryKeys.Count - 1 do
+        begin
+          Item := lvExtensions.Items.Add;
+          Item.Caption := RegistryKeys[I];
+          Item.SubItems.Add('');
+          Item.ImageIndex := -1;
+          InitExtensionItemData(Item);
+        end;
+      end
+      else
+      begin
+        { Merge new extensions into the cached ListView }
+        ListIndex := 0;
+
+        for I := 0 to RegistryKeys.Count - 1 do
+        begin
+          KeyName := RegistryKeys[I];
+
+          while ListIndex < lvExtensions.Items.Count do
+          begin
+            CompareResult := AnsiCompareText(
+              lvExtensions.Items[ListIndex].Caption,
+              KeyName
+            );
+
+            if CompareResult >= 0 then
+              Break;
+
+            Inc(ListIndex);
+          end;
+
+          if ListIndex >= lvExtensions.Items.Count then
+          begin
+            InsertExtensionItem(
+              ListIndex,
+              KeyName
+            );
+          end
+          else if AnsiCompareText(
+            lvExtensions.Items[ListIndex].Caption,
+            KeyName
+          ) <> 0 then
+          begin
+            InsertExtensionItem(
+              ListIndex,
+              KeyName
+            );
+          end;
+
+          Inc(ListIndex);
+        end;
+      end;
+
     finally
-      Reg.Free;
-      SortedExtensions.Free;
       RegistryKeys.Free;
     end;
 
     for I := 0 to StartWithExtensions.Count - 1 do
     begin
       StartExtension := StartWithExtensions[I];
+
       StartIndex := FindExtInList(StartExtension);
+
       if StartIndex >= 0 then
       begin
-        Extension := ExtensionPart(lbExtensions.Items[StartIndex]);
+        Extension :=
+          lvExtensions.Items[StartIndex].Caption;
         Break;
       end;
     end;
+
     edtExt.Text := Extension;
+
   finally
-    FlbChanging := False;
-    lbExtensions.Items.EndUpdate;
+    FlvChanging := False;
+    lvExtensions.Items.EndUpdate;
   end;
+
+  // for resizing last column width
+  lvExtensions.AutoWidthLastColumn := False;
+  lvExtensions.AutoWidthLastColumn := True;
+
   edtExtChange(edtExt);
+
+  FIconTimer.Enabled :=
+    FindNextIconToLoad >= 0;
+
   edtExt.SetFocus;
 end;
 
-procedure TfrmChooseExt.lbExtensionsClick(Sender: TObject);
+procedure TfrmChooseExt.FormCreate(Sender: TObject);
 begin
-  if lbExtensions.ItemIndex >= 0 then
-    edtExt.Text := ExtensionPart(lbExtensions.Items[lbExtensions.ItemIndex]);
+  Extension := '';
+
+  StartWithExtensions := TList<string>.Create;
+  FSystemIconCache := TSystemIconCache.Create;
+
+  lvExtensions.Items.Clear;
+  ImageList.Clear;
+
+  lvExtensions.Columns[0].Width :=
+    ImageList.Width +
+    lvExtensions.Canvas.TextWidth('mmmmm...') + 16;
+
+  FIconTimer := TTimer.Create(Self);
+  FIconTimer.Enabled := False;
+  FIconTimer.Interval := 15;
+  FIconTimer.OnTimer := IconTimerTimer;
 end;
 
-procedure TfrmChooseExt.lbExtensionsDrawItem(Control: TWinControl;
-  Index: Integer; ARect: Types.TRect; State: StdCtrls.TOwnerDrawState);
+function TfrmChooseExt.FindNextIconToLoad: Integer;
 var
-  ExtensionText: string;
-  IconIndex, TextTop: Integer;
+  I: Integer;
+  FirstVisible, LastVisible: Integer;
+  FirstPriority, LastPriority: Integer;
+  VisibleRows: Integer;
+  PrefetchBelow, PrefetchAbove: Integer;
+  TopItem: TListItem;
+begin
+  Result := -1;
+
+  if lvExtensions.Items.Count = 0 then
+    Exit;
+
+  TopItem := lvExtensions.TopItem;
+
+  if Assigned(TopItem) then
+    FirstVisible := TopItem.Index
+  else
+    FirstVisible := 0;
+
+  VisibleRows := lvExtensions.VisibleRowCount;
+
+  if VisibleRows <= 0 then
+    VisibleRows := 20;
+
+  LastVisible := FirstVisible + VisibleRows - 1;
+
+  if LastVisible >= lvExtensions.Items.Count then
+    LastVisible := lvExtensions.Items.Count - 1;
+
+  PrefetchBelow := VisibleRows * 2;
+  PrefetchAbove := VisibleRows;
+
+  LastPriority := LastVisible + PrefetchBelow;
+
+  if LastPriority >= lvExtensions.Items.Count then
+    LastPriority := lvExtensions.Items.Count - 1;
+
+  for I := FirstVisible to LastPriority do
+    if IsIconNotLoaded(lvExtensions.Items[I]) then
+       Exit(I);
+
+  FirstPriority := FirstVisible - PrefetchAbove;
+
+  if FirstPriority < 0 then
+    FirstPriority := 0;
+
+  for I := FirstPriority to FirstVisible - 1 do
+    if IsIconNotLoaded(lvExtensions.Items[I]) then
+      Exit(I);
+
+  for I := 0 to lvExtensions.Items.Count - 1 do
+    if IsIconNotLoaded(lvExtensions.Items[I]) then
+      Exit(I);
+end;
+
+function TfrmChooseExt.IsIconNotLoaded(AItem: TListItem): Boolean;
+var
+  ItemData: PExtensionItemData;
+begin
+  ItemData := PExtensionItemData(AItem.Data);
+
+  Result :=
+    Assigned(ItemData) and
+    (ItemData^.IconState = eisNotLoaded);
+end;
+
+procedure TfrmChooseExt.LoadIconForItem(Index: Integer);
+var
   Info: TSHFileInfoW;
   Icon: TIcon;
-  WideExtension: UnicodeString;
+  IconIndex: Integer;
+  WideFileName: UnicodeString;
+  TypeName: string;
+  Item: TListItem;
+  ItemData: PExtensionItemData;
 begin
-  if (Index < 0) or (Index >= lbExtensions.Items.Count) then
+  if (Index < 0) or
+     (Index >= lvExtensions.Items.Count) then
     Exit;
-  lbExtensions.Canvas.FillRect(ARect);
-  ExtensionText := ExtensionPart(lbExtensions.Items[Index]);
-  IconIndex := -1;
 
-  if (Index >= 0) and (Index <= High(FExtensionIconIndexes)) then
-  begin
-    IconIndex := FExtensionIconIndexes[Index];
-    if IconIndex = -1 then
+  Item := lvExtensions.Items[Index];
+  ItemData := PExtensionItemData(Item.Data);
+
+  if not Assigned(ItemData) or
+     (ItemData^.IconState <> eisNotLoaded) then
+    Exit;
+
+  ItemData^.IconState := eisLoading;
+
+  Info := Default(TSHFileInfoW);
+  WideFileName := UTF8Decode('dummy.' + Item.Caption);
+
+  try
+    if SHGetFileInfoW(
+         PWideChar(WideFileName),
+         FILE_ATTRIBUTE_NORMAL,
+         Info,
+         SizeOf(Info),
+         SHGFI_ICON or
+         SHGFI_SMALLICON or
+         SHGFI_TYPENAME or
+         SHGFI_USEFILEATTRIBUTES
+       ) = 0 then
     begin
-      { Mark the row before asking the Shell. This prevents a nested paint
-        notification from trying to load the same icon again. }
-      FExtensionIconIndexes[Index] := -2;
-      Info := Default(TSHFileInfoW);
-      WideExtension := UTF8Decode('.' + ExtensionText);
-      if SHGetFileInfoW(PWideChar(WideExtension), FILE_ATTRIBUTE_NORMAL, Info,
-        SizeOf(Info), SHGFI_ICON or SHGFI_SMALLICON or
-        SHGFI_USEFILEATTRIBUTES) <> 0 then
-      begin
-        Icon := TIcon.Create;
-        try
-          Icon.Handle := Info.hIcon;
-          IconIndex := FExtensionIcons.Add(Icon);
-          Icon := nil;
-          FExtensionIconIndexes[Index] := IconIndex;
-        finally
-          Icon.Free;
-        end;
-      end;
+      ItemData^.IconState := eisFailed;
+      Exit;
     end;
-  end;
 
-  if (IconIndex >= 0) and (IconIndex < FExtensionIcons.Count) then
-    lbExtensions.Canvas.Draw(ARect.Left + 1, ARect.Top + 1,
-      FExtensionIcons[IconIndex]);
-  TextTop := ARect.Top + (ARect.Height -
-    lbExtensions.Canvas.TextHeight(ExtensionText)) div 2;
-  lbExtensions.Canvas.TextOut(ARect.Left + 20, TextTop, ExtensionText);
-  if LCLType.odFocused in State then
-    lbExtensions.Canvas.DrawFocusRect(ARect);
+    TypeName :=
+      UTF8Encode(
+        UnicodeString(
+          PWideChar(@Info.szTypeName[0])
+        )
+      );
+
+    if TypeName <> '' then
+      Item.SubItems[0] := TypeName;
+
+    if Info.hIcon = 0 then
+    begin
+      ItemData^.IconState := eisFailed;
+      Exit;
+    end;
+
+    if FSystemIconCache.TryGetValue(
+         Info.iIcon,
+         IconIndex
+       ) then
+    begin
+      Item.ImageIndex := IconIndex;
+      ItemData^.IconState := eisLoaded;
+      Exit;
+    end;
+
+    Icon := TIcon.Create;
+    try
+      Icon.Handle := Info.hIcon;
+      Info.hIcon := 0;
+
+      IconIndex := ImageList.AddIcon(Icon);
+
+      if IconIndex >= 0 then
+      begin
+        FSystemIconCache.Add(
+          Info.iIcon,
+          IconIndex
+        );
+
+        Item.ImageIndex := IconIndex;
+        ItemData^.IconState := eisLoaded;
+      end
+      else
+        ItemData^.IconState := eisFailed;
+
+    finally
+      Icon.Free;
+    end;
+
+  finally
+    if Info.hIcon <> 0 then
+      DestroyIcon(Info.hIcon);
+  end;
+end;
+
+procedure TfrmChooseExt.InsertExtensionItem(AIndex: Integer;
+  const AExtension: string);
+var
+  Item: TListItem;
+begin
+  if AIndex < lvExtensions.Items.Count then
+    Item := lvExtensions.Items.Insert(AIndex)
+  else
+    Item := lvExtensions.Items.Add;
+
+  Item.Caption := AExtension;
+  Item.SubItems.Add('');
+  Item.ImageIndex := -1;
+  InitExtensionItemData(Item);
+end;
+
+procedure TfrmChooseExt.IconTimerTimer(Sender: TObject);
+var
+  Index: Integer;
+  LoadedCount: Integer;
+  StartedAt: QWord;
+begin
+  StartedAt := GetTickCount64;
+  LoadedCount := 0;
+
+  repeat
+    Index := FindNextIconToLoad;
+
+    if Index < 0 then
+    begin
+      { All icons have been loaded or resulted in an error }
+      FIconTimer.Enabled := False;
+      Exit;
+    end;
+
+    LoadIconForItem(Index);
+    Inc(LoadedCount);
+
+  until
+    (LoadedCount >= ICON_MAX_PER_TICK) or
+    (GetTickCount64 - StartedAt >= ICON_TIME_BUDGET_MS);
+end;
+
+procedure TfrmChooseExt.InitExtensionItemData(AItem: TListItem);
+var
+  ItemData: PExtensionItemData;
+begin
+  New(ItemData);
+
+  ItemData^.IconState := eisNotLoaded;
+
+  AItem.Data := ItemData;
 end;
 
 end.
