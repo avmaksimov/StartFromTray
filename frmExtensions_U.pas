@@ -358,16 +358,15 @@ begin
     lvFilters.Items[lvFilters.ItemIndex] := edtName.Text;
 end;
 
-procedure TfrmExtensions.edtEdit_or_RunHelperRightButtonClick(Sender: TObject);
-const
-  Titles: array[0..1] of string = ('ChooseFileForEdit', 'ChooseFileForRun');
+procedure TfrmExtensions.edtEdit_or_RunHelperRightButtonClick(
+  Sender: TObject);
 var
   Edit: TEditButton;
 begin
   Edit := TEditButton(Sender);
   OpenDialog.InitialDir := ExtractFilePath(Edit.Text);
   OpenDialog.FileName := ExtractFileName(Edit.Text);
-  OpenDialog.Title := GetLangString('frmExtensions', Titles[Edit.Tag]);
+
   if OpenDialog.Execute then
     Edit.Text := OpenDialog.FileName;
 end;
@@ -386,10 +385,6 @@ begin
   ClearLocalFilters;
   FIsModified := False;
   FIsAssigningListItemIndex := False;
-  edtRunHelper.Tag := 1;
-  OpenDialog.Filter := GetLangString('LangStrings',
-    'FileDialogExecutableFile') + '|*.exe|' +
-    GetLangString('LangStrings', 'FileDialogAnyFile') + '|*.*';
   OpenDialog.FilterIndex := 1;
   AssignFilters(Filters);
   Application.OnIdle := ApplicationOnFormIdle;

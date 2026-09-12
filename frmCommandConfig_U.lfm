@@ -19,8 +19,8 @@ object frmCommandConfig: TfrmCommandConfig
     Left = 126
     Height = 15
     Top = 59
-    Width = 66
-    Caption = 'lblIsRunning'
+    Width = 65
+    Caption = 'Not running'
   end
   object lblRunInfo: TLabel
     Left = 15
@@ -53,16 +53,6 @@ object frmCommandConfig: TfrmCommandConfig
     TabOrder = 0
     OnChange = edtCaptionChange
   end
-  object cbIsVisible: TCheckBox
-    Tag = 1
-    Left = 15
-    Height = 19
-    Top = 263
-    Width = 120
-    Caption = 'Show in Tray menu'
-    TabOrder = 2
-    Visible = False
-  end
   object btnEdit: TButton
     Left = 240
     Height = 22
@@ -70,7 +60,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Edit'
-    TabOrder = 6
+    TabOrder = 5
     OnClick = btnEditClick
   end
   object btnRun: TButton
@@ -80,7 +70,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Run'
-    TabOrder = 7
+    TabOrder = 6
     OnClick = btnRunClick
   end
   object edtCommand: TEdit
@@ -95,7 +85,7 @@ object frmCommandConfig: TfrmCommandConfig
   object btnChooseFile: TSpeedButton
     Left = 350
     Height = 23
-    Hint = 'Browse for a file to run'
+    Hint = 'Select a file to run'
     Top = 78
     Width = 22
     Anchors = [akTop, akRight]
@@ -115,7 +105,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Height = 15
     EditLabel.Width = 388
     EditLabel.Caption = 'Parameters:'
-    TabOrder = 3
+    TabOrder = 2
     OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
@@ -127,7 +117,7 @@ object frmCommandConfig: TfrmCommandConfig
     Anchors = [akTop, akRight]
     Caption = 'Change icon'
     PopupMenu = ppMenuChangeIcon
-    TabOrder = 5
+    TabOrder = 4
     OnClick = btnChangeIconClick
   end
   object cbRunAsAdmin: TCheckBox
@@ -136,13 +126,13 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 156
     Width = 127
     Caption = 'Run as administrator'
-    TabOrder = 4
+    TabOrder = 3
     OnClick = cbRunAsAdminClick
   end
   object btnChooseFolder: TSpeedButton
     Left = 374
     Height = 23
-    Hint = 'Browse for a folder to run'
+    Hint = 'Select a folder to run'
     Top = 78
     Width = 22
     Anchors = [akTop, akRight]
@@ -154,7 +144,9 @@ object frmCommandConfig: TfrmCommandConfig
     OnClick = btnChooseFolderClick
   end
   object edtCommandOpenDialog: TOpenDialog
+    Title = 'Select a file to run'
     DefaultExt = '.exe'
+    Filter = 'All files|*.*|Executable files|*.exe'
     Options = [ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Left = 352
     Top = 342

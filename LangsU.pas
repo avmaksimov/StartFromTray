@@ -33,15 +33,10 @@ implementation
 
 uses
   SysUtils, TypInfo, Controls, ExtCtrls, ActnList, Dialogs,
-  ImgList, Windows;
+  ImgList, ComCtrls, Windows;
 
 const
   cLangFolderName = 'Langs';
-  ExcludesForFormConfig: array[0..1] of string = ('btnClose', 'lblVer');
-  ExcludesForFrameCommandConfig: array[0..7] of string =
-    ('gbRunAtTime', 'lblisRun_FolderChanged', 'lblNextRun', 'cbRunAt',
-     'cbIsRepeatRun', 'cbisRun_isWhenFolderChange', 'cbIsVisible',
-     'lblIsRunning');
 
 function M_GetUserDefaultUILanguage: LANGID; stdcall;
   external 'kernel32.dll' name 'GetUserDefaultUILanguage';
@@ -62,17 +57,27 @@ begin
   Result := AKind in [tkSString, tkLString, tkAString, tkWString, tkUString];
 end;
 
-function NameInArray(const AName: string; const ANames: array of string): Boolean;
-var
-  I: Integer;
-begin
-  Result := False;
-  for I := Low(ANames) to High(ANames) do
-    if SameText(AName, ANames[I]) then
-      Exit(True);
-end;
-
 procedure GenDefaultFileLang;
+
+  function IsRuntimeCaption(const AObject: TObject): Boolean;
+  begin
+    Result := (AObject is TComponent) and
+      (SameText(TComponent(AObject).Name, 'btnClose') or
+       SameText(TComponent(AObject).Name, 'lblVer') or
+       SameText(TComponent(AObject).Name, 'lblIsRunning'));
+  end;
+
+  function IsTranslatableProperty(const AObject: TObject;
+    const APropertyName: string): Boolean;
+  begin
+    Result :=
+      (SameText(APropertyName, 'Caption') and
+        not IsRuntimeCaption(AObject)) or
+      SameText(APropertyName, 'Hint') or
+      ((AObject is TOpenDialog) and
+        (SameText(APropertyName, 'Title') or
+         SameText(APropertyName, 'Filter')));
+  end;
 
   procedure WriteToLangFile(const ASectionName: string; AIdentPrefix: string;
     AObject: TObject);
@@ -85,6 +90,15 @@ procedure GenDefaultFileLang;
   begin
     if (not Assigned(AObject)) or (AObject is TAction) then
       Exit;
+
+    if AObject is TListColumns then
+    begin
+      for I := 0 to TListColumns(AObject).Count - 1 do
+        WriteToLangFile(ASectionName,
+          AIdentPrefix + '[' + IntToStr(I) + ']',
+          TListColumns(AObject).Items[I]);
+      Exit;
+    end;
 
     if AIdentPrefix <> '' then
       AIdentPrefix := AIdentPrefix + '.';
@@ -108,11 +122,7 @@ procedure GenDefaultFileLang;
               AIdentPrefix + string(PropInfo^.Name), ChildObject);
         end
         else if IsStringKind(PropInfo^.PropType^.Kind) and
-          (string(PropInfo^.Name) <> 'Name') and
-          not ((AObject is TOpenDialog) and
-            (string(PropInfo^.Name) = 'DefaultExt')) and
-          not ((AObject is TForm) and
-            (string(PropInfo^.Name) = 'LCLVersion')) then
+            IsTranslatableProperty(AObject, string(PropInfo^.Name)) then
         begin
           DataToSave := GetStrProp(AObject, PropInfo);
           if (DataToSave <> '') and
@@ -138,13 +148,7 @@ procedure GenDefaultFileLang;
     begin
       Component := AFormOrFrame.Components[I];
       if not (Component is TFrame) then
-      begin
-        if not (((AFormOrFrame.Name = 'frmCommandConfig') and
-            NameInArray(Component.Name, ExcludesForFrameCommandConfig)) or
-          ((AFormOrFrame.Name = 'frmConfig') and
-            NameInArray(Component.Name, ExcludesForFormConfig))) then
-          WriteToLangFile(ASectionName, Component.Name, Component);
-      end
+        WriteToLangFile(ASectionName, Component.Name, Component)
       else
         WriteComponents(ASectionName + '\' + Component.Name,
           TFrame(Component));
@@ -190,6 +194,47 @@ end;
 procedure SetLang(const ALangCode: string;
   const AMainIniFile: TIniFile);
 
+  function ResolveChildObject(AObject: TObject;
+    const APropertyPart: string): TObject;
+  var
+    OpenBracketPos, ItemIndex: Integer;
+    PropertyName, IndexText: string;
+    CollectionObject: TObject;
+    Collection: TCollection;
+  begin
+    Result := nil;
+    if not Assigned(AObject) then
+      Exit;
+
+    OpenBracketPos := Pos('[', APropertyPart);
+    if OpenBracketPos > 1 then
+    begin
+      if APropertyPart[Length(APropertyPart)] <> ']' then
+        Exit;
+
+      PropertyName := Copy(APropertyPart, 1, OpenBracketPos - 1);
+      IndexText := Copy(APropertyPart, OpenBracketPos + 1,
+        Length(APropertyPart) - OpenBracketPos - 1);
+
+      if not TryStrToInt(IndexText, ItemIndex) then
+        Exit;
+
+      CollectionObject := GetObjectProp(AObject, PropertyName);
+      if not (CollectionObject is TCollection) then
+        Exit;
+
+      Collection := TCollection(CollectionObject);
+      if (ItemIndex < 0) or (ItemIndex >= Collection.Count) then
+        Exit;
+
+      Result := Collection.Items[ItemIndex];
+    end
+    else if AObject is TScrollingWinControl then
+      Result := TScrollingWinControl(AObject).FindComponent(APropertyPart)
+    else
+      Result := GetObjectProp(AObject, APropertyPart);
+  end;
+
   procedure ReadFromLangFile(const ASectionName: string;
     AFormOrFrame: TScrollingWinControl);
   var
@@ -225,11 +270,8 @@ procedure SetLang(const ALangCode: string;
           if PartIndex < PropertyParts.Count - 1 then
           begin
             try
-              if CurrentObject is TScrollingWinControl then
-                CurrentObject := TScrollingWinControl(CurrentObject).
-                  FindComponent(PropertyName)
-              else
-                CurrentObject := GetObjectProp(CurrentObject, PropertyName);
+              CurrentObject := ResolveChildObject(CurrentObject,
+                PropertyName);
             except
               on EPropertyError do
                 CurrentObject := nil;
@@ -389,39 +431,33 @@ procedure LangAddDefaultStrings(const AForcedWrite: Boolean);
       FLangFile.WriteString(ASection, AIdent, AValue);
   end;
 
-begin
-  MyWriteString('LangStrings', '@Cancel', 'Cancel');
-  MyWriteString('LangStrings', '@Close', 'Close');
-  MyWriteString('LangStrings', '@DeleteConfirm',
-    'Are you sure you want to delete "%s"?');
-  MyWriteString('LangStrings', '@CancelConfirm',
-    'Discard unsaved changes?');
-  MyWriteString('LangStrings', '@FileDialogExecutableFile',
-    'Executable files');
-  MyWriteString('LangStrings', '@FileDialogAnyFile', 'All files');
-  MyWriteString('frmConfig', '@Version', 'Version:');
-  MyWriteString('frmConfig', '@VersionHint',
-    'Open the StartFromTray project website');
-  MyWriteString('frmConfig\frmCommandConfig', '@IsRunning', 'Running');
-  MyWriteString('frmConfig\frmCommandConfig', '@IsNotRunning', 'Not running');
-  MyWriteString('frmConfig\frmCommandConfig', '@ErrorEmptyName',
-    'Enter a name.');
-  MyWriteString('frmConfig\frmCommandConfig', '@ErrorCommand',
-    'Specify a command or file to run.');
-  MyWriteString('frmConfig\frmCommandConfig', '@FileDialogTitle',
-    'Select a file to run');
-  MyWriteString('frmConfig\frmCommandConfig', '@FolderDialogTitle',
-    'Select a folder to run');
-  MyWriteString('frmExtensions', '@ActionForEdit', '<b>Edit</b> action');
-  MyWriteString('frmExtensions', '@ActionForRun', '<b>Run</b> action');
-  MyWriteString('frmExtensions', '@ChooseFileForRun',
-    'Select a program for the Run action');
-  MyWriteString('frmExtensions', '@ChooseFileForEdit',
-    'Select a program for the Edit action');
-  MyWriteString('frmExtensions', '@ErrorEmptyName', 'Enter a name.');
-  MyWriteString('frmExtensions', '@ErrorEmptyExtensions',
-    'Enter at least one file extension.');
-end;
+  begin
+    MyWriteString('LangStrings', '@Cancel', 'Cancel');
+    MyWriteString('LangStrings', '@Close', 'Close');
+    MyWriteString('LangStrings', '@DeleteConfirm',
+      'Are you sure you want to delete "%s"?');
+    MyWriteString('LangStrings', '@CancelConfirm',
+      'Discard unsaved changes?');
+    MyWriteString('LangStrings', '@ErrorEmptyName',
+      'Enter a name.');
+
+    MyWriteString('frmConfig', '@Version', 'Version:');
+
+    MyWriteString('frmConfig\frmCommandConfig',
+      '@IsRunning', 'Running');
+    MyWriteString('frmConfig\frmCommandConfig',
+      '@IsNotRunning', 'Not running');
+    MyWriteString('frmConfig\frmCommandConfig',
+      '@ErrorCommand', 'Specify a command or file to run.');
+
+    MyWriteString('frmExtensions',
+      '@ActionForEdit', '<b>Edit</b> action');
+    MyWriteString('frmExtensions',
+      '@ActionForRun', '<b>Run</b> action');
+    MyWriteString('frmExtensions',
+      '@ErrorEmptyExtensions',
+      'Enter at least one file extension.');
+  end;
 
 function LangFillListAndGetCurrent(const AMainIniFile: TIniFile;
   const AMenu: TPopupMenu; const AmiLang: TMenuItem;

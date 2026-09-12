@@ -12,7 +12,6 @@ type
   TImageIndexList = class(TList<Integer>);
 
   TfrmCommandConfig = class(TFrame)
-    cbIsVisible: TCheckBox;
     edtCaption: TLabeledEdit;
     lblCommand: TLabel;
     btnEdit: TButton;
@@ -240,10 +239,9 @@ var
   SelectedFolder: string;
 begin
   SelectedFolder := Trim(edtCommand.Text);
-  if not DirectoryExists(SelectedFolder) then
-    SelectedFolder := ExtractFileDir(SelectedFolder);
-  if SelectDirectory(GetLangString(sLangFormFramePath,
-    'FolderDialogTitle'), '', SelectedFolder) then
+    if not DirectoryExists(SelectedFolder) then
+      SelectedFolder := ExtractFileDir(SelectedFolder);
+  if SelectDirectory(btnChooseFolder.Hint, '', SelectedFolder) then
     edtCommand.Text := IncludeTrailingPathDelimiter(SelectedFolder);
 end;
 
@@ -293,16 +291,18 @@ end;
 
 procedure TfrmCommandConfig.btnChooseFileClick(Sender: TObject);
 var
-  Command, DefaultFolder, Extensions, Mask, Extension: string;
-  I, J: Integer;
-  MatchedMaskFound: Boolean;
+  Command, DefaultFolder, Extensions, Mask, Extension, BaseFilter: string;
+  I, J, FilterPosition: Integer;
   ExtensionList: TStringList;
 begin
   Command := Trim(edtCommand.Text);
-  edtCommandOpenDialog.Filter := GetLangString('LangStrings',
-    'FileDialogExecutableFile') + '|*.exe';
+  BaseFilter := edtCommandOpenDialog.Filter;
+
   edtCommandOpenDialog.FilterIndex := 1;
-  MatchedMaskFound := MatchesMask(Command, '*.exe');
+  if MatchesMask(Command, '*.exe') then
+    edtCommandOpenDialog.FilterIndex := 2;
+
+  FilterPosition := 2;
   ExtensionList := TStringList.Create;
   try
     for I := 0 to Filters.Count - 1 do
@@ -315,36 +315,31 @@ begin
       ExtensionList.StrictDelimiter := True;
       ExtensionList.Delimiter := ';';
       ExtensionList.DelimitedText := Extensions;
+
       Mask := '';
       for J := 0 to ExtensionList.Count - 1 do
       begin
         Extension := Trim(ExtensionList[J]);
         if Extension = '' then
           Continue;
+
         if Mask <> '' then
           Mask := Mask + ';';
         Mask := Mask + '*.' + Extension;
       end;
+
       if Mask = '' then
         Continue;
 
-      edtCommandOpenDialog.Filter := edtCommandOpenDialog.Filter + '|' +
+      Inc(FilterPosition);
+      edtCommandOpenDialog.Filter :=
+        edtCommandOpenDialog.Filter + '|' +
         Filters[I] + ' (' + Mask + ')|' + Mask;
-      if (not MatchedMaskFound) and
-        MyMatchesExtensions(Command, Extensions) then
-      begin
-        edtCommandOpenDialog.FilterIndex := I + 2;
-        MatchedMaskFound := True;
-      end;
-    end;
 
-    edtCommandOpenDialog.Filter := edtCommandOpenDialog.Filter + '|' +
-      GetLangString('LangStrings', 'FileDialogAnyFile') + '|*.*';
-    if not MatchedMaskFound then
-      edtCommandOpenDialog.FilterIndex :=
-        (Length(edtCommandOpenDialog.Filter) -
-        Length(StringReplace(edtCommandOpenDialog.Filter, '|', '',
-          [rfReplaceAll]))) div 2 + 1;
+      if (edtCommandOpenDialog.FilterIndex = 1) and
+        MyMatchesExtensions(Command, Extensions) then
+        edtCommandOpenDialog.FilterIndex := FilterPosition;
+    end;
 
     if FileExists(Command) then
     begin
@@ -357,11 +352,11 @@ begin
         SetDefFolderAndReturnFilename(Command, DefaultFolder);
       edtCommandOpenDialog.InitialDir := DefaultFolder;
     end;
-    edtCommandOpenDialog.Title := GetLangString(sLangFormFramePath,
-      'FileDialogTitle');
+
     if edtCommandOpenDialog.Execute then
       edtCommand.Text := edtCommandOpenDialog.FileName;
   finally
+    edtCommandOpenDialog.Filter := BaseFilter;
     ExtensionList.Free;
   end;
 end;
@@ -612,7 +607,7 @@ begin
   ExceptionText := '';
   NewCaption := Trim(edtCaption.Text);
   if NewCaption = '' then
-    ExceptionText := GetLangString(sLangFormFramePath, 'ErrorEmptyName');
+    ExceptionText := GetLangString('LangStrings', 'ErrorEmptyName');
   if (not FAssignedCommandData.isGroup) and
     (FAssignedCommandData.Command = '') then
   begin

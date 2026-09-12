@@ -595,7 +595,6 @@ begin
   SetLang(MenuItem.LangCode, MainIniFile);
   if Visible then
     UpdateLblVerLeftAndCaption;
-  lblVer.Hint := GetLangString(Name, 'VersionHint');
   MenuItem.Checked := True;
 end;
 

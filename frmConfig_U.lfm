@@ -124,6 +124,7 @@ object frmConfig: TfrmConfig
       Cursor = crHandPoint
       Left = 12
       Height = 15
+      Hint = 'Open the StartFromTray releases page'
       Top = 5
       Width = 41
       Caption = 'Version:'

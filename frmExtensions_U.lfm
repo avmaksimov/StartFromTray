@@ -204,7 +204,6 @@ object frmExtensions: TfrmExtensions
       OnChange = edtNameChange
     end
     object edtRunHelper: TEditButton
-      Tag = 1
       Left = 6
       Height = 23
       Top = 239
@@ -234,7 +233,7 @@ object frmExtensions: TfrmExtensions
   object OpenDialog: TOpenDialog
     Title = 'Select a program'
     DefaultExt = '.exe'
-    Filter = 'Executable files|*.exe|All files|*.*'
+    Filter = 'All files|*.*|Executable files|*.exe'
     Options = [ofFileMustExist, ofEnableSizing]
     Left = 128
     Top = 72
