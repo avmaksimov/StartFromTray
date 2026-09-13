@@ -2,7 +2,7 @@
 
 **English** | [Русский](README.ru.md)
 
-StartFromTray is a portable Windows tray launcher for applications, documents, folders, and scripts.
+StartFromTray is a portable Windows tray launcher for applications, documents, folders, scripts, and Microsoft Management Console (MMC) snap-ins.
 
 It keeps your frequently used commands in a customizable hierarchical menu available from the system tray. Each menu item supports three actions: run it, edit its target, or quickly open its settings.
 
@@ -20,6 +20,7 @@ This is especially useful for scripts: you can run a script with the left mouse 
 
 * Organize commands into a hierarchical menu with nested groups.
 * Launch applications, documents, folders, scripts, and other Windows shell targets.
+* Find installed MMC snap-ins and configure them for the local computer or supported remote computers.
 * Specify command-line parameters for each item.
 * Run commands or editors with administrator privileges.
 * Copy, rename, reorder, and move items using the configuration tree.
@@ -31,6 +32,14 @@ This is especially useful for scripts: you can run a script with the left mouse 
 * Avoid launching the same item again while its process is still running.
 * Mark commands whose target files cannot be found.
 * Find executable files through the Windows `App Paths` registry entries and the `PATH` environment variable.
+
+## MMC snap-ins
+
+StartFromTray automatically finds Microsoft Management Console (`.msc`) snap-ins installed in Windows. The snap-in picker displays their localized names, file names, descriptions, and icons and supports searching through this information.
+
+A snap-in can be configured for the local computer or, when supported, for a remote computer. Recently used computer names are suggested automatically. Supported remote launch commands are defined in `mmc-remote.ini`.
+
+Remote administration requires the necessary permissions and Windows and network configuration on the target computer.
 
 ## Custom Run and Edit actions
 
