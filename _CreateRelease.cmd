@@ -187,7 +187,7 @@ echo Creating "%ZIP_FILE%"...
 powershell.exe -NoLogo -NoProfile -Command "Compress-Archive -Path (Join-Path $env:STAGE_PATH '*') -DestinationPath $env:ZIP_PATH -CompressionLevel Optimal"
 if errorlevel 1 goto :archive_error
 
-powershell.exe -NoLogo -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:ZIP_PATH); try { if (-not $z.GetEntry('StartFromTray.exe')) { exit 1 }; if (-not $z.GetEntry('mmc-remote.ini')) { exit 1 }; if (-not $z.GetEntry('LICENSE')) { exit 1 }; if (-not $z.GetEntry('README.md')) { exit 1 }; if (-not $z.GetEntry('README.ru.md')) { exit 1 }; if (-not $z.GetEntry('INTEGRATION.ru.md')) { exit 1 }; if (-not ($z.Entries | Where-Object { $_.FullName -like 'Langs/*.ini' } | Select-Object -First 1)) { exit 1 } } finally { $z.Dispose() }"
+powershell.exe -NoLogo -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:ZIP_PATH); try { $required=@('StartFromTray.exe','mmc-remote.ini','LICENSE','README.md','README.ru.md','INTEGRATION.ru.md'); foreach ($name in $required) { if (-not $z.GetEntry($name)) { Write-Host ('ERROR: Missing ZIP entry: ' + $name); exit 1 } }; if (-not ($z.Entries | Where-Object { $_.FullName.Replace('\','/') -like 'Langs/*.ini' } | Select-Object -First 1)) { Write-Host 'ERROR: No Langs/*.ini files found in ZIP.'; exit 1 } } finally { $z.Dispose() }"
 if errorlevel 1 goto :archive_error
 
 powershell.exe -NoLogo -NoProfile -Command "$h=Get-FileHash -LiteralPath $env:ZIP_PATH -Algorithm SHA256; ($h.Hash.ToLowerInvariant() + ' *' + [IO.Path]::GetFileName($env:ZIP_PATH)) | Set-Content -LiteralPath $env:HASH_PATH -Encoding ASCII"
