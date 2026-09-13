@@ -2,31 +2,31 @@ object frmCommandConfig: TfrmCommandConfig
   Left = 0
   Height = 455
   Top = 0
-  Width = 404
+  Width = 411
   ClientHeight = 455
-  ClientWidth = 404
+  ClientWidth = 411
   LCLVersion = '4.8.0.0'
   TabOrder = 0
-  object lblCommand: TLabel
+  object lblCommandState: TLabel
     Left = 8
     Height = 15
-    Top = 59
-    Width = 93
-    Caption = 'Command or file:'
-    FocusControl = edtCommand
+    Top = 176
+    Width = 29
+    Caption = 'State:'
   end
   object lblIsRunning: TLabel
     Left = 126
     Height = 15
-    Top = 59
+    Top = 176
     Width = 65
     Caption = 'Not running'
   end
   object lblRunInfo: TLabel
-    Left = 15
+    Left = 25
     Height = 47
-    Top = 187
-    Width = 379
+    Top = 198
+    Width = 375
+    Anchors = [akTop, akLeft, akRight]
     AutoSize = False
     Caption = 'Cannot start again while the previous instance is running.'
     WordWrap = True
@@ -34,8 +34,8 @@ object frmCommandConfig: TfrmCommandConfig
   object Bevel: TBevel
     Left = 8
     Height = 5
-    Top = 181
-    Width = 388
+    Top = 169
+    Width = 395
     Anchors = [akTop, akLeft, akRight]
     Shape = bsTopLine
   end
@@ -43,51 +43,42 @@ object frmCommandConfig: TfrmCommandConfig
     Tag = 1
     Left = 8
     Height = 23
-    Top = 24
-    Width = 388
+    Top = 17
+    Width = 240
     Anchors = [akTop, akLeft, akRight]
     EditLabel.Tag = 1
     EditLabel.Height = 15
-    EditLabel.Width = 388
+    EditLabel.Width = 240
     EditLabel.Caption = 'Name:'
     TabOrder = 0
     OnChange = edtCaptionChange
   end
   object btnEdit: TButton
-    Left = 240
+    Left = 251
     Height = 22
-    Top = 55
+    Top = 173
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Edit'
-    TabOrder = 5
+    TabOrder = 4
     OnClick = btnEditClick
   end
   object btnRun: TButton
-    Left = 321
+    Left = 328
     Height = 22
-    Top = 55
+    Top = 173
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Run'
-    TabOrder = 6
+    TabOrder = 5
     OnClick = btnRunClick
   end
-  object edtCommand: TEdit
-    Left = 8
-    Height = 23
-    Top = 78
-    Width = 340
-    Anchors = [akTop, akLeft, akRight]
-    TabOrder = 1
-    OnChange = edtCommandChange
-  end
   object btnChooseFile: TSpeedButton
-    Left = 350
-    Height = 23
+    Left = 318
+    Height = 24
     Hint = 'Select a file to run'
-    Top = 78
-    Width = 22
+    Top = 65
+    Width = 26
     Anchors = [akTop, akRight]
     Images = ImageList
     ImageIndex = 0
@@ -99,42 +90,42 @@ object frmCommandConfig: TfrmCommandConfig
   object edtCommandParameters: TLabeledEdit
     Left = 8
     Height = 23
-    Top = 124
-    Width = 388
+    Top = 111
+    Width = 395
     Anchors = [akTop, akLeft, akRight]
     EditLabel.Height = 15
-    EditLabel.Width = 388
+    EditLabel.Width = 395
     EditLabel.Caption = 'Parameters:'
-    TabOrder = 2
+    TabOrder = 1
     OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
     Tag = 1
-    Left = 242
-    Height = 22
-    Top = 2
-    Width = 154
+    Left = 251
+    Height = 24
+    Top = 17
+    Width = 149
     Anchors = [akTop, akRight]
     Caption = 'Change icon'
     PopupMenu = ppMenuChangeIcon
-    TabOrder = 4
+    TabOrder = 3
     OnClick = btnChangeIconClick
   end
   object cbRunAsAdmin: TCheckBox
     Left = 8
     Height = 19
-    Top = 156
+    Top = 143
     Width = 127
     Caption = 'Run as administrator'
-    TabOrder = 3
+    TabOrder = 2
     OnClick = cbRunAsAdminClick
   end
   object btnChooseFolder: TSpeedButton
-    Left = 374
-    Height = 23
+    Left = 346
+    Height = 24
     Hint = 'Select a folder to run'
-    Top = 78
-    Width = 22
+    Top = 65
+    Width = 26
     Anchors = [akTop, akRight]
     Images = ImageList
     ImageIndex = 1
@@ -143,30 +134,54 @@ object frmCommandConfig: TfrmCommandConfig
     ParentShowHint = False
     OnClick = btnChooseFolderClick
   end
+  object btnChooseMMC: TSpeedButton
+    Left = 374
+    Height = 24
+    Hint = 'Select a Microsoft Management Console (MMC) snap-in'
+    Top = 65
+    Width = 26
+    Anchors = [akTop, akRight]
+    Images = ImageList
+    ImageIndex = 2
+    ShowCaption = False
+    ShowHint = True
+    ParentShowHint = False
+    OnClick = btnChooseMMCClick
+  end
+  object edtCommand: TLabeledEdit
+    Left = 8
+    Height = 23
+    Top = 65
+    Width = 307
+    Anchors = [akTop, akLeft, akRight]
+    EditLabel.Height = 15
+    EditLabel.Width = 307
+    EditLabel.Caption = 'Command or file:'
+    TabOrder = 6
+    OnChange = edtCommandChange
+  end
   object edtCommandOpenDialog: TOpenDialog
     Title = 'Select a file to run'
     DefaultExt = '.exe'
     Filter = 'All files|*.*|Executable files|*.exe'
     Options = [ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Left = 352
-    Top = 342
+    Top = 335
   end
   object Timer: TTimer
     Enabled = False
     Interval = 500
     OnTimer = TimerTimer
     Left = 264
-    Top = 342
+    Top = 335
   end
   object ImageList: TImageList
-    Height = 15
-    Width = 19
     Left = 304
-    Top = 342
+    Top = 335
   end
   object ppMenuChangeIcon: TPopupMenu
     Left = 224
-    Top = 342
+    Top = 335
     object miDefaultIcon: TMenuItem
       AutoCheck = True
       Caption = 'Default icon'

@@ -1,0 +1,178 @@
+object frmChooseMMC: TfrmChooseMMC
+  Left = 0
+  Height = 503
+  Top = 0
+  Width = 550
+  BorderIcons = [biSystemMenu]
+  Caption = 'Select an MMC snap-in'
+  ClientHeight = 503
+  ClientWidth = 550
+  Constraints.MinHeight = 503
+  Constraints.MinWidth = 500
+  Position = poMainFormCenter
+  LCLVersion = '4.8.0.0'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnHide = FormHide
+  OnResize = FormResize
+  OnShow = FormShow
+  object gbExtensions: TGroupBox
+    Left = 4
+    Height = 451
+    Top = 0
+    Width = 539
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ClientHeight = 431
+    ClientWidth = 535
+    TabOrder = 0
+    object lblSnapIns: TLabel
+      Left = 10
+      Height = 15
+      Top = 43
+      Width = 106
+      Caption = 'Available snap-ins:'
+    end
+    object lblDescription: TLabel
+      Left = 10
+      Height = 15
+      Top = 276
+      Width = 67
+      Anchors = [akLeft, akBottom]
+      Caption = 'Description:'
+    end
+    object edtSearch: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 14
+      Width = 520
+      Anchors = [akTop, akLeft, akRight]
+      EditLabel.Height = 15
+      EditLabel.Width = 520
+      EditLabel.Caption = 'Search:'
+      TabOrder = 0
+      OnChange = edtSearchChange
+    end
+    object lvSnapIns: TListView
+      Left = 8
+      Height = 207
+      Top = 62
+      Width = 520
+      AllocBy = 64
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      Columns = <      
+        item
+          Caption = 'Snap-in'
+          Width = 365
+        end      
+        item
+          Caption = 'File name'
+          Width = 135
+        end>
+      ColumnClick = False
+      HideSelection = False
+      ReadOnly = True
+      RowSelect = True
+      SmallImages = ImageList
+      TabOrder = 1
+      ViewStyle = vsReport
+      OnDblClick = lvSnapInsDblClick
+      OnMouseUp = lvSnapInsMouseUp
+      OnSelectItem = lvSnapInsSelectItem
+    end
+    object mmoDescription: TMemo
+      Left = 8
+      Height = 55
+      Top = 294
+      Width = 520
+      Anchors = [akLeft, akRight, akBottom]
+      Color = clBtnFace
+      ReadOnly = True
+      TabOrder = 2
+      TabStop = False
+    end
+    object gbTarget: TGroupBox
+      Left = 8
+      Height = 70
+      Top = 355
+      Width = 520
+      Anchors = [akLeft, akRight, akBottom]
+      Caption = 'Computer'
+      ClientHeight = 50
+      ClientWidth = 516
+      TabOrder = 3
+      object rbLocal: TRadioButton
+        Left = 10
+        Height = 19
+        Top = -4
+        Width = 130
+        Caption = 'Local'
+        Checked = True
+        TabOrder = 0
+        TabStop = True
+        OnClick = TargetClick
+      end
+      object rbRemote: TRadioButton
+        Left = 10
+        Height = 23
+        Top = 22
+        Width = 130
+        Caption = 'Remote:'
+        Enabled = False
+        TabOrder = 1
+        OnClick = TargetClick
+      end
+      object cbComputerName: TComboBox
+        Left = 145
+        Height = 23
+        Top = 18
+        Width = 363
+        Anchors = [akTop, akLeft, akRight]
+        AutoComplete = True
+        AutoCompleteText = [cbactEnabled, cbactEndOfLineComplete, cbactSearchAscending]
+        AutoDropDown = True
+        DropDownCount = 10
+        Enabled = False
+        ItemHeight = 15
+        TabOrder = 2
+        OnChange = cbComputerNameChange
+      end
+    end
+  end
+  object gbButtons: TGroupBox
+    Left = 4
+    Height = 47
+    Top = 451
+    Width = 539
+    Anchors = [akLeft, akRight, akBottom]
+    ClientHeight = 27
+    ClientWidth = 535
+    TabOrder = 1
+    object btnOK: TButton
+      Left = 312
+      Height = 25
+      Top = -4
+      Width = 105
+      Anchors = [akTop, akRight]
+      Caption = 'OK'
+      Default = True
+      Enabled = False
+      TabOrder = 0
+      OnClick = btnOKClick
+    end
+    object btnCancel: TButton
+      Left = 423
+      Height = 25
+      Top = -4
+      Width = 105
+      Anchors = [akTop, akRight]
+      Cancel = True
+      Caption = 'Cancel'
+      ModalResult = 2
+      TabOrder = 1
+    end
+  end
+  object ImageList: TImageList
+    Left = 16
+    Top = 458
+  end
+end

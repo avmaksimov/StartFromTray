@@ -30,7 +30,7 @@ type
     FIconExt: string;
     FIsRunAsAdmin: Boolean;
     function InternalRun(const AHelper, AHelperParams: string;
-      const RunType: TCommandRunType): THandle;
+      const RunType: TCommandRunType; out AProcessHandle: THandle): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -108,13 +108,51 @@ begin
 end;
 
 function EscapeXMLAttribute(const S: string): string;
+var
+  I, J, L: Integer;
+
+  procedure Put(const V: string);
+  var
+    N: Integer;
+  begin
+    N := Length(V);
+    Move(V[1], Result[J], N);
+    Inc(J, N);
+  end;
+
 begin
-  Result := StringReplace(S, '&', '&amp;', [rfReplaceAll]);
-  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
-  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
-  Result := StringReplace(Result, #13, '&#13;', [rfReplaceAll]);
-  Result := StringReplace(Result, #10, '&#10;', [rfReplaceAll]);
+  L := Length(S);
+
+  for I := 1 to Length(S) do
+    case S[I] of
+      '&':  Inc(L, 4); // &amp;
+      '"':  Inc(L, 5); // &quot;
+      '<':  Inc(L, 3); // &lt;
+      '>':  Inc(L, 3); // &gt;
+      #9:   Inc(L, 3); // &#9;
+      #13,
+      #10:  Inc(L, 4); // &#13; / &#10;
+    end;
+
+  if L = Length(S) then
+    Exit(S);
+
+  SetLength(Result, L);
+  J := 1;
+
+  for I := 1 to Length(S) do
+    case S[I] of
+      '&':  Put('&amp;');
+      '"':  Put('&quot;');
+      '<':  Put('&lt;');
+      '>':  Put('&gt;');
+      #9:   Put('&#9;');
+      #13:  Put('&#13;');
+      #10:  Put('&#10;');
+    else
+      Result[J] := S[I];
+      Inc(J);
+    end;
 end;
 
 procedure WriteCompatibleXMLFile(ADocument: TXMLDocument;
@@ -243,6 +281,156 @@ begin
     Result := '';
 end;
 
+function QueryAssociatedExecutable(const AFileName, AVerb: string): string;
+var
+  BufferSize: DWORD;
+  WideAssociation, WideVerb, WideResult: UnicodeString;
+begin
+  Result := '';
+  WideAssociation := UTF8Decode(ExtractFileExt(AFileName));
+  WideVerb := UTF8Decode(AVerb);
+  if WideAssociation = '' then
+    Exit;
+
+  BufferSize := 0;
+  AssocQueryStringW(0, ASSOCSTR_EXECUTABLE,
+    PWideChar(WideAssociation), PWideChar(WideVerb), nil, @BufferSize);
+  if BufferSize <= 1 then
+    Exit;
+
+  WideResult := '';
+  SetLength(WideResult, BufferSize);
+  if AssocQueryStringW(0, ASSOCSTR_EXECUTABLE,
+    PWideChar(WideAssociation), PWideChar(WideVerb),
+    PWideChar(WideResult), @BufferSize) = S_OK then
+  begin
+    SetLength(WideResult, BufferSize - 1);
+    Result := UTF8Encode(WideResult);
+  end;
+end;
+
+function QueryAssociatedCommand(const AFileName, AVerb: string): string;
+var
+  BufferSize: DWORD;
+  WideAssociation, WideVerb, WideResult: UnicodeString;
+begin
+  Result := '';
+  WideAssociation := UTF8Decode(ExtractFileExt(AFileName));
+  WideVerb := UTF8Decode(AVerb);
+  if WideAssociation = '' then
+    Exit;
+
+  BufferSize := 0;
+  AssocQueryStringW(0, ASSOCSTR_COMMAND,
+    PWideChar(WideAssociation), PWideChar(WideVerb), nil, @BufferSize);
+  if BufferSize <= 1 then
+    Exit;
+
+  WideResult := '';
+  SetLength(WideResult, BufferSize);
+  if AssocQueryStringW(0, ASSOCSTR_COMMAND,
+    PWideChar(WideAssociation), PWideChar(WideVerb),
+    PWideChar(WideResult), @BufferSize) = S_OK then
+  begin
+    SetLength(WideResult, BufferSize - 1);
+    Result := UTF8Encode(WideResult);
+  end;
+end;
+
+function AssociationCommandParameters(const ACommandLine: string): string;
+var
+  I: Integer;
+  CommandLine: string;
+begin
+  Result := '';
+  CommandLine := TrimLeft(ACommandLine);
+  if CommandLine = '' then
+    Exit;
+
+  I := 1;
+  if CommandLine[I] = '"' then
+  begin
+    Inc(I);
+    while (I <= Length(CommandLine)) and (CommandLine[I] <> '"') do
+      Inc(I);
+    if I <= Length(CommandLine) then
+      Inc(I);
+  end
+  else
+    while (I <= Length(CommandLine)) and
+      (CommandLine[I] > ' ') do
+      Inc(I);
+
+  Result := TrimLeft(Copy(CommandLine, I, MaxInt));
+end;
+
+function ReplaceAssociationToken(var AValue: string;
+  const AToken, AReplacement: string): Boolean;
+begin
+  Result := Pos(LowerCase(AToken), LowerCase(AValue)) > 0;
+  if Result then
+    AValue := StringReplace(AValue, AToken, AReplacement,
+      [rfReplaceAll, rfIgnoreCase]);
+end;
+
+function BuildAssociatedParameters(const AParametersTemplate,
+  AFileName, AAdditionalParameters: string; out AParameters: string): Boolean;
+const
+  FileTokenMarker = #1#2#3#4;
+  ParametersTokenMarker = #5#6#7#8;
+var
+  FileInserted, AdditionalParametersInserted: Boolean;
+  QuotedFileName: string;
+begin
+  AParameters := AParametersTemplate;
+  QuotedFileName := '"' + AFileName + '"';
+
+  FileInserted := ReplaceAssociationToken(AParameters, '"%1"',
+    FileTokenMarker);
+  FileInserted := ReplaceAssociationToken(AParameters, '"%L"',
+    FileTokenMarker) or FileInserted;
+  FileInserted := ReplaceAssociationToken(AParameters, '%1',
+    FileTokenMarker) or FileInserted;
+  FileInserted := ReplaceAssociationToken(AParameters, '%L',
+    FileTokenMarker) or FileInserted;
+  if not FileInserted then
+    Exit(False);
+
+  AdditionalParametersInserted := ReplaceAssociationToken(AParameters,
+    '%*', ParametersTokenMarker);
+  AParameters := StringReplace(AParameters, FileTokenMarker,
+    QuotedFileName, [rfReplaceAll]);
+  AParameters := StringReplace(AParameters, ParametersTokenMarker,
+    Trim(AAdditionalParameters), [rfReplaceAll]);
+  if (not AdditionalParametersInserted) and
+    (Trim(AAdditionalParameters) <> '') then
+    AParameters := TrimRight(AParameters) + ' ' + AAdditionalParameters;
+
+  AParameters := Trim(AParameters);
+  Result := True;
+end;
+
+function TryBuildAssociatedCommand(const AFileName, AVerb,
+  AAdditionalParameters: string; out AExecutable,
+  AParameters: string): Boolean;
+var
+  AssociationCommand, ExpandedExecutable: string;
+begin
+  Result := False;
+  AExecutable := QueryAssociatedExecutable(AFileName, AVerb);
+  AssociationCommand := QueryAssociatedCommand(AFileName, AVerb);
+  if (AExecutable = '') or (AssociationCommand = '') then
+    Exit;
+
+  ExpandedExecutable := MyExpandEnvironmentStrings(AExecutable);
+  if ExpandedExecutable <> '' then
+    AExecutable := ExpandedExecutable;
+
+  Result := BuildAssociatedParameters(
+    AssociationCommandParameters(AssociationCommand), AFileName,
+    AAdditionalParameters, AParameters);
+end;
+
 constructor TCommandData.Create;
 begin
   inherited Create;
@@ -271,21 +459,54 @@ begin
 end;
 
 function TCommandData.InternalRun(const AHelper, AHelperParams: string;
-  const RunType: TCommandRunType): THandle;
+  const RunType: TCommandRunType; out AProcessHandle: THandle): Boolean;
 const
   RunTypeNames: array[TCommandRunType] of string = ('Normal Run', 'Edit');
   HelperCommandMarker = '{file}';
 var
   FileName, Parameters, Operation, TechMessage: string;
+  AssociationVerb, AssociatedFileName: string;
+  AssociatedExecutable, AssociatedParameters: string;
   WideFileName, WideParameters, WideOperation, WideDirectory: UnicodeString;
   SEInfo: TShellExecuteInfoW;
   LastErrorCode: Cardinal;
 begin
-  Result := 0;
+  Result := False;
+  AProcessHandle := 0;
   if AHelper = '' then
   begin
     FileName := Fcommand;
     Parameters := FCommandParameters;
+
+    AssociationVerb := '';
+    if RunType = crtEdit then
+      AssociationVerb := 'edit'
+    else if (Trim(Parameters) <> '') and
+      (ExtractFileExt(FileName) <> '') and
+      not SameText(ExtractFileExt(FileName), '.exe') and
+      not SameText(ExtractFileExt(FileName), '.com') and
+      not DirectoryExists(FileName) then
+      AssociationVerb := 'open';
+
+    { ShellExecuteEx parameters are not defined for document files. Use the
+      complete Windows association command when a document has parameters,
+      or when the Edit verb was requested. }
+    if AssociationVerb <> '' then
+    begin
+      AssociatedFileName := ExtendCommandToFullName;
+      if AssociatedFileName = '' then
+        AssociatedFileName := Fcommand;
+
+      if TryBuildAssociatedCommand(AssociatedFileName, AssociationVerb,
+        FCommandParameters, AssociatedExecutable,
+        AssociatedParameters) then
+      begin
+        FileName := AssociatedExecutable;
+        Parameters := AssociatedParameters;
+      end
+      else if RunType = crtEdit then
+        Exit;
+    end;
   end
   else
   begin
@@ -334,7 +555,10 @@ begin
     MessageDlg(TechMessage, mtInformation, [mbOK], 0);
 
   if ShellExecuteExW(@SEInfo) then
-    Result := SEInfo.hProcess
+  begin
+    Result := True;
+    AProcessHandle := SEInfo.hProcess;
+  end
   else if gDebug then
   begin
     LastErrorCode := GetLastError;
@@ -364,38 +588,15 @@ procedure TCommandData.Edit;
       end;
   end;
 
-  function GetAssociatedExeForEdit(const FileName: string): string;
-  var
-    BufferSize: DWORD;
-    WideFileName, WideResult, EditVerb: UnicodeString;
-  begin
-    Result := '';
-    BufferSize := 0;
-    WideResult := '';
-    WideFileName := UTF8Decode(FileName);
-    EditVerb := 'edit';
-    AssocQueryStringW(0, ASSOCSTR_EXECUTABLE, PWideChar(WideFileName),
-      PWideChar(EditVerb), nil, @BufferSize);
-    if BufferSize = 0 then
-      Exit;
-
-    SetLength(WideResult, BufferSize);
-    if AssocQueryStringW(0, ASSOCSTR_EXECUTABLE, PWideChar(WideFileName),
-      PWideChar(EditVerb), PWideChar(WideResult),
-      @BufferSize) = S_OK then
-    begin
-      SetLength(WideResult, BufferSize - 1);
-      Result := UTF8Encode(WideResult);
-    end;
-  end;
-
 var
   FilterData: TFilterData;
   EditHelper, EditParams: string;
+  ProcessHandle: THandle;
 begin
   if Fcommand = '' then
     Exit;
 
+  ProcessHandle := 0;
   FilterData := Filters_GetFilterByFilename(Fcommand);
   EditHelper := '';
   EditParams := '';
@@ -404,15 +605,12 @@ begin
     EditHelper := FilterData.Edit;
     EditParams := FilterData.EditParams;
   end;
-  if EditHelper = '' then
-  begin
-    EditHelper := GetAssociatedExeForEdit(Fcommand);
-    EditParams := '';
-  end;
   if EditHelper <> '' then
-    InternalRun(EditHelper, EditParams, crtEdit)
-  else
+    InternalRun(EditHelper, EditParams, crtEdit, ProcessHandle)
+  else if not InternalRun('', '', crtEdit, ProcessHandle) then
     OpenFolderAndSelectFile(Fcommand);
+  if ProcessHandle <> 0 then
+    CloseHandle(ProcessHandle);
 end;
 
 procedure TCommandData.Run(const RunType: TCommandRunType);
@@ -433,8 +631,8 @@ begin
     RunParams := FilterData.RunParams;
   end;
 
-  ProcessHandle := InternalRun(RunHelper, RunParams, RunType);
-  if ProcessHandle <> 0 then
+  if InternalRun(RunHelper, RunParams, RunType, ProcessHandle) and
+    (ProcessHandle <> 0) then
   begin
     isRunning := True;
     TCmdWaitForRunningThread.Create(ProcessHandle, Self);

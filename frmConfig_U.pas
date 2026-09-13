@@ -647,7 +647,6 @@ begin
   { Запасной вариант — приблизительная позиция LCL. }
   Result := TrayIcon.GetPosition;
 
-  //FillChar(Identifier{%H-}, SizeOf(Identifier), 0);
   Identifier.guidItem := Default(TGUID);
   Identifier.cbSize := SizeOf(Identifier);
   Identifier.hWnd := TrayIcon.Handle;

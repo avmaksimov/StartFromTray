@@ -381,7 +381,7 @@ end;
 procedure TfrmExtensions.FormShow(Sender: TObject);
 begin
   if ImageList.Count = 0 then
-    BuildBrowseButtonImages(ImageList, False);
+    BuildBrowseButtonImages(ImageList, False, False);
   ClearLocalFilters;
   FIsModified := False;
   FIsAssigningListItemIndex := False;

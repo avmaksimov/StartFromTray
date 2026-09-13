@@ -17,7 +17,8 @@ procedure M_Error(const ErrorMessage: string);
 procedure M_SetChildsEnable(AControl: TControl; const AEnabled: Boolean);
 procedure ShowMsgIfDebug(const AParam, AValue: string);
 procedure BuildBrowseButtonImages(AImageList: TImageList;
-  const IncludeFolder: Boolean = True);
+  const IncludeFolder: Boolean = False;
+  const IncludeMMC: Boolean = False);
 
 var
   gDebug: Boolean;
@@ -28,49 +29,65 @@ uses
   Forms, Dialogs, StdCtrls, Masks, Windows, ShellApi;
 
 procedure BuildBrowseButtonImages(AImageList: TImageList;
-  const IncludeFolder: Boolean);
-
-  procedure DrawBrowseMark(ACanvas: TCanvas);
-  begin
-    ACanvas.Pen.Width := 2;
-    ACanvas.Pen.Color := clHighlight;
-    ACanvas.Brush.Style := bsClear;
-    ACanvas.Ellipse(8, 7, 13, 12);
-    ACanvas.MoveTo(12, 11);
-    ACanvas.LineTo(15, 14);
-  end;
+  const IncludeFolder: Boolean = False;
+  const IncludeMMC: Boolean = False);
 
   function AddWindowsShellImage(const AProbeName: string;
     const AFileAttributes: DWORD): Boolean;
   var
-    Info: TSHFileInfoW;
+    SmallInfo, LargeInfo: TSHFileInfoW;
     WideProbeName: UnicodeString;
-    Bitmap: Graphics.TBitmap;
-    Icon: Graphics.TIcon;
+    SmallIcon, LargeIcon: Graphics.TIcon;
+    Images: array[0..1] of TRasterImage;
+    SmallIconHandle, LargeIconHandle: HICON;
   begin
     Result := False;
-    Info := Default(TSHFileInfoW);
+    SmallInfo := Default(TSHFileInfoW);
+    LargeInfo := Default(TSHFileInfoW);
     WideProbeName := UTF8Decode(AProbeName);
-    if SHGetFileInfoW(PWideChar(WideProbeName), AFileAttributes, Info,
-      SizeOf(Info), SHGFI_ICON or SHGFI_SMALLICON or
+    if SHGetFileInfoW(PWideChar(WideProbeName), AFileAttributes, SmallInfo,
+      SizeOf(SmallInfo), SHGFI_ICON or SHGFI_SMALLICON or
       SHGFI_USEFILEATTRIBUTES) = 0 then
       Exit;
 
-    Bitmap := Graphics.TBitmap.Create;
-    Icon := Graphics.TIcon.Create;
+    SmallIcon := nil;
+    LargeIcon := nil;
+    SmallIconHandle := 0;
+    LargeIconHandle := 0;
     try
-      Bitmap.SetSize(AImageList.Width, AImageList.Height);
-      Bitmap.Canvas.Brush.Color := clFuchsia;
-      Bitmap.Canvas.FillRect(Types.Rect(0, 0, Bitmap.Width, Bitmap.Height));
-      Icon.Handle := Info.hIcon;
-      Bitmap.Canvas.Draw((Bitmap.Width - Icon.Width) div 2,
-        (Bitmap.Height - Icon.Height) div 2, Icon);
-      DrawBrowseMark(Bitmap.Canvas);
-      AImageList.AddMasked(Bitmap, clFuchsia);
-      Result := True;
+      if SHGetFileInfoW(PWideChar(WideProbeName), AFileAttributes, LargeInfo,
+        SizeOf(LargeInfo), SHGFI_ICON or SHGFI_LARGEICON or
+        SHGFI_USEFILEATTRIBUTES) = 0 then
+        Exit;
+
+      SmallIconHandle := HICON(Windows.CopyImage(SmallInfo.hIcon, IMAGE_ICON,
+        16, 16, 0));
+      LargeIconHandle := HICON(Windows.CopyImage(LargeInfo.hIcon, IMAGE_ICON,
+        32, 32, 0));
+      if (SmallIconHandle = 0) or (LargeIconHandle = 0) then
+        Exit;
+
+      SmallIcon := Graphics.TIcon.Create;
+      LargeIcon := Graphics.TIcon.Create;
+      SmallIcon.Handle := SmallIconHandle;
+      SmallIconHandle := 0;
+      LargeIcon.Handle := LargeIconHandle;
+      LargeIconHandle := 0;
+
+      Images[0] := SmallIcon;
+      Images[1] := LargeIcon;
+      Result := AImageList.AddMultipleResolutions(Images) >= 0;
     finally
-      Icon.Free;
-      Bitmap.Free;
+      SmallIcon.Free;
+      LargeIcon.Free;
+      if SmallIconHandle <> 0 then
+        DestroyIcon(SmallIconHandle);
+      if LargeIconHandle <> 0 then
+        DestroyIcon(LargeIconHandle);
+      if SmallInfo.hIcon <> 0 then
+        DestroyIcon(SmallInfo.hIcon);
+      if LargeInfo.hIcon <> 0 then
+        DestroyIcon(LargeInfo.hIcon);
     end;
   end;
 
@@ -102,7 +119,6 @@ procedure BuildBrowseButtonImages(AImageList: TImageList;
       Bitmap.Canvas.MoveTo(4, 12);
       Bitmap.Canvas.LineTo(7, 12);
 
-      DrawBrowseMark(Bitmap.Canvas);
       AImageList.AddMasked(Bitmap, clFuchsia);
     finally
       Bitmap.Free;
@@ -131,20 +147,32 @@ procedure BuildBrowseButtonImages(AImageList: TImageList;
       Bitmap.Canvas.Polygon([Types.Point(1, 7), Types.Point(14, 7),
         Types.Point(12, 14), Types.Point(1, 14)]);
 
-      DrawBrowseMark(Bitmap.Canvas);
       AImageList.AddMasked(Bitmap, clFuchsia);
     finally
       Bitmap.Free;
     end;
   end;
 
+  procedure AddMMCImage;
+  begin
+    if AddWindowsShellImage('sft-browse.msc',
+      FILE_ATTRIBUTE_NORMAL) then
+      Exit;
+
+    AddFileImage;
+  end;
+
 begin
   AImageList.Clear;
   AImageList.Width := 16;
   AImageList.Height := 16;
+  AImageList.Scaled := True;
+  AImageList.RegisterResolutions([16, 32]);
   AddFileImage;
   if IncludeFolder then
     AddFolderImage;
+  if IncludeMMC then
+    AddMMCImage;
 end;
 
 function MyMatchesExtensions(const AFileName, AExtensions: string): Boolean;

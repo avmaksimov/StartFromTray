@@ -6,7 +6,7 @@ uses
   Interfaces, Forms, SysUtils, IniFiles, Windows,
   CommonU, frmConfig_U, FilterClass_U,
   frmExtensions_U, LangsU, MPPopupMenu,
-  frmChooseExt_U;
+  frmChooseExt_U, FrmChooseMMC_U;
 
 {$R StartFromTray.res}
 
@@ -136,6 +136,8 @@ begin
 
     Application.CreateForm(TfrmExtensions, frmExtensions);
     Application.CreateForm(TfrmChooseExt, frmChooseExt);
+    Application.CreateForm(TfrmChooseMMC, frmChooseMMC);
+    frmChooseMMC.Initialize(MainIniFile);
     Application.ShowMainForm := False;
 
     GenDefaultFileLang;
@@ -166,6 +168,8 @@ begin
   finally
     if Assigned(frmConfig) then
       frmConfig.MainIniFile := nil;
+    if Assigned(frmChooseMMC) then
+      frmChooseMMC.MainIniFile := nil;
     MainIniFile.Free;
     CloseHandle(InstanceMutex);
   end;

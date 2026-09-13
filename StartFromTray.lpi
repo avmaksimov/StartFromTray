@@ -20,8 +20,8 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <MinorVersionNr Value="4"/>
-      <BuildNr Value="272"/>
+      <MinorVersionNr Value="5"/>
+      <BuildNr Value="277"/>
     </VersionInfo>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
@@ -165,6 +165,13 @@
         <Filename Value="frmChooseExt_U.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmChooseExt"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmChooseMMC_U.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmChooseMMC"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>

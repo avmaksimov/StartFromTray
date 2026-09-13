@@ -25,6 +25,7 @@ set "ARCH_NAME=win32"
 set "PROJECT_FILE=%ROOT%%APP_NAME%.lpi"
 set "EXE_FILE=%ROOT%%APP_NAME%.exe"
 set "LANG_DIR=%ROOT%Langs"
+set "MMC_REMOTE_FILE=%ROOT%mmc-remote.ini"
 
 set "LAZBUILD="
 for %%I in (lazbuild.exe) do set "LAZBUILD=%%~$PATH:I"
@@ -89,7 +90,14 @@ if not exist "%LANG_DIR%\*.ini" (
   exit /b 7
 )
 
-for %%F in (LICENSE README.md README.ru.md) do (
+if not exist "%MMC_REMOTE_FILE%" (
+  echo ERROR: MMC remote configuration was not found:
+  echo   "%MMC_REMOTE_FILE%"
+  popd
+  exit /b 17
+)
+
+for %%F in (LICENSE README.md README.ru.md INTEGRATION.ru.md) do (
   if not exist "%ROOT%%%F" (
     echo ERROR: Required file "%%F" was not found.
     popd
@@ -148,7 +156,10 @@ if errorlevel 1 goto :copy_error
 copy /y "%EXE_FILE%" "%STAGE_DIR%\%APP_NAME%.exe" >nul
 if errorlevel 1 goto :copy_error
 
-for %%F in (LICENSE README.md README.ru.md) do (
+copy /y "%MMC_REMOTE_FILE%" "%STAGE_DIR%\mmc-remote.ini" >nul
+if errorlevel 1 goto :copy_error
+
+for %%F in (LICENSE README.md README.ru.md INTEGRATION.ru.md) do (
   copy /y "%ROOT%%%F" "%STAGE_DIR%\%%F" >nul
   if errorlevel 1 goto :copy_error
 )
@@ -176,7 +187,7 @@ echo Creating "%ZIP_FILE%"...
 powershell.exe -NoLogo -NoProfile -Command "Compress-Archive -Path (Join-Path $env:STAGE_PATH '*') -DestinationPath $env:ZIP_PATH -CompressionLevel Optimal"
 if errorlevel 1 goto :archive_error
 
-powershell.exe -NoLogo -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:ZIP_PATH); try { if (-not $z.GetEntry('StartFromTray.exe')) { exit 1 }; if (-not $z.GetEntry('LICENSE')) { exit 1 }; if (-not $z.GetEntry('README.md')) { exit 1 }; if (-not $z.GetEntry('README.ru.md')) { exit 1 }; if (-not ($z.Entries | Where-Object { $_.FullName -like 'Langs/*.ini' } | Select-Object -First 1)) { exit 1 } } finally { $z.Dispose() }"
+powershell.exe -NoLogo -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:ZIP_PATH); try { if (-not $z.GetEntry('StartFromTray.exe')) { exit 1 }; if (-not $z.GetEntry('mmc-remote.ini')) { exit 1 }; if (-not $z.GetEntry('LICENSE')) { exit 1 }; if (-not $z.GetEntry('README.md')) { exit 1 }; if (-not $z.GetEntry('README.ru.md')) { exit 1 }; if (-not $z.GetEntry('INTEGRATION.ru.md')) { exit 1 }; if (-not ($z.Entries | Where-Object { $_.FullName -like 'Langs/*.ini' } | Select-Object -First 1)) { exit 1 } } finally { $z.Dispose() }"
 if errorlevel 1 goto :archive_error
 
 powershell.exe -NoLogo -NoProfile -Command "$h=Get-FileHash -LiteralPath $env:ZIP_PATH -Algorithm SHA256; ($h.Hash.ToLowerInvariant() + ' *' + [IO.Path]::GetFileName($env:ZIP_PATH)) | Set-Content -LiteralPath $env:HASH_PATH -Encoding ASCII"

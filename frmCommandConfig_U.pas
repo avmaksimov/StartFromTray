@@ -11,12 +11,15 @@ uses
 type
   TImageIndexList = class(TList<Integer>);
 
+  { TfrmCommandConfig }
+
   TfrmCommandConfig = class(TFrame)
+    btnChooseMMC: TSpeedButton;
     edtCaption: TLabeledEdit;
-    lblCommand: TLabel;
+    edtCommand: TLabeledEdit;
+    lblCommandState: TLabel;
     btnEdit: TButton;
     btnRun: TButton;
-    edtCommand: TEdit;
     edtCommandOpenDialog: TOpenDialog;
     lblIsRunning: TLabel;
     Timer: TTimer;
@@ -32,6 +35,7 @@ type
     Bevel: TBevel;
     btnChooseFile: TSpeedButton;
     btnChooseFolder: TSpeedButton;
+    procedure btnChooseMMCClick(Sender: TObject);
     procedure edtCaptionChange(Sender: TObject);
     procedure btnEditClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -53,10 +57,12 @@ type
     FOldCommandText: string;
     FTreeImageList: TImageList;
     FListDeletedImageIndexes: TImageIndexList;
+    FLangFormFramePath: string; // path for localizations
     function GetIsModified: Boolean;
     procedure SetCaption(const AValue: string);
     procedure UpdateIcon;
   protected
+    procedure Loaded; override;
     procedure SetEnabled(Value: Boolean); override;
   public
     constructor Create(TheOwner: TComponent); override;
@@ -77,7 +83,7 @@ implementation
 
 uses
   Windows, Masks, Graphics,
-  LangsU, frmChooseExt_U, CommonU, FilterClass_U;
+  LangsU, frmChooseExt_U, frmChooseMMC_U, CommonU, FilterClass_U;
 
 function PickIconDlgCompat(AOwnerWnd: HWND; AIconPath: PWideChar;
   AIconPathLength: UINT; var AIconIndex: Integer): Integer; stdcall;
@@ -95,9 +101,11 @@ begin
   if (AWindow = 0) or (AOwner = 0) then
     Exit;
 
+  WindowRect := Default(TRect);
   if not GetWindowRect(AWindow, WindowRect) then
     Exit;
 
+  OwnerRect := Default(TRect);
   if not GetWindowRect(AOwner, OwnerRect) then
     Exit;
 
@@ -175,9 +183,6 @@ begin
     GCenterDialogOwner := 0;
   end;
 end;
-
-const
-  sLangFormFramePath = 'frmConfig\frmCommandConfig';
 
 {$R *.lfm}
 
@@ -268,6 +273,63 @@ begin
   if (not FAssigningState) and Assigned(FAssignedCommandData) and
     Assigned(FAssignedTreeNode) then
     FAssignedTreeNode.Text := edtCaption.Text;
+end;
+
+procedure TfrmCommandConfig.btnChooseMMCClick(Sender: TObject);
+var
+  WasAutomaticCaption: Boolean;
+begin
+  if not Assigned(FAssignedCommandData) then
+    Exit;
+
+  frmChooseMMC.SnapInFileName := edtCommand.Text;
+  frmChooseMMC.SnapInParameters := edtCommandParameters.Text;
+
+  if frmChooseMMC.ShowModal <> mrOK then
+    Exit;
+
+  WasAutomaticCaption :=
+    (Trim(edtCaption.Text) = '') or
+    SameText(
+      edtCaption.Text,
+      frmChooseMMC.InitialSnapInDisplayName
+    );
+
+  FAssigningState := True;
+  try
+    edtCommand.Text := frmChooseMMC.SnapInFileName;
+    edtCommandParameters.Text := frmChooseMMC.SnapInParameters;
+    FOldCommandText := edtCommand.Text;
+    FAssignedCommandData.Command := edtCommand.Text;
+    FAssignedCommandData.CommandParameters := edtCommandParameters.Text;
+    FAssignedCommandData.IconExt := '';
+
+    if (frmChooseMMC.IconFileName <> '') and
+       (frmChooseMMC.IconIndex >= 0) then
+    begin
+      FAssignedCommandData.IconType := citFromFileRes;
+      FAssignedCommandData.IconFilename :=
+        frmChooseMMC.IconFileName;
+      FAssignedCommandData.IconFileIndex :=
+        frmChooseMMC.IconIndex;
+      miChooseFromFileRes.Checked := True;
+    end
+    else
+    begin
+      FAssignedCommandData.IconType := citDefault;
+      FAssignedCommandData.IconFilename := '';
+      FAssignedCommandData.IconFileIndex := -1;
+      miDefaultIcon.Checked := True;
+    end;
+  finally
+    FAssigningState := False;
+  end;
+
+  if WasAutomaticCaption then
+    edtCaption.Text := frmChooseMMC.SnapInDisplayName;
+
+  CheckFileCommandExists;
+  UpdateIcon;
 end;
 
 procedure TfrmCommandConfig.edtCommandChange(Sender: TObject);
@@ -494,7 +556,7 @@ begin
     lblIsRunning.Caption := '';
     Exit;
   end;
-  lblIsRunning.Caption := GetLangString(sLangFormFramePath,
+  lblIsRunning.Caption := GetLangString(FLangFormFramePath,
     LangKeys[FAssignedCommandData.isRunning]);
 end;
 
@@ -512,6 +574,32 @@ begin
   FAssignedTreeNode.ImageIndex := ImageIndex;
   FAssignedTreeNode.SelectedIndex := ImageIndex;
   FAssignedTreeNode.TreeView.Invalidate;
+end;
+
+procedure TfrmCommandConfig.Loaded;
+var
+  F: TCustomForm;
+begin
+  inherited Loaded;
+
+  if Name = '' then
+    raise Exception.Create('Frame has no Name');
+
+  if not (Owner is TCustomForm) then
+    raise Exception.CreateFmt(
+      'Owner of frame "%s" is not a form',
+      [Name]
+    );
+
+  F := TCustomForm(Owner);
+
+  if F.Name = '' then
+    raise Exception.CreateFmt(
+      'Owner form of frame "%s" has no Name',
+      [Name]
+    );
+
+  FLangFormFramePath := F.Name + '\' + Name;
 end;
 
 function TfrmCommandConfig.CheckFileCommandExists: Boolean;
@@ -545,8 +633,9 @@ end;
 constructor TfrmCommandConfig.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
-  CommonU.BuildBrowseButtonImages(ImageList);
+  CommonU.BuildBrowseButtonImages(ImageList, True, True);
   FAssignedCommandData := nil;
+
   ClearAssigned;
 end;
 
@@ -614,7 +703,7 @@ begin
     if ExceptionText <> '' then
       ExceptionText := ExceptionText + LineEnding + LineEnding;
     ExceptionText := ExceptionText +
-      GetLangString(sLangFormFramePath, 'ErrorCommand');
+      GetLangString(FLangFormFramePath, 'ErrorCommand');
   end;
   if ExceptionText <> '' then
   begin
