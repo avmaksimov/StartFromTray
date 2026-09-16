@@ -52,7 +52,7 @@ object frmExtensions: TfrmExtensions
       OnClick = btnExtensionAddClick
     end
     object btnExtensionDelete: TButton
-      Left = 122
+      Left = 117
       Height = 25
       Top = 31
       Width = 105
@@ -61,7 +61,7 @@ object frmExtensions: TfrmExtensions
       OnClick = btnExtensionDeleteClick
     end
     object btnExtensionDown: TButton
-      Left = 122
+      Left = 117
       Height = 25
       Top = 0
       Width = 105
@@ -93,7 +93,7 @@ object frmExtensions: TfrmExtensions
       Top = -5
       Width = 413
       AutoSize = False
-      Caption = 'Extensions can override the default Windows actions for Run and Edit. They are also used as filters when selecting a file for an item.'
+      Caption = 'Extensions are used in the file chooser. If a Run or Edit program is specified, it is used instead of the corresponding Windows action. The first matching rule is used.'
       WordWrap = True
     end
     object btnOK: TButton
@@ -112,7 +112,6 @@ object frmExtensions: TfrmExtensions
       Top = 31
       Width = 105
       Anchors = [akTop, akRight]
-      Cancel = True
       Caption = 'Cancel'
       TabOrder = 1
       OnClick = btnCancelClick

@@ -625,18 +625,19 @@ begin
   ExitProgram;
 end;
 
-function TfrmConfig.ppTrayMenuQueryItemMissing(Item: TMenuItem): Boolean;
+function TfrmConfig.ppTrayMenuQueryItemMissing(
+  Item: TMenuItem): Boolean;
 var
   CommandData: TCommandData;
 begin
   Result := False;
   if (not Assigned(Item)) or not (Item is TMPMenuItem) or
-     (TMPMenuItem(Item).Data = nil) or (Item.Count > 0) then
-       Exit;
+    (TMPMenuItem(Item).Data = nil) or (Item.Count > 0) then
+    Exit;
 
   CommandData := TCommandData(TMPMenuItem(Item).Data);
   Result := (not CommandData.isGroup) and
-    (CommandData.ExtendCommandToFullName = '');
+    (not CommandData.CommandExists);
 end;
 
 function TfrmConfig.GetTrayMenuPoint: TPoint;
@@ -740,7 +741,7 @@ begin
     ((Node = frmCommandConfig.AssignedTreeNode) and
       frmCommandConfig.CheckFileCommandExists) or
     ((Node <> frmCommandConfig.AssignedTreeNode) and
-      (TCommandData(Node.Data).ExtendCommandToFullName <> '')) then
+      TCommandData(Node.Data).CommandExists) then
     Sender.Canvas.Font.Style := []
   else
   begin

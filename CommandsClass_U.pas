@@ -11,11 +11,15 @@ uses
 type
   TCommandRunType = (crtNormalRun, crtEdit);
   TCommandIconType = (citDefault, citFromFileRes, citFromFileExt);
+  TCommandWindowState = (cwsNormal, cwsMaximized);
 
   TCmdWaitForRunningThread = class;
   TCommandList = TObjectList;
 
   {$M+}
+
+  { TCommandData }
+
   TCommandData = class
   private
     FisGroup: Boolean;
@@ -29,6 +33,7 @@ type
     FIconType: TCommandIconType;
     FIconExt: string;
     FIsRunAsAdmin: Boolean;
+    FWindowState: TCommandWindowState;
     function InternalRun(const AHelper, AHelperParams: string;
       const RunType: TCommandRunType; out AProcessHandle: THandle): Boolean;
   public
@@ -40,8 +45,10 @@ type
     procedure Assign(Dest: TCommandData);
     procedure AssignFrom(SrcNode: TDOMElement);
     procedure AssignTo(DestNode: TDOMElement; const ACaption: string);
+    function CanEdit: Boolean;
     function ExtendCommandToFullName: string;
     function GetImageIndex(const AImageList: TCustomImageList): Integer;
+    function CommandExists: Boolean;
 
     property isRunning: Boolean read FisRunning write FisRunning;
   published
@@ -52,6 +59,8 @@ type
       write FCommandParameters;
     property IsRunAsAdmin: Boolean read FIsRunAsAdmin write FIsRunAsAdmin
       default False;
+    property WindowState: TCommandWindowState read FWindowState
+      write FWindowState default cwsNormal;
     property IconType: TCommandIconType read FIconType write FIconType
       default citDefault;
     property IconFilename: string read FIconFilename write FIconFilename;
@@ -79,7 +88,7 @@ implementation
 
 uses
   Dialogs, TypInfo, Graphics, ShellApi, ShlObj, ShLwApi, Registry,
-  CommonU;
+  CommonU, MmcUtils_U;
 
 function ToDOMString(const S: string): DOMString;
 begin
@@ -441,6 +450,7 @@ begin
   FIconFilename := '';
   FIconFileIndex := -1;
   FIconExt := '';
+  FWindowState := cwsNormal;
   FWaitForRunningThread := nil;
   FisRunning := False;
   FChilds := TCommandList.Create(True);
@@ -473,10 +483,14 @@ var
 begin
   Result := False;
   AProcessHandle := 0;
+
   if AHelper = '' then
   begin
     FileName := Fcommand;
-    Parameters := FCommandParameters;
+    if RunType = crtEdit then
+      Parameters := ''
+    else
+      Parameters := FCommandParameters;
 
     AssociationVerb := '';
     if RunType = crtEdit then
@@ -498,8 +512,7 @@ begin
         AssociatedFileName := Fcommand;
 
       if TryBuildAssociatedCommand(AssociatedFileName, AssociationVerb,
-        FCommandParameters, AssociatedExecutable,
-        AssociatedParameters) then
+  	Parameters, AssociatedExecutable, AssociatedParameters) then
       begin
         FileName := AssociatedExecutable;
         Parameters := AssociatedParameters;
@@ -536,7 +549,11 @@ begin
   SEInfo.lpFile := PWideChar(WideFileName);
   SEInfo.lpParameters := PWideChar(WideParameters);
   SEInfo.lpDirectory := PWideChar(WideDirectory);
-  SEInfo.nShow := SW_SHOWNORMAL;
+  if (RunType = crtNormalRun) and
+    (FWindowState = cwsMaximized) then
+    SEInfo.nShow := SW_SHOWMAXIMIZED
+  else
+    SEInfo.nShow := SW_SHOWNORMAL;
   if RunType <> crtEdit then
     SEInfo.fMask := SEE_MASK_NOCLOSEPROCESS;
 
@@ -593,7 +610,7 @@ var
   EditHelper, EditParams: string;
   ProcessHandle: THandle;
 begin
-  if Fcommand = '' then
+  if not CanEdit then
     Exit;
 
   ProcessHandle := 0;
@@ -678,6 +695,21 @@ begin
   Result := FileSearch(Command, SysUtils.GetEnvironmentVariable('PATH'));
 end;
 
+function TCommandData.CommandExists: Boolean;
+var
+  NativeSystemDirectory: string;
+begin
+  Result := ExtendCommandToFullName <> '';
+  if Result or (ExtractFilePath(Fcommand) <> '') then
+    Exit;
+
+  NativeSystemDirectory := GetNativeSystemDirectoryForAccess;
+
+  Result :=
+    (NativeSystemDirectory <> '') and
+    FileExists(NativeSystemDirectory + Fcommand);
+end;
+
 function TCommandData.GetImageIndex(
   const AImageList: TCustomImageList): Integer;
 var
@@ -690,6 +722,25 @@ var
 begin
   if not Assigned(AImageList) then
     Exit(-1);
+
+  Result := -1;
+
+  if (IconType = citDefault) and
+    SameText(ExtractFileExt(Command), '.msc') then
+  begin
+    Icon := TIcon.Create;
+    try
+      // if we manage it we'll get it from extension.
+      if TryLoadMmcSnapInIcon(Command, Icon) then
+      begin
+        Result := AImageList.AddIcon(Icon);
+        if Result >= 0 then
+          Exit;
+      end;
+    finally
+      Icon.Free;
+    end;
+  end;
 
   IconHandle := 0;
   if IconType in [citDefault, citFromFileExt] then
@@ -883,6 +934,19 @@ begin
   finally
     FreeMem(PropList);
   end;
+end;
+
+function TCommandData.CanEdit: Boolean;
+var
+  Extension: string;
+begin
+  Extension := ExtractFileExt(Trim(Fcommand));
+
+  Result :=
+    not FisGroup and
+    (Trim(Fcommand) <> '') and
+    not SameText(Extension, '.exe') and
+    not SameText(Extension, '.com');
 end;
 
 constructor TCmdWaitForRunningThread.Create(const AProcessHandle: THandle;

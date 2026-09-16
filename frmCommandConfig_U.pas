@@ -15,6 +15,7 @@ type
 
   TfrmCommandConfig = class(TFrame)
     btnChooseMMC: TSpeedButton;
+    cbRunMaximized: TCheckBox;
     edtCaption: TLabeledEdit;
     edtCommand: TLabeledEdit;
     lblCommandState: TLabel;
@@ -36,6 +37,7 @@ type
     btnChooseFile: TSpeedButton;
     btnChooseFolder: TSpeedButton;
     procedure btnChooseMMCClick(Sender: TObject);
+    procedure cbRunMaximizedClick(Sender: TObject);
     procedure edtCaptionChange(Sender: TObject);
     procedure btnEditClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -289,11 +291,9 @@ begin
     Exit;
 
   WasAutomaticCaption :=
-    (Trim(edtCaption.Text) = '') or
-    SameText(
-      edtCaption.Text,
-      frmChooseMMC.InitialSnapInDisplayName
-    );
+  (Trim(edtCaption.Text) = '') or
+  ((frmChooseMMC.OriginalAutomaticCaption <> '') and
+   SameText(edtCaption.Text, frmChooseMMC.OriginalAutomaticCaption));
 
   FAssigningState := True;
   try
@@ -304,23 +304,10 @@ begin
     FAssignedCommandData.CommandParameters := edtCommandParameters.Text;
     FAssignedCommandData.IconExt := '';
 
-    if (frmChooseMMC.IconFileName <> '') and
-       (frmChooseMMC.IconIndex >= 0) then
-    begin
-      FAssignedCommandData.IconType := citFromFileRes;
-      FAssignedCommandData.IconFilename :=
-        frmChooseMMC.IconFileName;
-      FAssignedCommandData.IconFileIndex :=
-        frmChooseMMC.IconIndex;
-      miChooseFromFileRes.Checked := True;
-    end
-    else
-    begin
-      FAssignedCommandData.IconType := citDefault;
-      FAssignedCommandData.IconFilename := '';
-      FAssignedCommandData.IconFileIndex := -1;
-      miDefaultIcon.Checked := True;
-    end;
+    FAssignedCommandData.IconType := citDefault;
+    FAssignedCommandData.IconFilename := '';
+    FAssignedCommandData.IconFileIndex := -1;
+    miDefaultIcon.Checked := True;
   finally
     FAssigningState := False;
   end;
@@ -330,6 +317,15 @@ begin
 
   CheckFileCommandExists;
   UpdateIcon;
+end;
+
+procedure TfrmCommandConfig.cbRunMaximizedClick(Sender: TObject);
+begin
+  if (not FAssigningState) and Assigned(FAssignedCommandData) then
+    if cbRunMaximized.Checked then
+      FAssignedCommandData.WindowState := cwsMaximized
+    else
+      FAssignedCommandData.WindowState := cwsNormal;
 end;
 
 procedure TfrmCommandConfig.edtCommandChange(Sender: TObject);
@@ -435,6 +431,7 @@ begin
       Result := (FAssignedCommandData.Command <> Command) or
         (FAssignedCommandData.CommandParameters <> CommandParameters) or
         (FAssignedCommandData.IsRunAsAdmin <> IsRunAsAdmin) or
+        (FAssignedCommandData.WindowState <> WindowState) or
         (FAssignedCommandData.IconType <> IconType) or
         ((FAssignedCommandData.IconType = citFromFileExt) and
           (FAssignedCommandData.IconExt <> IconExt)) or
@@ -605,11 +602,17 @@ end;
 function TfrmCommandConfig.CheckFileCommandExists: Boolean;
 begin
   Result := Assigned(FAssignedCommandData) and
-    (FAssignedCommandData.ExtendCommandToFullName <> '');
+    FAssignedCommandData.CommandExists;
+
   if Result then
     edtCommand.Font.Color := clWindowText
   else
     edtCommand.Font.Color := clRed;
+
+  if Assigned(FAssignedCommandData) then
+    btnEdit.Enabled := Result and FAssignedCommandData.CanEdit
+  else
+    btnEdit.Enabled := False;
 end;
 
 procedure TfrmCommandConfig.ClearAssigned;
@@ -625,6 +628,7 @@ begin
     lblIsRunning.Caption := '';
     edtCommandParameters.Text := '';
     cbRunAsAdmin.Checked := False;
+    cbRunMaximized.Checked := False;
   finally
     FAssigningState := False;
   end;
@@ -642,7 +646,7 @@ end;
 destructor TfrmCommandConfig.Destroy;
 begin
   FAssignedTreeNode := nil;
-  FreeAndNil(FAssignedCommandData);
+  FAssignedCommandData.Free;
   inherited Destroy;
 end;
 
@@ -671,6 +675,7 @@ begin
     FOldCommandText := FAssignedCommandData.Command;
     edtCommandParameters.Text := FAssignedCommandData.CommandParameters;
     cbRunAsAdmin.Checked := FAssignedCommandData.IsRunAsAdmin;
+    cbRunMaximized.Checked := FAssignedCommandData.WindowState = cwsMaximized;
     case FAssignedCommandData.IconType of
       citFromFileRes: miChooseFromFileRes.Checked := True;
       citFromFileExt: miChooseFromFileExt.Checked := True;

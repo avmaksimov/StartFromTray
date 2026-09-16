@@ -60,7 +60,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Edit'
-    TabOrder = 4
+    TabOrder = 6
     OnClick = btnEditClick
   end
   object btnRun: TButton
@@ -70,7 +70,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Run'
-    TabOrder = 5
+    TabOrder = 7
     OnClick = btnRunClick
   end
   object btnChooseFile: TSpeedButton
@@ -96,7 +96,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Height = 15
     EditLabel.Width = 395
     EditLabel.Caption = 'Parameters:'
-    TabOrder = 1
+    TabOrder = 3
     OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
@@ -108,7 +108,7 @@ object frmCommandConfig: TfrmCommandConfig
     Anchors = [akTop, akRight]
     Caption = 'Change icon'
     PopupMenu = ppMenuChangeIcon
-    TabOrder = 3
+    TabOrder = 1
     OnClick = btnChangeIconClick
   end
   object cbRunAsAdmin: TCheckBox
@@ -117,7 +117,7 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 143
     Width = 127
     Caption = 'Run as administrator'
-    TabOrder = 2
+    TabOrder = 4
     OnClick = cbRunAsAdminClick
   end
   object btnChooseFolder: TSpeedButton
@@ -157,8 +157,20 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Height = 15
     EditLabel.Width = 307
     EditLabel.Caption = 'Command or file:'
-    TabOrder = 6
+    TabOrder = 2
     OnChange = edtCommandChange
+  end
+  object cbRunMaximized: TCheckBox
+    Left = 176
+    Height = 19
+    Hint = 'Some applications may ignore this setting and use their own window state.'
+    Top = 143
+    Width = 117
+    Caption = 'Start maximized ⓘ'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 5
+    OnClick = cbRunMaximizedClick
   end
   object edtCommandOpenDialog: TOpenDialog
     Title = 'Select a file to run'

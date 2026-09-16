@@ -51,6 +51,7 @@ type
     procedure TargetClick({%H-}Sender: TObject);
     procedure cbComputerNameChange({%H-}Sender: TObject);
   private
+    FRemoteCaptionTemplate: string;
     FUpdatingTarget: Boolean;
     FInitialSnapInDisplayName: string;
     procedure CenterOnMainForm;
@@ -58,6 +59,7 @@ type
     procedure FillSnapIns;
     function GetMaxRecentComputerCount: Integer;
     function GetSelectedRemoteParameters: string;
+    function GetSuggestedCaption: string;
     procedure LoadRecentComputers;
     procedure RestoreFormProperties;
     procedure SaveFormProperties;
@@ -85,6 +87,7 @@ type
     SnapInDisplayName: string;
     IconFileName: string;
     IconIndex: Integer;
+    OriginalAutomaticCaption: string;
     property InitialSnapInDisplayName: string
 	read FInitialSnapInDisplayName;
     procedure Initialize(const AMainIniFile: TCustomIniFile);
@@ -96,18 +99,11 @@ var
 implementation
 
 uses
-  Windows, ActiveX, Registry, ShellApi, LazUTF8, DOM, XMLRead, CommonU,
-  LangsU;
+  Windows, LazUTF8, CommonU, LangsU, MmcUtils_U;
 
 {$R *.lfm}
 
 const
-  C_MUI_LANGUAGE_ID = $00000004;
-  C_MUI_USER_PREFERRED_UI_LANGUAGES = $00000010;
-  C_MUI_NON_LANG_NEUTRAL_FILE = $00000200;
-  C_LOCALE_NAME_MAX_LENGTH = 85;
-  C_SNAPINS_REGISTRY_KEY = '\SOFTWARE\Microsoft\MMC\SnapIns\';
-  C_MMC_FOLDER_SNAPIN_ID = '{C96401CC-0E17-11D3-885B-00C04F72C717}';
   C_REMOTE_INI_FILE_NAME = 'mmc-remote.ini';
   C_REMOTE_INI_SECTION = 'Remote';
   C_COMPUTER_NAME_TOKEN = '{computername}';
@@ -122,579 +118,11 @@ const
   C_MIN_FORM_WIDTH = 500;
   C_MIN_FORM_HEIGHT = 503;
   C_FILE_NAME_COLUMN_WIDTH = 135;
-  IID_ISnapInAbout: TGUID = '{1245208C-A151-11D0-A7D7-00C04FD909DD}';
-
-type
-  ISnapInAbout = interface(IUnknown)
-    ['{1245208C-A151-11D0-A7D7-00C04FD909DD}']
-    function GetSnapinDescription(out ADescription: PWideChar): HRESULT;
-      stdcall;
-    function GetProvider(out AName: PWideChar): HRESULT; stdcall;
-    function GetSnapinVersion(out AVersion: PWideChar): HRESULT; stdcall;
-    function GetSnapinImage(out AIcon: HICON): HRESULT; stdcall;
-    function GetStaticFolderImage(out ASmallImage: HBITMAP;
-      out ASmallImageOpen: HBITMAP; out ALargeImage: HBITMAP;
-      out AMaskColor: COLORREF): HRESULT; stdcall;
-  end;
-
-function M_GetFileMUIPath(Flags: DWORD; FilePath, Language: PWideChar;
-  LanguageLength: PCardinal; MUIPath: PWideChar;
-  MUIPathLength: PCardinal; Enumerator: PQWord): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetFileMUIPath';
-
-function M_SHLoadIndirectString(Source, OutputBuffer: PWideChar;
-  OutputBufferLength: UINT; Reserved: Pointer): HRESULT; stdcall;
-  external 'shlwapi.dll' name 'SHLoadIndirectString';
-
-function DomStringToUTF8(const AValue: DOMString): string;
-begin
-  Result := UTF8Encode(UnicodeString(AValue));
-end;
 
 function ContainsTextUTF8(const AText, ASearchText: string): Boolean;
 begin
   Result := UTF8Pos(UTF8LowerCase(ASearchText),
     UTF8LowerCase(AText)) > 0;
-end;
-
-function FindDirectChildElement(const AParent: TDOMNode;
-  const AName: string): TDOMElement;
-var
-  Node: TDOMNode;
-begin
-  Result := nil;
-  if not Assigned(AParent) then
-    Exit;
-
-  Node := AParent.FirstChild;
-  while Assigned(Node) do
-  begin
-    if (Node is TDOMElement) and
-      SameText(DomStringToUTF8(Node.NodeName), AName) then
-      Exit(TDOMElement(Node));
-    Node := Node.NextSibling;
-  end;
-end;
-
-function FindFirstElementByName(const ANode: TDOMNode;
-  const AName: string): TDOMElement;
-var
-  Child: TDOMNode;
-begin
-  Result := nil;
-  if not Assigned(ANode) then
-    Exit;
-
-  Child := ANode.FirstChild;
-  while Assigned(Child) do
-  begin
-    if Child is TDOMElement then
-    begin
-      if SameText(DomStringToUTF8(Child.NodeName), AName) then
-        Exit(TDOMElement(Child));
-      Result := FindFirstElementByName(Child, AName);
-      if Assigned(Result) then
-        Exit;
-    end;
-    Child := Child.NextSibling;
-  end;
-end;
-
-function IsMmcFolderSnapIn(const ASnapInID: string): Boolean;
-var
-  SnapInID: string;
-begin
-  SnapInID := Trim(ASnapInID);
-  if SameText(Copy(SnapInID, 1, 3), 'FX:') then
-    Delete(SnapInID, 1, 3);
-  Result := SameText(SnapInID, C_MMC_FOLDER_SNAPIN_ID);
-end;
-
-function FindFirstUsableSnapInID(const ANode: TDOMNode;
-  const AElementName: string): string;
-var
-  Child: TDOMNode;
-  SnapInID: string;
-begin
-  Result := '';
-  if not Assigned(ANode) then
-    Exit;
-
-  Child := ANode.FirstChild;
-  while Assigned(Child) do
-  begin
-    if Child is TDOMElement then
-    begin
-      if SameText(DomStringToUTF8(Child.NodeName), AElementName) then
-      begin
-        SnapInID := Trim(DomStringToUTF8(
-          TDOMElement(Child).GetAttribute('CLSID')));
-        if (SnapInID <> '') and not IsMmcFolderSnapIn(SnapInID) then
-          Exit(SnapInID);
-      end;
-
-      Result := FindFirstUsableSnapInID(Child, AElementName);
-      if Result <> '' then
-        Exit;
-    end;
-    Child := Child.NextSibling;
-  end;
-end;
-
-function FindStringElementByID(const ANode: TDOMNode;
-  const AID: string): TDOMElement;
-var
-  Child: TDOMNode;
-  Element: TDOMElement;
-begin
-  Result := nil;
-  if not Assigned(ANode) then
-    Exit;
-
-  Child := ANode.FirstChild;
-  while Assigned(Child) do
-  begin
-    if Child is TDOMElement then
-    begin
-      Element := TDOMElement(Child);
-      if SameText(DomStringToUTF8(Element.NodeName), 'String') and
-        SameText(DomStringToUTF8(Element.GetAttribute('ID')), AID) then
-        Exit(Element);
-
-      Result := FindStringElementByID(Child, AID);
-      if Assigned(Result) then
-        Exit;
-    end;
-    Child := Child.NextSibling;
-  end;
-end;
-
-function TryGetMUIPath(const AFileName, ALanguageID: string;
-  const AFlags: DWORD; out AMUIPath: string): Boolean;
-var
-  WideFileName, WideLanguage, WideMUIPath: UnicodeString;
-  LanguageLength, MUIPathLength: Cardinal;
-  Enumerator: QWord;
-begin
-  Result := False;
-  AMUIPath := '';
-
-  WideFileName := UTF8Decode(AFileName);
-
-  if ALanguageID <> '' then
-  begin
-    WideLanguage := UTF8Decode(ALanguageID);
-    LanguageLength := Length(WideLanguage) + 1;
-  end
-  else
-  begin
-    SetLength(WideLanguage, C_LOCALE_NAME_MAX_LENGTH);
-    WideLanguage[1] := #0;
-    LanguageLength := C_LOCALE_NAME_MAX_LENGTH;
-  end;
-
-  WideMUIPath := '';
-  SetLength(WideMUIPath, MAX_PATH);
-  MUIPathLength := MAX_PATH;
-  Enumerator := 0;
-
-  if not M_GetFileMUIPath(
-    AFlags or C_MUI_NON_LANG_NEUTRAL_FILE,
-    PWideChar(WideFileName),
-    PWideChar(WideLanguage),
-    @LanguageLength,
-    PWideChar(WideMUIPath),
-    @MUIPathLength,
-    @Enumerator
-  ) then
-    Exit;
-
-  AMUIPath := UTF8Encode(UnicodeString(PWideChar(WideMUIPath)));
-  Result := AMUIPath <> '';
-end;
-
-function GetLocalizedMscPath(const AFileName: string): string;
-var
-  SelectedLCID: LCID;
-  SelectedLanguageID, MUIPath: string;
-begin
-  SelectedLCID := LCID(StrToIntDef(
-    GetLangString('LangProperties', 'LCID'), 1033));
-  SelectedLanguageID := IntToHex(LANGIDFROMLCID(SelectedLCID), 4);
-
-  { First use the language selected in StartFromTray. }
-  if TryGetMUIPath(AFileName, SelectedLanguageID,
-    C_MUI_LANGUAGE_ID, MUIPath) then
-    Exit(MUIPath);
-
-  { Then use the Windows user interface fallback list. }
-  if TryGetMUIPath(AFileName, '',
-    C_MUI_LANGUAGE_ID or C_MUI_USER_PREFERRED_UI_LANGUAGES,
-    MUIPath) then
-    Exit(MUIPath);
-
-  { Finally try US English explicitly before using the base file. }
-  if not SameText(SelectedLanguageID, '0409') and
-    TryGetMUIPath(AFileName, '0409', C_MUI_LANGUAGE_ID, MUIPath) then
-    Exit(MUIPath);
-
-  Result := AFileName;
-end;
-
-procedure ReadConsoleMetadata(const AFileName: string;
-  out ADisplayName, ASnapInID, AIconFileName: string;
-  out AIconIndex: Integer);
-var
-  Document: TXMLDocument;
-  Root, VisualAttributes, StringTables, ScopeTree, Nodes,
-    SnapInCache: TDOMElement;
-  Node, TitleNode, IconNode: TDOMNode;
-  Element: TDOMElement;
-  TitleID, Value: string;
-begin
-  ADisplayName := '';
-  ASnapInID := '';
-  AIconFileName := '';
-  AIconIndex := -1;
-  Document := nil;
-
-  try
-    ReadXMLFile(Document, AFileName);
-    Root := Document.DocumentElement;
-    VisualAttributes := FindDirectChildElement(Root, 'VisualAttributes');
-    StringTables := FindDirectChildElement(Root, 'StringTables');
-
-    { The first SnapinCache entry is often MMC's generic Folder snap-in.
-      Prefer the first real snap-in used by the visible scope tree. }
-    ScopeTree := FindFirstElementByName(Root, 'ScopeTree');
-    Nodes := FindDirectChildElement(ScopeTree, 'Nodes');
-    ASnapInID := FindFirstUsableSnapInID(Nodes, 'Node');
-
-    { Some consoles have no usable scope-tree node. In that case use the
-      first non-Folder entry registered in the console's snap-in cache. }
-    if ASnapInID = '' then
-    begin
-      SnapInCache := FindFirstElementByName(Root, 'SnapinCache');
-      ASnapInID := FindFirstUsableSnapInID(SnapInCache, 'SnapIn');
-    end;
-
-    TitleID := '';
-    IconNode := nil;
-    if Assigned(VisualAttributes) then
-    begin
-      Node := VisualAttributes.FirstChild;
-      while Assigned(Node) do
-      begin
-        if Node is TDOMElement then
-        begin
-          Element := TDOMElement(Node);
-          if SameText(DomStringToUTF8(Element.NodeName), 'String') and
-            SameText(DomStringToUTF8(Element.GetAttribute('Name')),
-              'ApplicationTitle') then
-            TitleID := DomStringToUTF8(Element.GetAttribute('ID'))
-          else if SameText(DomStringToUTF8(Element.NodeName), 'Icon') and
-            not Assigned(IconNode) then
-            IconNode := Node;
-        end;
-        Node := Node.NextSibling;
-      end;
-    end;
-
-    if (TitleID <> '') and Assigned(StringTables) then
-    begin
-      TitleNode := FindStringElementByID(StringTables, TitleID);
-      if Assigned(TitleNode) then
-        ADisplayName := Trim(DomStringToUTF8(TitleNode.TextContent));
-    end;
-
-    if Assigned(IconNode) then
-    begin
-      Element := TDOMElement(IconNode);
-      Value := DomStringToUTF8(Element.GetAttribute('File'));
-      if Value <> '' then
-      begin
-        AIconFileName := MyExpandEnvironmentStrings(Value);
-        if (AIconFileName <> '') and
-          (ExtractFileDrive(AIconFileName) = '') then
-          AIconFileName := ExpandFileName(
-            IncludeTrailingPathDelimiter(ExtractFilePath(AFileName)) +
-            AIconFileName);
-
-        { Negative resource identifiers are valid for ExtractIconExW. }
-        AIconIndex := StrToIntDef(
-          DomStringToUTF8(Element.GetAttribute('Index')), 0);
-      end;
-    end;
-  except
-    { Some third-party console files are not readable XML. The file remains
-      selectable and falls back to its file name and shell icon. }
-    ADisplayName := '';
-    ASnapInID := '';
-    AIconFileName := '';
-    AIconIndex := -1;
-  end;
-
-  Document.Free;
-end;
-
-function ResolveIndirectString(const AValue: string): string;
-var
-  Value: string;
-  WideSource, WideResult: UnicodeString;
-begin
-  Result := '';
-
-  Value := Trim(AValue);
-  if Value = '' then
-    Exit;
-
-  WideSource := UTF8Decode(MyExpandEnvironmentStrings(Value));
-
-  WideResult := '';
-  SetLength(WideResult, 4096);
-
-  if M_SHLoadIndirectString(
-    PWideChar(WideSource),
-    PWideChar(WideResult),
-    Length(WideResult),
-    nil
-  ) >= 0 then
-    Result := Trim(UTF8Encode(UnicodeString(PWideChar(WideResult))));
-end;
-
-function ReadLocalizedRegistryString(const ARegistry: TRegistry;
-  const AIndirectValueName, ADirectValueName: string): string;
-var
-  Value: string;
-begin
-  Result := '';
-
-  if ARegistry.ValueExists(AIndirectValueName) then
-  begin
-    Value := ARegistry.ReadString(AIndirectValueName);
-    Result := ResolveIndirectString(Value);
-  end;
-
-  if (Result = '') and ARegistry.ValueExists(ADirectValueName) then
-  begin
-    Value := Trim(ARegistry.ReadString(ADirectValueName));
-    if (Value <> '') and (Value[1] = '@') then
-      Result := ResolveIndirectString(Value);
-    if Result = '' then
-      Result := Value;
-  end;
-end;
-
-procedure ParseIndirectIcon(const AValue: string;
-  out AFileName: string; out AIconIndex: Integer);
-var
-  Value, IndexText: string;
-  CommaPosition: Integer;
-begin
-  AFileName := '';
-  AIconIndex := -1;
-  Value := Trim(AValue);
-  if Value = '' then
-    Exit;
-
-  if Value[1] = '@' then
-    Delete(Value, 1, 1);
-
-  CommaPosition := LastDelimiter(',', Value);
-  if CommaPosition > 0 then
-  begin
-    IndexText := Trim(Copy(Value, CommaPosition + 1, MaxInt));
-    if TryStrToInt(IndexText, AIconIndex) then
-      Delete(Value, CommaPosition, MaxInt)
-    else
-      AIconIndex := 0;
-  end
-  else
-    AIconIndex := 0;
-
-  Value := Trim(Value);
-  if (Length(Value) >= 2) and (Value[1] = '"') and
-    (Value[Length(Value)] = '"') then
-    Value := Copy(Value, 2, Length(Value) - 2);
-  if (Value <> '') and (Value[1] = '@') then
-    Delete(Value, 1, 1);
-
-  AFileName := MyExpandEnvironmentStrings(Value);
-end;
-
-function OpenSnapInRegistryKey(const ARegistry: TRegistry;
-  const ASnapInID: string): Boolean;
-var
-  KeyID: string;
-begin
-  KeyID := Trim(ASnapInID);
-  Result := (KeyID <> '') and
-    ARegistry.OpenKeyReadOnly(C_SNAPINS_REGISTRY_KEY + KeyID);
-  if Result then
-    Exit;
-
-  if SameText(Copy(KeyID, 1, 3), 'FX:') then
-    Delete(KeyID, 1, 3)
-  else
-    KeyID := 'FX:' + KeyID;
-
-  Result := (KeyID <> '') and
-    ARegistry.OpenKeyReadOnly(C_SNAPINS_REGISTRY_KEY + KeyID);
-end;
-
-function ReadSnapInRegistrationFromView(const ASnapInID: string;
-  const ARegistryView: LongWord; out ADisplayName, ADescription,
-  AAboutClassID, AIconFileName: string; out AIconIndex: Integer): Boolean;
-var
-  Reg: TRegistry;
-begin
-  ADisplayName := '';
-  ADescription := '';
-  AAboutClassID := '';
-  AIconFileName := '';
-  AIconIndex := -1;
-  Result := False;
-  Reg := TRegistry.Create(KEY_READ or ARegistryView);
-  try
-    Reg.RootKey := HKEY_LOCAL_MACHINE;
-    if not OpenSnapInRegistryKey(Reg, ASnapInID) then
-      Exit;
-
-    ADisplayName := ReadLocalizedRegistryString(Reg,
-      'NameStringIndirect', 'NameString');
-    ADescription := ReadLocalizedRegistryString(Reg,
-      'DescriptionStringIndirect', 'DescriptionString');
-
-    if Reg.ValueExists('About') then
-      AAboutClassID := Trim(Reg.ReadString('About'));
-    if Reg.ValueExists('IconIndirect') then
-      ParseIndirectIcon(Reg.ReadString('IconIndirect'),
-        AIconFileName, AIconIndex);
-    Result := True;
-  finally
-    Reg.Free;
-  end;
-end;
-
-function ReadSnapInRegistration(const ASnapInID: string;
-  out ADisplayName, ADescription, AAboutClassID, AIconFileName: string;
-  out AIconIndex: Integer): Boolean;
-const
-  RegistryViews: array[0..2] of LongWord =
-    (0, KEY_WOW64_64KEY, KEY_WOW64_32KEY);
-var
-  I: Integer;
-begin
-  ADisplayName := '';
-  ADescription := '';
-  AAboutClassID := '';
-  AIconFileName := '';
-  AIconIndex := -1;
-  Result := False;
-
-  for I := Low(RegistryViews) to High(RegistryViews) do
-    try
-      if ReadSnapInRegistrationFromView(ASnapInID, RegistryViews[I],
-        ADisplayName, ADescription, AAboutClassID, AIconFileName,
-        AIconIndex) then
-        Exit(True);
-    except
-      { A registry view can be unavailable on the current Windows edition. }
-    end;
-end;
-
-procedure ReadSnapInAbout(const AAboutClassID: string;
-  out ADescription: string; out AIcon: HICON);
-var
-  AboutClassID: TGUID;
-  About: ISnapInAbout;
-  DescriptionPointer: PWideChar;
-  OriginalIcon: HICON;
-begin
-  ADescription := '';
-  AIcon := 0;
-  if Trim(AAboutClassID) = '' then
-    Exit;
-
-  try
-    AboutClassID := StringToGUID(Trim(AAboutClassID));
-  except
-    Exit;
-  end;
-
-  About := nil;
-  if CoCreateInstance(AboutClassID, nil, CLSCTX_INPROC_SERVER,
-    IID_ISnapInAbout, About) < 0 then
-    Exit;
-
-  DescriptionPointer := nil;
-  if About.GetSnapinDescription(DescriptionPointer) >= 0 then
-    try
-      if Assigned(DescriptionPointer) then
-        ADescription := Trim(UTF8Encode(
-          UnicodeString(DescriptionPointer)));
-    finally
-      if Assigned(DescriptionPointer) then
-        CoTaskMemFree(DescriptionPointer);
-    end;
-
-  OriginalIcon := 0;
-  if (About.GetSnapinImage(OriginalIcon) >= 0) and
-    (OriginalIcon <> 0) then
-    { The snap-in owns the returned icon. Keep an independent copy. }
-    AIcon := CopyIcon(OriginalIcon);
-end;
-
-function AddSmallIcon(const AImageList: TImageList;
-  const ABaseFileName, AIconFileName: string;
-  const AIconIndex: Integer; const AAboutIcon: HICON): Integer;
-var
-  Icon: TIcon;
-  LargeIcon, SmallIcon: HICON;
-  FileInfo: TSHFileInfoW;
-  WideFileName: UnicodeString;
-begin
-  Result := -1;
-  LargeIcon := 0;
-  SmallIcon := AAboutIcon;
-
-  if (SmallIcon = 0) and (AIconFileName <> '') then
-  begin
-    WideFileName := UTF8Decode(AIconFileName);
-    ExtractIconExW(PWideChar(WideFileName), AIconIndex,
-      @LargeIcon, @SmallIcon, 1);
-  end;
-
-  if SmallIcon = 0 then
-  begin
-    if LargeIcon <> 0 then
-    begin
-      DestroyIcon(LargeIcon);
-      LargeIcon := 0;
-    end;
-
-    FileInfo := Default(TSHFileInfoW);
-    WideFileName := UTF8Decode(ABaseFileName);
-    if SHGetFileInfoW(PWideChar(WideFileName), 0, FileInfo,
-      SizeOf(FileInfo), SHGFI_ICON or SHGFI_SMALLICON) <> 0 then
-      SmallIcon := FileInfo.hIcon;
-  end;
-
-  if SmallIcon = 0 then
-    Exit;
-
-  Icon := TIcon.Create;
-  try
-    Icon.Handle := SmallIcon;
-    SmallIcon := 0;
-    Result := AImageList.AddIcon(Icon);
-  finally
-    Icon.Free;
-    if LargeIcon <> 0 then
-      DestroyIcon(LargeIcon);
-    if SmallIcon <> 0 then
-      DestroyIcon(SmallIcon);
-  end;
 end;
 
 function NormalizeSnapInFileName(const AFileName: string): string;
@@ -809,42 +237,37 @@ end;
 
 procedure TfrmChooseMMC.FillSnapIns;
 var
-  SystemDirectoryBuffer: array[0..MAX_PATH] of WideChar;
-  SystemDirectoryWide: UnicodeString;
   SystemDirectory, BaseFileName, LocalizedFileName: string;
   DisplayName, SnapInID, SnapInIconFileName: string;
   BaseDisplayName, BaseSnapInID, BaseIconFileName: string;
   RegisteredName, Description, AboutClassID, RegisteredIconFileName: string;
   AboutDescription: string;
   SnapInIconIndex, BaseIconIndex, RegisteredIconIndex: Integer;
-  LengthRead: UINT;
   SearchRec: TSearchRec;
   Info: TMmcSnapInInfo;
   Item: TListItem;
   AboutIcon: HICON;
-  ComInitializationResult: HRESULT;
-  MustUninitializeCOM: Boolean;
   RemoteIniFile: TIniFile;
 begin
   ClearSnapIns;
 
-  LengthRead := GetSystemDirectoryW(@SystemDirectoryBuffer[0],
-    Length(SystemDirectoryBuffer));
-  if (LengthRead = 0) or (LengthRead >= Length(SystemDirectoryBuffer)) then
+  SystemDirectory := GetNativeSystemDirectoryForAccess;
+  if SystemDirectory = '' then
     Exit;
 
-  SetString(SystemDirectoryWide, PWideChar(@SystemDirectoryBuffer[0]),
-    LengthRead);
-  SystemDirectory := IncludeTrailingPathDelimiter(
-    UTF8Encode(SystemDirectoryWide));
-
-  ComInitializationResult := CoInitialize(nil);
-  MustUninitializeCOM := (ComInitializationResult = S_OK) or
-    (ComInitializationResult = S_FALSE);
   RemoteIniFile := nil;
   try
     if FileExists(GetMmcRemoteIniFileName) then
       RemoteIniFile := TIniFile.Create(GetMmcRemoteIniFileName);
+
+    FRemoteCaptionTemplate := '{snapin} {computername}';
+    if Assigned(RemoteIniFile) then
+      FRemoteCaptionTemplate := Trim(RemoteIniFile.ReadString(
+        'Caption', 'Remote', FRemoteCaptionTemplate));
+
+    if (Pos('{snapin}', LowerCase(FRemoteCaptionTemplate)) = 0) or
+       (Pos('{computername}', LowerCase(FRemoteCaptionTemplate)) = 0) then
+      FRemoteCaptionTemplate := '{snapin} {computername}';
     lvSnapIns.Items.BeginUpdate;
     try
       if FindFirst(SystemDirectory + '*.msc', faAnyFile, SearchRec) = 0 then
@@ -934,8 +357,6 @@ begin
     end;
   finally
     RemoteIniFile.Free;
-    if MustUninitializeCOM then
-      CoUninitialize;
   end;
 
   lvSnapIns.AlphaSort;
@@ -965,6 +386,25 @@ begin
 
   Info := TMmcSnapInInfo(lvSnapIns.Selected.Data);
   Result := Info.RemoteParameters;
+end;
+
+function TfrmChooseMMC.GetSuggestedCaption: string;
+var
+  Info: TMmcSnapInInfo;
+begin
+  Result := '';
+  if not Assigned(lvSnapIns.Selected) or
+     not Assigned(lvSnapIns.Selected.Data) then Exit;
+
+  Info := TMmcSnapInInfo(lvSnapIns.Selected.Data);
+  Result := Info.DisplayName;
+  if not rbRemote.Checked or (Trim(cbComputerName.Text) = '') then Exit;
+
+  Result := StringReplace(FRemoteCaptionTemplate, '{snapin}',
+    Info.DisplayName, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{computername}',
+    Trim(cbComputerName.Text), [rfReplaceAll, rfIgnoreCase]);
+  Result := Trim(Result);
 end;
 
 procedure TfrmChooseMMC.LoadRecentComputers;

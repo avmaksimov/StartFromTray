@@ -12,6 +12,7 @@ const
 
 function MyMatchesExtensions(const AFileName, AExtensions: string): Boolean;
 function MyExpandEnvironmentStrings(const FileName: string): string;
+function GetNativeSystemDirectoryForAccess: string;
 
 procedure M_Error(const ErrorMessage: string);
 procedure M_SetChildsEnable(AControl: TControl; const AEnabled: Boolean);
@@ -212,6 +213,57 @@ begin
     Exit('');
   SetLength(WideResult, Required - 1);
   Result := UTF8Encode(WideResult);
+end;
+
+function GetNativeSystemDirectoryForAccess: string;
+var
+  DirectoryBuffer: array[0..MAX_PATH] of WideChar;
+  WideDirectory: UnicodeString;
+  WindowsDirectory, SysnativeDirectory: string;
+  LengthRead: UINT;
+begin
+  Result := '';
+
+  LengthRead := GetWindowsDirectoryW(
+    @DirectoryBuffer[0],
+    Length(DirectoryBuffer)
+  );
+
+  if (LengthRead > 0) and
+     (LengthRead < Length(DirectoryBuffer)) then
+  begin
+    SetString(
+      WideDirectory,
+      PWideChar(@DirectoryBuffer[0]),
+      LengthRead
+    );
+
+    WindowsDirectory := UTF8Encode(WideDirectory);
+    SysnativeDirectory :=
+      IncludeTrailingPathDelimiter(WindowsDirectory) + 'Sysnative';
+
+    if DirectoryExists(SysnativeDirectory) then
+      Exit(IncludeTrailingPathDelimiter(SysnativeDirectory));
+  end;
+
+  LengthRead := GetSystemDirectoryW(
+    @DirectoryBuffer[0],
+    Length(DirectoryBuffer)
+  );
+
+  if (LengthRead = 0) or
+     (LengthRead >= Length(DirectoryBuffer)) then
+    Exit;
+
+  SetString(
+    WideDirectory,
+    PWideChar(@DirectoryBuffer[0]),
+    LengthRead
+  );
+
+  Result := IncludeTrailingPathDelimiter(
+    UTF8Encode(WideDirectory)
+  );
 end;
 
 procedure ShowMsgIfDebug(const AParam, AValue: string);
