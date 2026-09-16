@@ -14,7 +14,9 @@ type
   { TfrmCommandConfig }
 
   TfrmCommandConfig = class(TFrame)
-    btnChooseMMC: TSpeedButton;
+    btnChooseFile: TBitBtn;
+    btnChooseFolder: TBitBtn;
+    btnChooseMMC: TBitBtn;
     cbRunMaximized: TCheckBox;
     edtCaption: TLabeledEdit;
     edtCommand: TLabeledEdit;
@@ -34,8 +36,6 @@ type
     miChooseFromFileExt: TMenuItem;
     cbRunAsAdmin: TCheckBox;
     Bevel: TBevel;
-    btnChooseFile: TSpeedButton;
-    btnChooseFolder: TSpeedButton;
     procedure btnChooseMMCClick(Sender: TObject);
     procedure cbRunMaximizedClick(Sender: TObject);
     procedure edtCaptionChange(Sender: TObject);

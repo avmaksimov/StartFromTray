@@ -60,7 +60,7 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Edit'
-    TabOrder = 6
+    TabOrder = 9
     OnClick = btnEditClick
   end
   object btnRun: TButton
@@ -70,22 +70,8 @@ object frmCommandConfig: TfrmCommandConfig
     Width = 75
     Anchors = [akTop, akRight]
     Caption = 'Run'
-    TabOrder = 7
+    TabOrder = 10
     OnClick = btnRunClick
-  end
-  object btnChooseFile: TSpeedButton
-    Left = 318
-    Height = 24
-    Hint = 'Select a file to run'
-    Top = 65
-    Width = 26
-    Anchors = [akTop, akRight]
-    Images = ImageList
-    ImageIndex = 0
-    ShowCaption = False
-    ShowHint = True
-    ParentShowHint = False
-    OnClick = btnChooseFileClick
   end
   object edtCommandParameters: TLabeledEdit
     Left = 8
@@ -96,7 +82,7 @@ object frmCommandConfig: TfrmCommandConfig
     EditLabel.Height = 15
     EditLabel.Width = 395
     EditLabel.Caption = 'Parameters:'
-    TabOrder = 3
+    TabOrder = 6
     OnChange = edtCommandParametersChange
   end
   object btnChangeIcon: TButton
@@ -117,36 +103,8 @@ object frmCommandConfig: TfrmCommandConfig
     Top = 143
     Width = 127
     Caption = 'Run as administrator'
-    TabOrder = 4
+    TabOrder = 7
     OnClick = cbRunAsAdminClick
-  end
-  object btnChooseFolder: TSpeedButton
-    Left = 346
-    Height = 24
-    Hint = 'Select a folder to run'
-    Top = 65
-    Width = 26
-    Anchors = [akTop, akRight]
-    Images = ImageList
-    ImageIndex = 1
-    ShowCaption = False
-    ShowHint = True
-    ParentShowHint = False
-    OnClick = btnChooseFolderClick
-  end
-  object btnChooseMMC: TSpeedButton
-    Left = 374
-    Height = 24
-    Hint = 'Select a Microsoft Management Console (MMC) snap-in'
-    Top = 65
-    Width = 26
-    Anchors = [akTop, akRight]
-    Images = ImageList
-    ImageIndex = 2
-    ShowCaption = False
-    ShowHint = True
-    ParentShowHint = False
-    OnClick = btnChooseMMCClick
   end
   object edtCommand: TLabeledEdit
     Left = 8
@@ -169,8 +127,53 @@ object frmCommandConfig: TfrmCommandConfig
     Caption = 'Start maximized ⓘ'
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 5
+    TabOrder = 8
     OnClick = cbRunMaximizedClick
+  end
+  object btnChooseFile: TBitBtn
+    Left = 318
+    Height = 24
+    Hint = 'Select a file to run'
+    Top = 65
+    Width = 26
+    Anchors = [akTop, akRight]
+    Images = ImageList
+    ImageIndex = 0
+    ParentShowHint = False
+    ShowHint = True
+    Spacing = 0
+    TabOrder = 3
+    OnClick = btnChooseFileClick
+  end
+  object btnChooseFolder: TBitBtn
+    Left = 346
+    Height = 24
+    Hint = 'Select a folder to run'
+    Top = 65
+    Width = 26
+    Anchors = [akTop, akRight]
+    Images = ImageList
+    ImageIndex = 1
+    ParentShowHint = False
+    ShowHint = True
+    Spacing = 0
+    TabOrder = 4
+    OnClick = btnChooseFolderClick
+  end
+  object btnChooseMMC: TBitBtn
+    Left = 374
+    Height = 24
+    Hint = 'Select a Microsoft Management Console (MMC) snap-in'
+    Top = 65
+    Width = 26
+    Anchors = [akTop, akRight]
+    Images = ImageList
+    ImageIndex = 2
+    ParentShowHint = False
+    ShowHint = True
+    Spacing = 0
+    TabOrder = 5
+    OnClick = btnChooseMMCClick
   end
   object edtCommandOpenDialog: TOpenDialog
     Title = 'Select a file to run'
