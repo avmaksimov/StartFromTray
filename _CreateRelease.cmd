@@ -56,8 +56,8 @@ if not exist "%PROJECT_FILE%" (
 )
 
 echo Building %APP_NAME% in "%BUILD_MODE%" mode...
-rem This command-line override does not change the mode selected in the Lazarus IDE.
-"%LAZBUILD%" --build-all --build-mode="%BUILD_MODE%" "%PROJECT_FILE%"
+rem Build in the requested mode without changing the active mode in the project file.
+"%LAZBUILD%" --build-all --no-write-project --build-mode="%BUILD_MODE%" "%PROJECT_FILE%"
 if errorlevel 1 (
   echo ERROR: Release build failed.
   popd

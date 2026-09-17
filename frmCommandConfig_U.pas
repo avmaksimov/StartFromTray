@@ -597,6 +597,10 @@ begin
     );
 
   FLangFormFramePath := F.Name + '\' + Name;
+
+  cbRunMaximized.AnchorSide[akLeft].Control := cbRunAsAdmin;
+  cbRunMaximized.AnchorSide[akLeft].Side := asrRight;
+  cbRunMaximized.BorderSpacing.Left := 8;
 end;
 
 function TfrmCommandConfig.CheckFileCommandExists: Boolean;
