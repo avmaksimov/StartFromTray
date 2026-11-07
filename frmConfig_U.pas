@@ -118,6 +118,12 @@ type
     MouseButtonSwapped: Boolean;
     ppTrayMenu: TMPPopupMenu;
     FWindowStateBeforeMinimize: TWindowState;
+    FTrayRecoveryTimer: TTimer;
+    FTrayRecoveryAttempts: Integer;
+    FTrayLogEnabled: Boolean;
+    function IsTrayIconRegistered: Boolean;
+    procedure LogTrayRecovery(const AMessage: string);
+    procedure TrayRecoveryTimerTimer(Sender: TObject);
     procedure CorrectTreeViewItemHeight;
     procedure DisposeTreeNodeData(TreeNode: TTreeNode;
       const AddToDeletedImages: Boolean);
@@ -507,6 +513,11 @@ begin
   end;
   IsModified := False;
   WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
+
+  FTrayRecoveryTimer := TTimer.Create(Self);
+  FTrayRecoveryTimer.Enabled := False;
+  FTrayRecoveryTimer.Interval := 1000;
+  FTrayRecoveryTimer.OnTimer := TrayRecoveryTimerTimer;
 end;
 
 destructor TfrmConfig.Destroy;
@@ -573,6 +584,7 @@ begin
   end;
 
   SaveFormProperties;
+  FTrayRecoveryTimer.Enabled := False;
   TrayIcon.Visible := False;
   Application.Terminate;
 end;
@@ -991,7 +1003,109 @@ begin
     raise Exception.Create('Main INI file is not assigned.');
 
   MainIniFile := AMainIniFile;
+  FTrayLogEnabled := MainIniFile.ReadBool('Debug', 'TrayLog', False);
+  LogTrayRecovery('Started. TaskbarCreated=' + IntToStr(WM_TASKBARCREATED));
   RestoreFormProperties;
+end;
+
+function TfrmConfig.IsTrayIconRegistered: Boolean;
+var
+  NotifyData: ShellApi.TNotifyIconDataW;
+begin
+  Result := False;
+  if (not TrayIcon.Visible) or (TrayIcon.Handle = 0) then
+    Exit;
+
+  NotifyData := Default(ShellApi.TNotifyIconDataW);
+  NotifyData.cbSize := SizeOf(NotifyData);
+  NotifyData.hWnd := TrayIcon.Handle;
+  NotifyData.uID := cLCLTrayIconID;
+  NotifyData.uFlags := NIF_ICON;
+  NotifyData.hIcon := TrayIcon.Icon.Handle;
+
+  { NIM_MODIFY succeeds only when the icon is registered with Explorer.
+    It also works for icons in the notification area overflow. }
+  Result := ShellApi.Shell_NotifyIconW(NIM_MODIFY, @NotifyData);
+end;
+
+procedure TfrmConfig.LogTrayRecovery(const AMessage: string);
+var
+  LogFile: TFileStream;
+  LogName: string;
+  Line: AnsiString;
+begin
+  if not FTrayLogEnabled then
+    Exit;
+
+  { Diagnostic logging must never prevent the program from working. }
+  try
+    LogName := ChangeFileExt(ParamStr(0), '.tray.log');
+    if FileExists(LogName) then
+      LogFile := TFileStream.Create(LogName, fmOpenReadWrite or fmShareDenyNone)
+    else
+      LogFile := TFileStream.Create(LogName, fmCreate or fmShareDenyNone);
+    try
+      LogFile.Position := LogFile.Size;
+      Line := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) +
+        '  ' + AMessage + #13#10;
+      LogFile.WriteBuffer(Line[1], Length(Line));
+    finally
+      LogFile.Free;
+    end;
+  except
+    { Logging is optional, including when the EXE folder is read-only. }
+  end;
+end;
+
+procedure TfrmConfig.TrayRecoveryTimerTimer(Sender: TObject);
+var
+  ErrorText: string;
+begin
+  FTrayRecoveryTimer.Enabled := False;
+
+  if Application.Terminated then
+  begin
+    LogTrayRecovery('Recovery cancelled (application closing).');
+    Exit;
+  end;
+
+  Inc(FTrayRecoveryAttempts);
+  if IsTrayIconRegistered then
+  begin
+    LogTrayRecovery('Attempt ' + IntToStr(FTrayRecoveryAttempts) +
+      ': icon already registered; timer stopped.');
+    Exit;
+  end;
+
+  LogTrayRecovery('Attempt ' + IntToStr(FTrayRecoveryAttempts) +
+    ': icon missing; recreating (handle=' +
+    IntToHex(QWord(TrayIcon.Handle), SizeOf(Pointer) * 2) + ').');
+
+  ErrorText := '';
+  try
+    TrayIcon.Visible := False;
+    TrayIcon.Visible := True;
+  except
+    on E: Exception do
+      ErrorText := E.ClassName + ': ' + E.Message;
+  end;
+
+  if ErrorText <> '' then
+    LogTrayRecovery('Recreation raised ' + ErrorText);
+
+  if IsTrayIconRegistered then
+  begin
+    LogTrayRecovery('Icon restored after attempt ' +
+      IntToStr(FTrayRecoveryAttempts) + '; timer stopped.');
+    Exit;
+  end;
+
+  if not Application.Terminated then
+  begin
+    LogTrayRecovery('Icon still missing; retry scheduled in 2 seconds.');
+    FTrayRecoveryTimer.Interval := 2000;
+    FTrayRecoveryTimer.Enabled := True;
+  end;
 end;
 
 procedure TfrmConfig.WndProc(var Message: TLMessage);
@@ -1022,12 +1136,19 @@ begin
   if (WM_TASKBARCREATED > 0) and
      (Message.Msg = WM_TASKBARCREATED) then
   begin
-    WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
-    try
-      TrayIcon.Visible := False;
-    except
+    LogTrayRecovery('TaskbarCreated received (form handle=' +
+      IntToHex(QWord(Handle), SizeOf(Pointer) * 2) + ').');
+    if TrayIcon.Visible and not Application.Terminated then
+    begin
+      { The LCL also reacts to TaskbarCreated on its tray helper window.
+        Allow it to finish before checking whether recovery is needed. }
+      FTrayRecoveryAttempts := 0;
+      FTrayRecoveryTimer.Enabled := False;
+      FTrayRecoveryTimer.Interval := 1000;
+      FTrayRecoveryTimer.Enabled := True;
     end;
-    TrayIcon.Visible := True;
+    Message.Result := 0;
+    Exit;
   end;
 
   inherited WndProc(Message);

@@ -32,3 +32,4 @@ StartFromTray.ini
 Langs/Default.ini
 Items.xml
 Filters.ini
+*.log
