@@ -4,7 +4,7 @@ Creates a portable StartFromTray Win32 release.
 - Increments BuildNr in StartFromTray.lpi exactly once.
 - Builds with Lazarus without an additional auto-increment.
 - Verifies the generated EXE architecture and version.
-- Packs the EXE, documentation, languages, and MMC configuration.
+- Packs the EXE, documentation under Docs/, languages, and MMC configuration.
 - Writes SHA-256 and restores the original .lpi if any step fails.
 
 Run from PowerShell:
@@ -42,7 +42,11 @@ $buildMode = 'Release Win32'
 $projectFile = Join-Path $root 'StartFromTray.lpi'
 $exeFile = Join-Path $root 'StartFromTray.exe'
 $languageDir = Join-Path $root 'Langs'
-$docsDir = Join-Path $root 'docs'
+# Accept both source names; package documentation as Docs/ in either case.
+$docsDir = Join-Path $root 'Docs'
+if (-not (Test-Path -LiteralPath $docsDir -PathType Container)) {
+    $docsDir = Join-Path $root 'docs'
+}
 $mmcFile = Join-Path $root 'mmc-remote.ini'
 $distDir = Join-Path $root 'dist'
 $backupFile = $projectFile + '.release.bak'
@@ -180,14 +184,15 @@ try {
     }
 
     New-Item -ItemType Directory -Path (Join-Path $stagingDir 'Langs') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $stagingDir 'Docs') -Force | Out-Null
     Copy-Item -LiteralPath $exeFile -Destination (Join-Path $stagingDir "$appName.exe")
     Copy-Item -LiteralPath $mmcFile -Destination (Join-Path $stagingDir 'mmc-remote.ini')
     foreach ($name in $requiredDocs) {
-        Copy-Item -LiteralPath (Join-Path $docsDir $name) -Destination (Join-Path $stagingDir $name)
+        Copy-Item -LiteralPath (Join-Path $docsDir $name) -Destination (Join-Path $stagingDir 'Docs')
     }
     $changelog = Join-Path $root 'CHANGELOG.md'
     if (Test-Path -LiteralPath $changelog -PathType Leaf) {
-        Copy-Item -LiteralPath $changelog -Destination (Join-Path $stagingDir 'CHANGELOG.md')
+        Copy-Item -LiteralPath $changelog -Destination (Join-Path (Join-Path $stagingDir 'Docs') 'CHANGELOG.md')
     }
     foreach ($languageFile in $languageFiles) {
         Copy-Item -LiteralPath $languageFile.FullName -Destination (Join-Path $stagingDir 'Langs')
@@ -202,9 +207,15 @@ try {
 
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zipFile)
     try {
-        foreach ($name in @("$appName.exe", 'mmc-remote.ini') + $requiredDocs) {
+        foreach ($name in @("$appName.exe", 'mmc-remote.ini')) {
             if ($null -eq $archive.GetEntry($name)) {
                 throw "Missing ZIP entry: $name"
+            }
+        }
+        foreach ($name in $requiredDocs) {
+            $entry = "Docs/$name"
+            if ($null -eq $archive.GetEntry($entry)) {
+                throw "Missing ZIP entry: $entry"
             }
         }
         $hasLanguages = @($archive.Entries | Where-Object {
