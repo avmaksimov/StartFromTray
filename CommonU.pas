@@ -14,7 +14,6 @@ function MyMatchesExtensions(const AFileName, AExtensions: string): Boolean;
 function MyExpandEnvironmentStrings(const FileName: string): string;
 function GetNativeSystemDirectoryForAccess: string;
 
-procedure M_Error(const ErrorMessage: string);
 procedure M_SetChildsEnable(AControl: TControl; const AEnabled: Boolean);
 procedure ShowMsgIfDebug(const AParam, AValue: string);
 procedure BuildBrowseButtonImages(AImageList: TImageList;
@@ -27,7 +26,7 @@ var
 implementation
 
 uses
-  Forms, Dialogs, StdCtrls, Masks, Windows, ShellApi;
+  Forms, StdCtrls, Masks, Windows, ShellApi;
 
 procedure BuildBrowseButtonImages(AImageList: TImageList;
   const IncludeFolder: Boolean = False;
@@ -270,11 +269,6 @@ procedure ShowMsgIfDebug(const AParam, AValue: string);
 begin
   if gDebug then
     Application.MessageBox(PChar(AParam + ': ' + AValue), 'Debug');
-end;
-
-procedure M_Error(const ErrorMessage: string);
-begin
-  MessageDlg(ErrorMessage, mtError, [mbOK], 0);
 end;
 
 procedure M_SetChildsEnable(AControl: TControl; const AEnabled: Boolean);

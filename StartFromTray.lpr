@@ -6,7 +6,7 @@ uses
   Interfaces, Forms, SysUtils, IniFiles, Windows,
   CommonU, frmConfig_U, FilterClass_U,
   frmExtensions_U, LangsU, MPPopupMenu,
-  frmChooseExt_U, FrmChooseMMC_U;
+  frmChooseExt_U, FrmChooseMMC_U, Updater_U;
 
 {$R StartFromTray.res}
 
@@ -164,6 +164,11 @@ begin
     end;
 
     frmConfig.TrayIcon.Visible := True;
+
+    { The updater is owned by the main form and runs after UI initialization. }
+    frmConfig.UpdateManager := TUpdater.Create(frmConfig);
+    frmConfig.UpdateManager.Start;
+
     Application.Run;
   finally
     if Assigned(frmConfig) then

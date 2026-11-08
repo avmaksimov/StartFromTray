@@ -87,8 +87,8 @@ function GetPropertyFromNodeAttributes(const NodeAttributes: TDOMElement;
 implementation
 
 uses
-  Dialogs, TypInfo, Graphics, ShellApi, ShlObj, ShLwApi, Registry,
-  CommonU, MmcUtils_U;
+  Dialogs, Forms, TypInfo, Graphics, ShellApi, ShlObj, ShLwApi, Registry,
+  CommonU, MmcUtils_U, LangsU;
 
 function ToDOMString(const S: string): DOMString;
 begin
@@ -569,7 +569,7 @@ begin
     TechMessage := TechMessage + Parameters;
 
   if gDebug then
-    MessageDlg(TechMessage, mtInformation, [mbOK], 0);
+    InfoDialog(Application.MainForm, TechMessage);
 
   if ShellExecuteExW(@SEInfo) then
   begin
@@ -580,7 +580,8 @@ begin
   begin
     LastErrorCode := GetLastError;
     if LastErrorCode <> ERROR_NO_ASSOCIATION then
-      M_Error('Error: ' + SysErrorMessage(LastErrorCode) + LineEnding +
+      ErrorDialog(Application.MainForm,
+        'Error: ' + SysErrorMessage(LastErrorCode) + LineEnding +
         'Error code: ' + IntToStr(LastErrorCode) + LineEnding +
         'TechErrorMsg: ' + TechMessage);
   end;

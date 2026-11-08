@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 Creates a portable StartFromTray Win32 release.
 - Increments BuildNr in StartFromTray.lpi exactly once.
@@ -48,6 +48,8 @@ if (-not (Test-Path -LiteralPath $docsDir -PathType Container)) {
     $docsDir = Join-Path $root 'docs'
 }
 $mmcFile = Join-Path $root 'mmc-remote.ini'
+$updateFile = Join-Path $root 'update.ps1'
+$installFile = Join-Path $root 'install.ps1'
 $distDir = Join-Path $root 'dist'
 $backupFile = $projectFile + '.release.bak'
 
@@ -65,6 +67,11 @@ try {
     }
     if (-not (Test-Path -LiteralPath $mmcFile -PathType Leaf)) {
         throw "MMC configuration not found: $mmcFile"
+    }
+    foreach ($script in @($updateFile, $installFile)) {
+        if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
+            throw "Release script not found: $script"
+        }
     }
     foreach ($name in $requiredDocs) {
         $path = Join-Path $docsDir $name
@@ -95,7 +102,23 @@ try {
             Select-Object -First 1
     }
     if (-not $lazbuild) {
-        throw 'lazbuild.exe not found. Add Lazarus to PATH or install it in C:\Programs\Lazarus.'
+        throw 'lazbuild.exe not found. Add Lazarus to PATH or install it in a standard location.'
+    }
+
+    # lazbuild normally knows the FPC executable through its Lazarus configuration,
+    # but Fppkg also searches PATH. Derive an absolute FPC path from the detected
+    # Lazarus installation when possible; do not assume a fixed drive or version.
+    if (-not (Get-Command -Name fpc.exe -CommandType Application -ErrorAction SilentlyContinue)) {
+        $fpcRoot = Join-Path (Split-Path -Parent $lazbuild) 'fpc'
+        if (Test-Path -LiteralPath $fpcRoot -PathType Container) {
+            $fpcExecutable = Get-ChildItem -LiteralPath $fpcRoot -Filter 'fpc.exe' -File -Recurse -ErrorAction SilentlyContinue |
+                Sort-Object @{ Expression = { $_.DirectoryName -notmatch '\\x86_64-win64$' } }, FullName |
+                Select-Object -First 1
+            if ($null -ne $fpcExecutable) {
+                $env:PATH = $fpcExecutable.DirectoryName + ';' + $env:PATH
+                Write-Host "FPC found at: $($fpcExecutable.FullName)"
+            }
+        }
     }
 
     # Keep an exact byte-for-byte backup, preserving BOM and line endings.
@@ -187,6 +210,8 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $stagingDir 'Docs') -Force | Out-Null
     Copy-Item -LiteralPath $exeFile -Destination (Join-Path $stagingDir "$appName.exe")
     Copy-Item -LiteralPath $mmcFile -Destination (Join-Path $stagingDir 'mmc-remote.ini')
+    Copy-Item -LiteralPath $updateFile -Destination (Join-Path $stagingDir 'update.ps1')
+    Copy-Item -LiteralPath $installFile -Destination (Join-Path $stagingDir 'install.ps1')
     foreach ($name in $requiredDocs) {
         Copy-Item -LiteralPath (Join-Path $docsDir $name) -Destination (Join-Path $stagingDir 'Docs')
     }
@@ -207,20 +232,21 @@ try {
 
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zipFile)
     try {
-        foreach ($name in @("$appName.exe", 'mmc-remote.ini')) {
-            if ($null -eq $archive.GetEntry($name)) {
+        # ZIP entry names from .NET Framework may use either slash style.
+        # Normalize them before checking the required package contents.
+        $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+        foreach ($name in @("$appName.exe", 'mmc-remote.ini', 'update.ps1', 'install.ps1')) {
+            if ($entries -cnotcontains $name) {
                 throw "Missing ZIP entry: $name"
             }
         }
         foreach ($name in $requiredDocs) {
             $entry = "Docs/$name"
-            if ($null -eq $archive.GetEntry($entry)) {
+            if ($entries -cnotcontains $entry) {
                 throw "Missing ZIP entry: $entry"
             }
         }
-        $hasLanguages = @($archive.Entries | Where-Object {
-            $_.FullName.Replace('\', '/') -like 'Langs/*.ini'
-        }).Count -gt 0
+        $hasLanguages = @($entries | Where-Object { $_ -like 'Langs/*.ini' }).Count -gt 0
         if (-not $hasLanguages) {
             throw 'ZIP is missing Langs/*.ini files.'
         }

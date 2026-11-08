@@ -26,14 +26,17 @@ function LangFillListAndGetCurrent(const AMainIniFile: TIniFile;
 
 function AskForConfirmation(const AForm: TForm;
   const AConfirmation: string): Boolean;
+function AskForConfirmationWithURI(const AForm: TForm;
+  const AConfirmation, AURI, ALinkCaption: string): Boolean;
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;
+procedure InfoDialog(const AForm: TForm; const ACaption: string);
 procedure ErrorDialog(const AForm: TForm; const ACaption: string);
 
 implementation
 
 uses
   SysUtils, TypInfo, Controls, ExtCtrls, ActnList, Dialogs,
-  ImgList, ComCtrls, Windows;
+  ImgList, ComCtrls, Windows, ShellApi;
 
 const
   cLangFolderName = 'Langs';
@@ -440,6 +443,24 @@ procedure LangAddDefaultStrings(const AForcedWrite: Boolean);
       'Discard unsaved changes?');
     MyWriteString('LangStrings', '@ErrorEmptyName',
       'Enter a name.');
+    MyWriteString('LangStrings', '@UpdateNoUpdates',
+      'StartFromTray is up to date (version %s).');
+    MyWriteString('LangStrings', '@UpdateAvailable',
+      'StartFromTray version %s is available.');
+    MyWriteString('LangStrings', '@UpdateQuestion',
+      'Install the update automatically? StartFromTray will close during installation. Unsaved changes may be lost.');
+    MyWriteString('LangStrings', '@UpdateReleaseLink',
+      'View release on GitHub');
+    MyWriteString('LangStrings', '@UpdateFailure',
+      'Could not update StartFromTray to version %s. %s Details: %s');
+    MyWriteString('LangStrings', '@UpdateLaunchFailed',
+      'Could not start the updater: %s');
+    MyWriteString('LangStrings', '@UpdateCheckFailed',
+      'Could not check for updates: %s');
+    MyWriteString('LangStrings', '@UpdateAlreadyRunning',
+      'Update check or installation is already in progress.');
+    MyWriteString('LangStrings', '@UpdateScriptMissing',
+      'Update script not found: %s');
 
     MyWriteString('frmConfig', '@Version', 'Version:');
 
@@ -548,10 +569,79 @@ begin
     StrToIntDef(GetLangString('LangProperties', 'LCID'), 0)) = IDOK;
 end;
 
+// AskForConfirmationWithURI
+type
+  TURIConfirmationLinkHandler = class
+  private
+    FURI: string;
+  public
+    constructor Create(const AURI: string);
+    procedure LinkClicked(Sender: TObject);
+  end;
+
+constructor TURIConfirmationLinkHandler.Create(const AURI: string);
+begin
+  inherited Create;
+  FURI := AURI;
+end;
+
+procedure TURIConfirmationLinkHandler.LinkClicked(Sender: TObject);
+var
+  URI, Verb: UnicodeString;
+begin
+  if not (Sender is TTaskDialog) or
+     (TTaskDialog(Sender).URL <> FURI) then
+    Exit;
+  URI := UTF8Decode(FURI);
+  Verb := 'open';
+  ShellExecuteW(0, PWideChar(Verb), PWideChar(URI), nil, nil, SW_SHOWNORMAL);
+end;
+
+function AskForConfirmationWithURI(const AForm: TForm;
+  const AConfirmation, AURI, ALinkCaption: string): Boolean;
+var
+  Dialog: TTaskDialog;
+  Button: TTaskDialogBaseButtonItem;
+  LinkHandler: TURIConfirmationLinkHandler;
+begin
+  Result := False;
+  LinkHandler := TURIConfirmationLinkHandler.Create(AURI);
+  try
+    Dialog := TTaskDialog.Create(AForm);
+    try
+      Dialog.Caption := AForm.Caption;
+      Dialog.Text := AConfirmation;
+      Dialog.MainIcon := tdiInformation;
+      Dialog.Flags := [tfEnableHyperlinks, tfAllowDialogCancellation];
+      Dialog.FooterText := '<a href="' + AURI + '">' + ALinkCaption + '</a>';
+      Dialog.OnHyperlinkClicked := LinkHandler.LinkClicked;
+      Dialog.CommonButtons := [tcbYes, tcbNo];
+      Dialog.DefaultButton := tcbNo;
+
+      Result := Dialog.Execute and (Dialog.ModalResult = mrYes);
+    finally
+      Dialog.Free;
+    end;
+  finally
+    LinkHandler.Free;
+  end;
+end;
+
 function AskForDeletion(const AForm: TForm; const ACaption: string): Boolean;
 begin
   Result := AskForConfirmation(AForm,
     Format(GetLangString('LangStrings', 'DeleteConfirm'), [ACaption]));
+end;
+
+procedure InfoDialog(const AForm: TForm; const ACaption: string);
+var
+  WideText, WideCaption: UnicodeString;
+begin
+  WideText := UTF8Decode(ACaption);
+  WideCaption := UTF8Decode(AForm.Caption);
+  MessageBoxExW(AForm.Handle, PWideChar(WideText), PWideChar(WideCaption),
+    MB_OK or MB_ICONINFORMATION,
+    StrToIntDef(GetLangString('LangProperties', 'LCID'), 0));
 end;
 
 procedure ErrorDialog(const AForm: TForm; const ACaption: string);

@@ -8,11 +8,13 @@ uses
   Classes, SysUtils, Types, Forms, Controls, Graphics, Dialogs, ComCtrls,
   ExtCtrls, Menus, StdCtrls, ActnList, Registry, Windows, ImgList,
   IniFiles, LMessages, CommandsClass_U,
-  frmCommandConfig_U, MPPopupMenu;
+  frmCommandConfig_U, MPPopupMenu, Updater_U;
 
 const
   cShowTrayMenuMessageName =
     'StartFromTray.ShowTrayMenu.{3A55B01F-07C3-4DC7-A7C0-C71A78C10B66}';
+  cRequestExitMessageName =
+    'StartFromTray.RequestExit.{3A55B01F-07C3-4DC7-A7C0-C71A78C10B66}';
   cMainWindowPropertyName =
     'StartFromTray.MainWindow.{3A55B01F-07C3-4DC7-A7C0-C71A78C10B66}';
 
@@ -54,6 +56,8 @@ type
     gbButtons: TGroupBox;
     gbMainButtons: TGroupBox;
     MenuItem1: TMenuItem;
+    ppCMUpdateSeparator: TMenuItem;
+    ppCMCheckUpdates: TMenuItem;
     ppCMExit: TMenuItem;
     ppCMConfig: TMenuItem;
     ppConfigMenu: TPopupMenu;
@@ -71,6 +75,8 @@ type
     N2: TMenuItem;
     miOptionsExtensions: TMenuItem;
     N3: TMenuItem;
+    N4: TMenuItem;
+    miOptionsCheckUpdates: TMenuItem;
     miOptionsExitProgram: TMenuItem;
     procedure actAddElementExecute(Sender: TObject);
     procedure actApplyExecute(Sender: TObject);
@@ -111,6 +117,7 @@ type
     procedure btnOptionsClick(Sender: TObject);
     procedure miOptionsRunAtStartClick(Sender: TObject);
     procedure miOptionsExtensionsClick(Sender: TObject);
+    procedure miOptionsCheckUpdatesClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     gMenuItemBmpWidth, gMenuItemBmpHeight: Integer;
@@ -120,7 +127,7 @@ type
     FWindowStateBeforeMinimize: TWindowState;
     FTrayRecoveryTimer: TTimer;
     FTrayRecoveryAttempts: Integer;
-    FTrayLogEnabled: Boolean;
+    //FTrayLogEnabled: Boolean;
     function IsTrayIconRegistered: Boolean;
     procedure LogTrayRecovery(const AMessage: string);
     procedure TrayRecoveryTimerTimer(Sender: TObject);
@@ -145,6 +152,7 @@ type
     procedure WndProc(var Message: TLMessage); override;
   public
     MainIniFile: TIniFile;
+    UpdateManager: TUpdater;
     ListDeletedImageIndexes: TImageIndexList;
     destructor Destroy; override;
     procedure Initialize(const AMainIniFile: TIniFile);
@@ -155,6 +163,7 @@ var
   frmConfig: TfrmConfig;
   WM_TASKBARCREATED: UINT = 0;
   WM_SHOWTRAYMENU: UINT = 0;
+  WM_REQUESTEXIT: UINT = 0;
 
 implementation
 
@@ -476,6 +485,7 @@ var
   Reg: TRegistry;
 begin
   MainIniFile := nil;
+  UpdateManager := nil;
   MouseButtonSwapped := GetSystemMetrics(SM_SWAPBUTTON) <> 0;
   ShowMsgIfDebug('MouseButtonSwapped',
     BoolToStr(MouseButtonSwapped, True));
@@ -513,6 +523,9 @@ begin
   end;
   IsModified := False;
   WM_TASKBARCREATED := RegisterWindowMessage('TaskbarCreated');
+  WM_REQUESTEXIT := RegisterWindowMessage(cRequestExitMessageName);
+  if WM_REQUESTEXIT = 0 then
+    RaiseLastOSError;
 
   FTrayRecoveryTimer := TTimer.Create(Self);
   FTrayRecoveryTimer.Enabled := False;
@@ -597,6 +610,12 @@ end;
 procedure TfrmConfig.miOptionsExtensionsClick(Sender: TObject);
 begin
   frmExtensions.ShowModal;
+end;
+
+procedure TfrmConfig.miOptionsCheckUpdatesClick(Sender: TObject);
+begin
+  if Assigned(UpdateManager) then
+    UpdateManager.CheckNow;
 end;
 
 procedure TfrmConfig.miOptionsLangClick(Sender: TObject);
@@ -1003,7 +1022,7 @@ begin
     raise Exception.Create('Main INI file is not assigned.');
 
   MainIniFile := AMainIniFile;
-  FTrayLogEnabled := MainIniFile.ReadBool('Debug', 'TrayLog', False);
+  //FTrayLogEnabled := MainIniFile.ReadBool('Debug', 'TrayLog', False);
   LogTrayRecovery('Started. TaskbarCreated=' + IntToStr(WM_TASKBARCREATED));
   RestoreFormProperties;
 end;
@@ -1034,14 +1053,14 @@ var
   LogName: string;
   Line: AnsiString;
 begin
-  if not FTrayLogEnabled then
+  if not gDebug then
     Exit;
 
   { Diagnostic logging must never prevent the program from working. }
   try
     LogName := ChangeFileExt(ParamStr(0), '.tray.log');
     if FileExists(LogName) then
-      LogFile := TFileStream.Create(LogName, fmOpenReadWrite or fmShareDenyNone)
+      LogFile := TFileStream.Create(LogName, fmOpenReadWrite or fmShareDenyWrite)
     else
       LogFile := TFileStream.Create(LogName, fmCreate or fmShareDenyNone);
     try
@@ -1112,6 +1131,15 @@ procedure TfrmConfig.WndProc(var Message: TLMessage);
 var
   PopupPoint: TPoint;
 begin
+  if (WM_REQUESTEXIT > 0) and
+     (Message.Msg = WM_REQUESTEXIT) then
+  begin
+    { Close via the normal exit path, including the unsaved-changes prompt. }
+    Message.Result := 0;
+    ExitProgram;
+    Exit;
+  end;
+
   if (WM_SHOWTRAYMENU > 0) and
      (Message.Msg = WM_SHOWTRAYMENU) then
   begin

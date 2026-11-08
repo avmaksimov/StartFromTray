@@ -251,6 +251,13 @@ object frmConfig: TfrmConfig
     object MenuItem1: TMenuItem
       Caption = '-'
     end
+    object ppCMCheckUpdates: TMenuItem
+      Caption = 'Check for updates...'
+      OnClick = miOptionsCheckUpdatesClick
+    end
+    object ppCMUpdateSeparator: TMenuItem
+      Caption = '-'
+    end
     object ppCMExit: TMenuItem
       Caption = 'Exit'
       OnClick = ppCMExitClick
@@ -282,6 +289,13 @@ object frmConfig: TfrmConfig
       OnClick = miOptionsExtensionsClick
     end
     object N3: TMenuItem
+      Caption = '-'
+    end
+    object miOptionsCheckUpdates: TMenuItem
+      Caption = 'Check for updates...'
+      OnClick = miOptionsCheckUpdatesClick
+    end
+    object N4: TMenuItem
       Caption = '-'
     end
     object miOptionsExitProgram: TMenuItem
