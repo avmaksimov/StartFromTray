@@ -5,6 +5,7 @@ Creates a portable StartFromTray Win32 release.
 - Builds with Lazarus without an additional auto-increment.
 - Verifies the generated EXE architecture and version.
 - Packs the EXE, documentation under Docs/, languages, and MMC configuration.
+- Uses a hand-maintained _FileList.txt with wildcard masks for release selection.
 - Writes SHA-256 and restores the original .lpi if any step fails.
 
 Run from PowerShell:
@@ -38,6 +39,7 @@ $root = $PSScriptRoot
 $appName = 'StartFromTray'
 $architecture = 'win32'
 $buildMode = 'Release Win32'
+$fileListPath = Join-Path $root '_FileList.txt'
 
 $projectFile = Join-Path $root 'StartFromTray.lpi'
 $exeFile = Join-Path $root 'StartFromTray.exe'
@@ -54,6 +56,55 @@ $distDir = Join-Path $root 'dist'
 $backupFile = $projectFile + '.release.bak'
 
 $requiredDocs = @('LICENSE', 'README.md', 'README.ru.md', 'INTEGRATION.ru.md')
+
+function Get-FileRules([string]$ListPath) {
+    if (-not (Test-Path -LiteralPath $ListPath -PathType Leaf)) {
+        throw "File mask list not found: $ListPath"
+    }
+    $rules = New-Object System.Collections.Generic.List[object]
+    foreach ($raw in [IO.File]::ReadAllLines($ListPath, [Text.Encoding]::UTF8)) {
+        $pattern = $raw.Trim().Replace('\','/')
+        if ($pattern -eq '' -or $pattern.StartsWith('#')) { continue }
+        $exclude = $pattern.StartsWith('!')
+        if ($exclude) { $pattern = $pattern.Substring(1) }
+        if ([string]::IsNullOrWhiteSpace($pattern) -or
+            $pattern.StartsWith('/') -or $pattern -match '^[A-Za-z]:' -or
+            $pattern -match '[<>:"|]' -or
+            $pattern -match '(^|/)\.\.?(/|$)') {
+            throw "Unsafe file mask: $raw"
+        }
+        foreach ($part in $pattern.Split('/')) {
+            if ($part -eq '' -or $part.EndsWith('.') -or $part.EndsWith(' ')) {
+                throw "Invalid file mask: $raw"
+            }
+        }
+        $regexText = New-Object System.Text.StringBuilder
+        [void]$regexText.Append('^')
+        foreach ($ch in $pattern.ToCharArray()) {
+            if ($ch -eq '*') { [void]$regexText.Append('[^/]*') }
+            elseif ($ch -eq '?') { [void]$regexText.Append('[^/]') }
+            else { [void]$regexText.Append([regex]::Escape([string]$ch)) }
+        }
+        [void]$regexText.Append('$')
+        $rules.Add([pscustomobject]@{ Pattern=$pattern; Exclude=$exclude;
+            Regex=[regex]::new($regexText.ToString(), [Text.RegularExpressions.RegexOptions]::IgnoreCase) })
+    }
+    if (@($rules | Where-Object { -not $_.Exclude }).Count -eq 0) {
+        throw 'No inclusion masks in _FileList.txt.'
+    }
+    return $rules.ToArray()
+}
+
+function Test-FileRules([string]$RelativeName, [object[]]$Rules) {
+    $selected = $false
+    $name = $RelativeName.Replace('\','/')
+    foreach ($rule in $Rules) {
+        if ($rule.Regex.IsMatch($name)) { $selected = -not $rule.Exclude }
+    }
+    return $selected
+}
+
+
 $stagingDir = $null
 $zipFile = $null
 $hashFile = $null
@@ -80,11 +131,7 @@ try {
         }
     }
 
-    $languageFiles = @(Get-ChildItem -LiteralPath $languageDir -Filter '*.ini' -File |
-        Where-Object { $_.Name -ine 'Default.ini' })
-    if ($languageFiles.Count -eq 0) {
-        throw "No distributable language files found in: $languageDir"
-    }
+    $fileRules = @(Get-FileRules $fileListPath)
 
     $lazbuildCommand = Get-Command -Name lazbuild.exe -CommandType Application -ErrorAction SilentlyContinue |
         Select-Object -First 1
@@ -206,22 +253,63 @@ try {
         throw "Compiled EXE version $actualVersion differs from expected $version."
     }
 
-    New-Item -ItemType Directory -Path (Join-Path $stagingDir 'Langs') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $stagingDir 'Docs') -Force | Out-Null
-    Copy-Item -LiteralPath $exeFile -Destination (Join-Path $stagingDir "$appName.exe")
-    Copy-Item -LiteralPath $mmcFile -Destination (Join-Path $stagingDir 'mmc-remote.ini')
-    Copy-Item -LiteralPath $updateFile -Destination (Join-Path $stagingDir 'update.ps1')
-    Copy-Item -LiteralPath $installFile -Destination (Join-Path $stagingDir 'install.ps1')
-    foreach ($name in $requiredDocs) {
-        Copy-Item -LiteralPath (Join-Path $docsDir $name) -Destination (Join-Path $stagingDir 'Docs')
+    # Evaluate the file masks against package-relative paths. All docs source
+    # files are published under Docs/, regardless of docs/ spelling in Git.
+    $selectedFiles = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+    $protected = @('startfromtray.ini','items.xml','filters.ini',
+        'langs/default.ini','_filelist.txt','install.psd1',
+        'startfromtray.update.ini','startfromtray.update.log',
+        'startfromtray.update.log.1','startfromtray.tray.log')
+    $sources = New-Object System.Collections.Generic.List[object]
+    foreach ($file in @(Get-ChildItem -LiteralPath $root -File -Force)) {
+        $sources.Add([pscustomobject]@{ Name=$file.Name; Path=$file.FullName })
+        if ($file.Name -ieq 'CHANGELOG.md') {
+            $sources.Add([pscustomobject]@{ Name='Docs/CHANGELOG.md'; Path=$file.FullName })
+        }
     }
-    $changelog = Join-Path $root 'CHANGELOG.md'
-    if (Test-Path -LiteralPath $changelog -PathType Leaf) {
-        Copy-Item -LiteralPath $changelog -Destination (Join-Path (Join-Path $stagingDir 'Docs') 'CHANGELOG.md')
+    foreach ($folder in @('Langs','Docs')) {
+        $sourceFolder = if ($folder -eq 'Docs') { $docsDir } else { $languageDir }
+        if (-not (Test-Path -LiteralPath $sourceFolder -PathType Container)) { continue }
+        foreach ($file in @(Get-ChildItem -LiteralPath $sourceFolder -File -Recurse -Force)) {
+            $relative = $file.FullName.Substring($sourceFolder.Length).TrimStart('\','/').Replace('\','/')
+            $sources.Add([pscustomobject]@{ Name=($folder + '/' + $relative); Path=$file.FullName })
+        }
     }
-    foreach ($languageFile in $languageFiles) {
-        Copy-Item -LiteralPath $languageFile.FullName -Destination (Join-Path $stagingDir 'Langs')
+    foreach ($source in $sources) {
+        if (-not (Test-FileRules $source.Name $fileRules)) { continue }
+        if ($protected -contains $source.Name.ToLowerInvariant()) {
+            throw "File mask selects protected data: $($source.Name)"
+        }
+        $attributes = [IO.File]::GetAttributes($source.Path)
+        if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Cannot package a symbolic link: $($source.Name)"
+        }
+        if ($selectedFiles.ContainsKey($source.Name)) {
+            throw "More than one source for file: $($source.Name)"
+        }
+        $selectedFiles.Add($source.Name, $source.Path)
     }
+    $releaseNames = @($selectedFiles.Keys | Sort-Object)
+    foreach ($required in @('StartFromTray.exe','update.ps1','install.ps1','mmc-remote.ini')) {
+        if (-not $selectedFiles.ContainsKey($required)) {
+            throw "Required file not included by _FileList.txt: $required"
+        }
+    }
+    foreach ($required in $requiredDocs) {
+        if (-not $selectedFiles.ContainsKey("Docs/$required")) {
+            throw "Required documentation not included by _FileList.txt: Docs/$required"
+        }
+    }
+    if (@($releaseNames | Where-Object { $_ -like 'Langs/*.ini' }).Count -eq 0) {
+        throw 'No language files selected by _FileList.txt.'
+    }
+    foreach ($name in $releaseNames) {
+        $destination = Join-Path $stagingDir ($name.Replace('/', '\'))
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath $selectedFiles[$name] -Destination $destination -Force
+    }
+    # Keep the hand-written masks intact, in the archive for first-run registration.
+    Copy-Item -LiteralPath $fileListPath -Destination (Join-Path $stagingDir '_FileList.txt') -Force
 
     # Do not package user-specific/generated files:
     # StartFromTray.ini, Items.xml, Filters.ini, Langs/Default.ini.
@@ -235,10 +323,17 @@ try {
         # ZIP entry names from .NET Framework may use either slash style.
         # Normalize them before checking the required package contents.
         $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
-        foreach ($name in @("$appName.exe", 'mmc-remote.ini', 'update.ps1', 'install.ps1')) {
+        foreach ($name in @("$appName.exe", 'mmc-remote.ini', 'update.ps1', 'install.ps1', '_FileList.txt')) {
             if ($entries -cnotcontains $name) {
                 throw "Missing ZIP entry: $name"
             }
+        }
+        # The ZIP must match the generated inventory, apart from that inventory itself.
+        $archiveFileNames = @($entries | Where-Object { $_ -notmatch '/$' -and $_ -cne '_FileList.txt' })
+        $missingFiles = @($releaseNames | Where-Object { $archiveFileNames -cnotcontains $_ })
+        $unexpectedFiles = @($archiveFileNames | Where-Object { $releaseNames -cnotcontains $_ })
+        if ($missingFiles.Count -gt 0 -or $unexpectedFiles.Count -gt 0) {
+            throw 'ZIP contents differ from files selected by _FileList.txt.'
         }
         foreach ($name in $requiredDocs) {
             $entry = "Docs/$name"

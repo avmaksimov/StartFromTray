@@ -1,6 +1,6 @@
 #Requires -Version 5.1
 # StartFromTray portable installer. No interactive per-file confirmation.
-# Run directly to install in the extracted folder; -TargetPath is for update.ps1.
+# Run only from a verified release extracted under TEMP by update.ps1.
 [CmdletBinding()]
 param([string]$TargetPath = '')
 
@@ -56,6 +56,53 @@ function Assert-NoReparsePath([string]$FullPath) {
         if ($parent -eq $current) { break }
         $current = $parent
     }
+}
+
+function Get-FileRules([string]$ListPath) {
+    if (-not (Test-Path -LiteralPath $ListPath -PathType Leaf)) {
+        throw "File mask list not found: $ListPath"
+    }
+    $rules = New-Object System.Collections.Generic.List[object]
+    foreach ($raw in [IO.File]::ReadAllLines($ListPath, [Text.Encoding]::UTF8)) {
+        $pattern = $raw.Trim().Replace('\','/')
+        if ($pattern -eq '' -or $pattern.StartsWith('#')) { continue }
+        $exclude = $pattern.StartsWith('!')
+        if ($exclude) { $pattern = $pattern.Substring(1) }
+        if ([string]::IsNullOrWhiteSpace($pattern) -or
+            $pattern.StartsWith('/') -or $pattern -match '^[A-Za-z]:' -or
+            $pattern -match '[<>:"|]' -or
+            $pattern -match '(^|/)\.\.?(/|$)') {
+            throw "Unsafe file mask: $raw"
+        }
+        foreach ($part in $pattern.Split('/')) {
+            if ($part -eq '' -or $part.EndsWith('.') -or $part.EndsWith(' ')) {
+                throw "Invalid file mask: $raw"
+            }
+        }
+        $regexText = New-Object System.Text.StringBuilder
+        [void]$regexText.Append('^')
+        foreach ($ch in $pattern.ToCharArray()) {
+            if ($ch -eq '*') { [void]$regexText.Append('[^/]*') }
+            elseif ($ch -eq '?') { [void]$regexText.Append('[^/]') }
+            else { [void]$regexText.Append([regex]::Escape([string]$ch)) }
+        }
+        [void]$regexText.Append('$')
+        $rules.Add([pscustomobject]@{ Pattern=$pattern; Exclude=$exclude;
+            Regex=[regex]::new($regexText.ToString(), [Text.RegularExpressions.RegexOptions]::IgnoreCase) })
+    }
+    if (@($rules | Where-Object { -not $_.Exclude }).Count -eq 0) {
+        throw 'No inclusion masks in _FileList.txt.'
+    }
+    return $rules.ToArray()
+}
+
+function Test-FileRules([string]$RelativeName, [object[]]$Rules) {
+    $selected = $false
+    $name = $RelativeName.Replace('\','/')
+    foreach ($rule in $Rules) {
+        if ($rule.Regex.IsMatch($name)) { $selected = -not $rule.Exclude }
+    }
+    return $selected
 }
 
 function New-ManifestText([string[]]$Names, [string]$Version) {
@@ -154,31 +201,37 @@ try {
         New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
     }
     Assert-NoReparsePath $targetRoot
-    # First installation is allowed in-place: it registers existing files.
-    $sameFolder = $sourceRoot -ieq $targetRoot
+    if ($sourceRoot -ieq $targetRoot) {
+        throw 'In-place installation is unnecessary. Start the application; the first update check registers its files.'
+    }
 
-    # Protect user-generated data even if it is accidentally included in a future package.
+    # Expand the hand-written masks against the VERIFIED SOURCE ZIP, never
+    # against files already present in the target directory.
+    $fileList = Join-Path $sourceRoot '_FileList.txt'
+    $rules = @(Get-FileRules $fileList)
     $protected = @('startfromtray.ini','items.xml','filters.ini','langs/default.ini',
-        'install.psd1','startfromtray.update.ini','startfromtray.update.log','startfromtray.tray.log')
-    $sourceFiles = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force |
-        Where-Object { $_.FullName.Substring($sourceRoot.Length).Replace('\','/') -notmatch '(^|/)\.' } |
-        Sort-Object FullName)
+        'install.psd1','_filelist.txt','startfromtray.update.ini',
+        'startfromtray.update.log','startfromtray.update.log.1','startfromtray.tray.log')
     $entries = New-Object System.Collections.Generic.List[object]
     $names = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    foreach ($file in $sourceFiles) {
+    foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -File -Recurse -Force)) {
         $relative = $file.FullName.Substring($sourceRoot.Length).TrimStart('\','/').Replace('\','/')
+        if ($relative -eq '_FileList.txt') { continue }
         Assert-SafeRelativePath $relative
+        if (-not (Test-FileRules $relative $rules)) {
+            throw "Unexpected file not selected by package masks: $relative"
+        }
         if ($protected -contains $relative.ToLowerInvariant()) {
-            if ($sameFolder) { continue }
-            throw "Protected file in release archive: $relative"
+            throw "Package masks select protected data: $relative"
         }
         if (-not $names.Add($relative)) { throw "Duplicate package file: $relative" }
-        Assert-NoReparsePath $file.FullName
-        $destination = Join-Path $targetRoot ($relative.Replace('/', '\'))
+        $from = $file.FullName
+        Assert-NoReparsePath $from
+        $destination = Join-Path $targetRoot ($relative.Replace('/','\'))
         Assert-NoReparsePath $destination
         $entries.Add([pscustomobject]@{
-            Relative = $relative; Source = $file.FullName; Destination = $destination;
-            Hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+            Relative=$relative; Source=$from; Destination=$destination;
+            Hash=(Get-FileHash -LiteralPath $from -Algorithm SHA256).Hash
         })
     }
     foreach ($required in @('StartFromTray.exe','install.ps1','update.ps1')) {
@@ -235,7 +288,7 @@ try {
     $version = '{0}.{1}.{2}' -f $newVersion.FileMajorPart, $newVersion.FileMinorPart, $newVersion.FilePrivatePart
     Write-InstallLog "Prepared version $version; new/replaced=$($changes.Count); obsolete=$($removed.Count)."
 
-    if (-not $sameFolder -or $changes.Count -gt 0 -or $removed.Count -gt 0) {
+    if ($changes.Count -gt 0 -or $removed.Count -gt 0) {
         try { Stop-InstalledApplication (Join-Path $targetRoot 'StartFromTray.exe') }
         catch { throw "STOP_FAILED: $($_.Exception.Message)" }
     }
@@ -273,6 +326,13 @@ try {
     finally { if (Test-Path -LiteralPath $manifestTmp) { Remove-Item -LiteralPath $manifestTmp -Force -ErrorAction SilentlyContinue } }
     Write-InstallLog "Installation complete: $version."
     $completed = $true
+    # A portable archive may have been extracted manually before the update.
+    # The inventory is a one-use initialization aid, not a permanent file.
+    $staleList = Join-Path $targetRoot '_FileList.txt'
+    if (Test-Path -LiteralPath $staleList -PathType Leaf) {
+        try { Remove-Item -LiteralPath $staleList -Force -ErrorAction Stop }
+        catch { Write-InstallLog "Could not remove _FileList.txt: $($_.Exception.Message)" }
+    }
 }
 catch {
     $failure = $_.Exception.Message

@@ -1,0 +1,12 @@
+# StartFromTray release content. Maintain these masks in the source repository.
+# * = zero or more characters within one folder; ? = exactly one character.
+# Prefix with ! to exclude. The LAST matching rule wins.
+# Paths refer to the ZIP layout, where documentation is in Docs/.
+
+StartFromTray.exe
+update.ps1
+install.ps1
+mmc-remote.ini
+Docs/*
+Langs/*.ini
+!Langs/Default.ini
